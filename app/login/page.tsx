@@ -54,7 +54,7 @@ export default function LoginPage() {
     setErrors({});
 
     try {
-      const result = await login(email, password);
+      const result = await login(email);
 
       if (result.success) {
         toast.success('Login successful! Welcome back.');
@@ -85,7 +85,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Purple Background with Welcome Message */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-purple-700 via-purple-800 to-purple-900 flex-col justify-between p-12">
+      <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-purple-700 via-purple-800 to-purple-900 flex-col justify-between p-12">
         {/* Logo */}
         <div>
           <h1 className="text-3xl font-bold">

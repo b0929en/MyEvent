@@ -1,15 +1,39 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Search, ArrowUpDown, ChevronUp, ChevronDown, Award, Calendar, Layers, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserMyCSDRecords, getUserClubPositions, calculateMyCSDSummary } from '@/lib/mockData';
 
 export default function MyCSDPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'events' | 'positions'>('events');
   const ITEMS_PER_PAGE = 10;
+
+  // Redirect if not authenticated or not a student
+  useEffect(() => {
+    if (!isLoading && (!isAuthenticated || user?.role !== 'student')) {
+      router.push('/login');
+    }
+  }, [isLoading, isAuthenticated, user, router]);
+
+  // Get real data for the logged-in user
+  const mycsdRecords = user ? getUserMyCSDRecords(user.id) : [];
+  const clubPositions = user ? getUserClubPositions(user.id) : [];
+  const summary = user ? calculateMyCSDSummary(user.id) : {
+    totalPoints: 0,
+    totalEvents: 0,
+    pointsByCategory: { teras: 0, baruna: 0, advance: 0, labels: 0 },
+    pointsByLevel: { antarabangsa: 0, negeri_universiti: 0, kampus: 0 },
+    eventsThisMonth: 0,
+    pointsThisMonth: 0,
+  };
 
   // --- Events Tab State ---
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,186 +59,43 @@ export default function MyCSDPage() {
   });
   const [posPage, setPosPage] = useState(1);
 
-  // Mock Data
-  const eventData = [
-    {
-      bil: 1,
-      sem: '231',
-      teras: 'KEPIMPINAN',
-      namaProjek: 'PROGRAM PENGURUSAN COVID-19 DALAM KAMPUS',
-      persatuan: 'Agensi Luar/NGO/Kementerian/Jabatan Kerajaan/Persatuan Luar/Lain-lain',
-      jawatan: 'Peserta',
-      peringkat: 'P.Pengajian / Desasiswa / Persatuan / Kelab',
-      mata: 2,
-      mycsd: 'YA',
-      date: '2025-10-15',
-    },
-    {
-      bil: 2,
-      sem: '231',
-      teras: 'KEPIMPINAN',
-      namaProjek: '"PENGALAMAN DIGANGGU?APA PERLU ANDA BUAT!"',
-      persatuan: 'Agensi Luar/NGO/Kementerian/Jabatan Kerajaan/Persatuan Luar/Lain-lain',
-      jawatan: 'Peserta',
-      peringkat: 'P.Pengajian / Desasiswa / Persatuan / Kelab',
-      mata: 2,
-      mycsd: 'YA',
-      date: '2025-11-20',
-    },
-    {
-      bil: 3,
-      sem: '232',
-      teras: 'KEBUDAYAAN',
-      namaProjek: 'MALAM KEBUDAYAAN INTERNASIONAL',
-      persatuan: 'Kelab Kebudayaan',
-      jawatan: 'AJK',
-      peringkat: 'Universiti',
-      mata: 4,
-      mycsd: 'YA',
-      date: '2025-12-10', // This month
-    },
-    {
-      bil: 4,
-      sem: '221',
-      teras: 'SUKAN/REKREASI/SOSIALISASI',
-      namaProjek: 'LARIAN MERDEKA',
-      persatuan: 'Kelab Sukan',
-      jawatan: 'Peserta',
-      peringkat: 'Kebangsaan',
-      mata: 5,
-      mycsd: 'YA',
-      date: '2025-12-22', // This month
-    },
-    {
-      bil: 5,
-      sem: '232',
-      teras: 'KHIDMAT MASYARAKAT',
-      namaProjek: 'GOTONG ROYONG PERDANA',
-      persatuan: 'Sekretariat Kesukarelawanan',
-      jawatan: 'Peserta',
-      peringkat: 'Universiti',
-      mata: 3,
-      mycsd: 'YA',
-      date: '2025-09-05'
-    },
-    {
-      bil: 6,
-      sem: '221',
-      teras: 'DEBAT DAN PIDATO',
-      namaProjek: 'DEBAT INTER-VARISITI',
-      persatuan: 'Kelab Debat',
-      jawatan: 'Peserta',
-      peringkat: 'Antarabangsa',
-      mata: 8,
-      mycsd: 'YA',
-      date: '2025-08-01'
-    },
-    {
-      bil: 7,
-      sem: '221',
-      teras: 'DEBAT DAN PIDATO',
-      namaProjek: 'PENGUCAPAN AWAM',
-      persatuan: 'Kelab Pidato',
-      jawatan: 'Peserta',
-      peringkat: 'Universiti',
-      mata: 2,
-      mycsd: 'YA',
-      date: '2025-08-01'
-    },
-    {
-      bil: 8,
-      sem: '221',
-      teras: 'REKA CIPTA DAN INOVASI',
-      namaProjek: 'HACKATHON 2025',
-      persatuan: 'CS Society',
-      jawatan: 'Peserta',
-      peringkat: 'Kebangsaan',
-      mata: 10,
-      mycsd: 'YA',
-      date: '2025-07-01'
-    },
-    {
-      bil: 9,
-      sem: '221',
-      teras: 'REKA CIPTA DAN INOVASI',
-      namaProjek: 'INNOVATION COMPETITION',
-      persatuan: 'CS Society',
-      jawatan: 'Peserta',
-      peringkat: 'Antarabangsa',
-      mata: 16,
-      mycsd: 'YA',
-      date: '2025-07-01'
-    },
-    {
-      bil: 10,
-      sem: '221',
-      teras: 'KEUSAHAWAN',
-      namaProjek: 'PASAR MALAM KAMPUS',
-      persatuan: 'Kelab Usahawan',
-      jawatan: 'AJK',
-      peringkat: 'Universiti',
-      mata: 6,
-      mycsd: 'YA',
-      date: '2025-06-01'
-    },
-    {
-      bil: 11,
-      sem: '221',
-      teras: 'KEUSAHAWAN',
-      namaProjek: 'BAZAAR RAMADHAN',
-      persatuan: 'Kelab Usahawan',
-      jawatan: 'AJK',
-      peringkat: 'Universiti',
-      mata: 6,
-      mycsd: 'YA',
-      date: '2025-06-01'
-    },
-    { bil: 12, sem: '221', teras: 'KEPIMPINAN', namaProjek: 'EXTRA EVENT 1', persatuan: 'ABC', jawatan: 'Pengarah', peringkat: 'Universiti', mata: 2, mycsd: 'YA', date: '2025-01-01' },
-    { bil: 13, sem: '221', teras: 'KEPIMPINAN', namaProjek: 'EXTRA EVENT 2', persatuan: 'ABC', jawatan: 'AJK Tertinggi', peringkat: 'Universiti', mata: 2, mycsd: 'YA', date: '2025-01-01' }
-  ];
+  // Transform MyCSD records to match the existing table format
+  const eventData = mycsdRecords.map((record, index) => ({
+    bil: index + 1,
+    sem: record.semester,
+    teras: record.category.toUpperCase(),
+    namaProjek: record.eventName,
+    persatuan: record.organizationName,
+    jawatan: record.role === 'participant' ? 'Peserta' : record.role === 'committee' ? 'AJK' : 'Penganjur',
+    peringkat: record.level === 'antarabangsa' ? 'Antarabangsa' : 
+               record.level === 'negeri_universiti' ? 'Universiti' : 
+               'P.Pengajian / Desasiswa / Persatuan / Kelab',
+    mata: record.points,
+    mycsd: record.status === 'approved' ? 'YA' : 'Pending',
+    date: record.submittedAt.split('T')[0],
+  }));
 
-  const positionData = [
-    {
-      bil: 1,
-      semRegistered: '241',
-      persatuan: 'Kelab Bridge & Catur',
-      position: 'YDP',
-      mata: 12
-    },
-    {
-      bil: 2,
-      semRegistered: '231',
-      persatuan: 'Kelab Bridge & Catur',
-      position: 'AHLI BIASA',
-      mata: 2
-    },
-    {
-      bil: 3,
-      semRegistered: '222',
-      persatuan: 'Kelab Kebudayaan',
-      position: 'SETIAUSAHA',
-      mata: 10
-    }
-  ];
+  // Transform club positions to match the existing format
+  const positionData = clubPositions.map((position, index) => ({
+    bil: index + 1,
+    semRegistered: position.semesterRegistered,
+    persatuan: position.organizationName,
+    position: position.position,
+    mata: position.points
+  }));
 
   const categoriesOrder = [
-    'DEBAT DAN PIDATO',
-    'KHIDMAT MASYARAKAT',
-    'REKA CIPTA DAN INOVASI',
-    'KEUSAHAWAN',
-    'KEBUDAYAAN',
-    'SUKAN/REKREASI/SOSIALISASI',
-    'KEPIMPINAN'
+    'TERAS',
+    'BARUNA',
+    'ADVANCE',
+    'LABELS',
   ];
 
   const COLORS_MAP: Record<string, string> = {
-    'DEBAT DAN PIDATO': '#00C49F',
-    'KHIDMAT MASYARAKAT': '#0088FE',
-    'REKA CIPTA DAN INOVASI': '#800080', // Purple
-    'KEUSAHAWAN': '#556B2F', // Olive
-    'KEBUDAYAAN': '#FF0000', // Red
-    'SUKAN/REKREASI/SOSIALISASI': '#FF69B4', // Pink
-    'KEPIMPINAN': '#DAA520' // Goldenrod
+    'TERAS': '#DAA520',
+    'BARUNA': '#0088FE',
+    'ADVANCE': '#800080',
+    'LABELS': '#FF0000',
   };
 
   // --- Helper for Badges ---
@@ -283,7 +164,7 @@ export default function MyCSDPage() {
       teras: key,
       ...grouped[key]
     }));
-  }, [eventData]);
+  }, [mycsdRecords]);
 
   const grandTotal = summaryTableData.reduce((acc, curr) => ({
     count: acc.count + curr.count,
@@ -291,15 +172,11 @@ export default function MyCSDPage() {
     pointsIntl: acc.pointsIntl + curr.pointsIntl
   }), { count: 0, pointsLocal: 0, pointsIntl: 0 });
 
-
-  const totalPoints = eventData.reduce((acc, curr) => acc + curr.mata, 0) + positionData.reduce((acc, curr) => acc + curr.mata, 0);
-  const totalEvents = eventData.length;
-
-  const currentMonthStr = '2025-12';
-  const eventsThisMonth = eventData.filter(e => e.date.startsWith(currentMonthStr)).length;
-  const pointsThisMonth = eventData
-    .filter(e => e.date.startsWith(currentMonthStr))
-    .reduce((acc, curr) => acc + curr.mata, 0);
+  // Use real summary data
+  const totalPoints = summary.totalPoints;
+  const totalEvents = summary.totalEvents;
+  const eventsThisMonth = summary.eventsThisMonth;
+  const pointsThisMonth = summary.pointsThisMonth;
 
   // --- EVENTS: Processing & Pagination ---
   const filteredAndSortedEvents = useMemo(() => {
@@ -383,7 +260,7 @@ export default function MyCSDPage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      <main className="flex-grow">
+      <main className="grow">
 
         {/* Breadcrumb & Header Container */}
         <div className="bg-gray-50 border-b border-gray-200">
@@ -475,7 +352,7 @@ export default function MyCSDPage() {
 
             <div className="lg:col-span-1 bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col items-center">
               <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wide mb-6">Points Distribution</h3>
-              <div className="w-full h-[400px]">
+              <div className="w-full h-100">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -524,7 +401,7 @@ export default function MyCSDPage() {
                     {summaryTableData.map((row, idx) => (
                       <tr key={idx} className="hover:bg-gray-50">
                         <td className="px-6 py-4 border-r border-gray-100 flex items-center">
-                          <span className="w-3 h-3 rounded-sm mr-3 flex-shrink-0" style={{ backgroundColor: COLORS_MAP[row.teras] || '#ccc' }}></span>
+                          <span className="w-3 h-3 rounded-sm mr-3 shrink-0" style={{ backgroundColor: COLORS_MAP[row.teras] || '#ccc' }}></span>
                           <span className="font-medium text-gray-700">{row.teras}</span>
                         </td>
                         <td className="px-4 py-4 text-center font-semibold text-gray-600 border-r border-gray-100">{row.count}</td>

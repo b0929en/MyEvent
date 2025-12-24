@@ -95,7 +95,7 @@ export default function Header() {
             ) : (
               <Link 
                 href="/login" 
-                className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
+                className="bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
               >
                 Login
               </Link>
@@ -191,7 +191,7 @@ export default function Header() {
               ) : (
                 <Link 
                   href="/login" 
-                  className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all text-center"
+                  className="bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all text-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Login

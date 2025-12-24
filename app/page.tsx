@@ -3,34 +3,61 @@ import Footer from '@/components/layout/Footer';
 import EventCard from '@/components/event/EventCard';
 import SearchBar from '@/components/SearchBar';
 import Link from 'next/link';
-import { Users } from 'lucide-react';
+import { Users, GraduationCap, Music, Lightbulb, Heart, Trophy } from 'lucide-react';
+import { mockEvents } from '@/lib/mockData';
+import { format } from 'date-fns';
 
 export default function Home() {
-  // Mock event data
-  const mockEvent = {
-    title: 'Royal Gambit: The Final Showdown (Individual)',
-    date: 'Thursday • 9:00AM',
-    venue: 'Dewan Utama Pelajar',
-    price: 'Free'
-  };
+  // Get trending events (sort by registrations)
+  const trendingEvents = [...mockEvents]
+    .sort((a, b) => b.registeredCount - a.registeredCount)
+    .slice(0, 4)
+    .map(event => {
+      const eventDateTime = new Date(`${event.startDate}T${event.startTime}`);
+      return {
+        title: event.title,
+        date: `${format(eventDateTime, 'EEEE')} • ${format(eventDateTime, 'h:mma')}`,
+        venue: event.venue,
+        price: event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`
+      };
+    });
 
-  const trendingEvents = Array(4).fill(mockEvent);
-  const recommendedEvents = Array(4).fill(mockEvent);
+  // Get recommended events (upcoming events)
+  const recommendedEvents = [...mockEvents]
+    .filter(event => {
+      const eventDateTime = new Date(`${event.startDate}T${event.startTime}`);
+      return eventDateTime > new Date();
+    })
+    .sort((a, b) => {
+      const dateA = new Date(`${a.startDate}T${a.startTime}`);
+      const dateB = new Date(`${b.startDate}T${b.startTime}`);
+      return dateA.getTime() - dateB.getTime();
+    })
+    .slice(0, 4)
+    .map(event => {
+      const eventDateTime = new Date(`${event.startDate}T${event.startTime}`);
+      return {
+        title: event.title,
+        date: `${format(eventDateTime, 'EEEE')} • ${format(eventDateTime, 'h:mma')}`,
+        venue: event.venue,
+        price: event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`
+      };
+    });
 
   const categories = [
-    'Event Category 1',
-    'Event Category 2',
-    'Event Category 3',
-    'Event Category 4',
-    'Event Category 5',
-    'Event Category 6'
+    { name: 'Academic', icon: GraduationCap, value: 'academic' },
+    { name: 'Cultural', icon: Music, value: 'cultural' },
+    { name: 'Workshop', icon: Lightbulb, value: 'workshop' },
+    { name: 'Social', icon: Heart, value: 'social' },
+    { name: 'Sports', icon: Trophy, value: 'sports' },
+    { name: 'Volunteering', icon: Users, value: 'volunteering' }
   ];
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-grow">
+      <main className="grow">
         {/* Hero Section - Discover Events */}
         <section className="bg-white py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -57,14 +84,21 @@ export default function Home() {
                 Trending Event Categories:
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6">
-                {categories.map((category, index) => (
-                  <div key={index} className="flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-full border-2 border-gray-300 flex items-center justify-center mb-2 hover:border-orange-500 transition-colors cursor-pointer">
-                      <Users className="w-10 h-10 text-gray-400" />
-                    </div>
-                    <p className="text-sm text-gray-700 text-center">{category}</p>
-                  </div>
-                ))}
+                {categories.map((category, index) => {
+                  const Icon = category.icon;
+                  return (
+                    <Link 
+                      key={index} 
+                      href={`/events?category=${category.value}`}
+                      className="flex flex-col items-center group"
+                    >
+                      <div className="w-20 h-20 rounded-full border-2 border-gray-300 flex items-center justify-center mb-2 group-hover:border-orange-500 transition-colors cursor-pointer">
+                        <Icon className="w-10 h-10 text-gray-400 group-hover:text-orange-500 transition-colors" />
+                      </div>
+                      <p className="text-sm text-gray-700 text-center group-hover:text-orange-500 transition-colors">{category.name}</p>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </div>

@@ -14,7 +14,7 @@ type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 };
 
@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         setUser(parsedUser);
       } catch (error) {
         console.error('Failed to parse stored user:', error);
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * @param password - User's password (currently not validated in mock mode)
    * @returns Promise with success status and optional error message
    */
-  const login = async (email: string, _password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     
     // Simulate API call delay
@@ -131,6 +132,7 @@ export function useRequireAuth(redirectUrl: string = '/login') {
 
   useEffect(() => {
     if (!isLoading && !user) {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       setShouldRedirect(true);
       window.location.href = redirectUrl;
     }
@@ -154,6 +156,7 @@ export function useRequireRole(allowedRoles: string[], redirectUrl: string = '/'
       } else if (!allowedRoles.includes(user.role)) {
         window.location.href = redirectUrl;
       } else {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         setHasAccess(true);
       }
     }

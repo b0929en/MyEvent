@@ -41,6 +41,7 @@ export default function ProfilePage() {
         event: getEventById(reg.eventId) || mockEvents[0],
       }));
       // Update registrations with events
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       setRegistrations(regsWithEvents);
     }
   }, [user]);
@@ -104,12 +105,12 @@ export default function ProfilePage() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
 
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Profile Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-orange-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+              <div className="w-20 h-20 bg-linear-to-br from-purple-600 to-orange-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div>
@@ -206,7 +207,7 @@ export default function ProfilePage() {
                   <p className="text-gray-600 mb-4">No upcoming events registered</p>
                   <Link
                     href="/events"
-                    className="inline-block bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
+                    className="inline-block bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
                   >
                     Browse Events
                   </Link>
@@ -260,7 +261,7 @@ export default function ProfilePage() {
             <p className="text-gray-600 mb-4">Manage your events and view analytics</p>
             <Link
               href="/organizer/dashboard"
-              className="inline-block bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
+              className="inline-block bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
             >
               Go to Dashboard
             </Link>
@@ -274,7 +275,7 @@ export default function ProfilePage() {
             <p className="text-gray-600 mb-4">Manage events, users, and MyCSD approvals</p>
             <Link
               href="/admin/dashboard"
-              className="inline-block bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
+              className="inline-block bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
             >
               Go to Admin Panel
             </Link>
