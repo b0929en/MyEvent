@@ -50,13 +50,39 @@ export type Organization = {
 // Event Types
 // ============================================================================
 
-export type EventStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
+export type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'revision_needed';
+export type EventStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
 export type EventCategory = 'sport' | 'academic' | 'cultural' | 'social' | 'competition' | 'talk' | 'workshop' | 'other';
 export type MyCSDCategory = 'teras' | 'baruna' | 'advance' | 'labels';
 export type MyCSDLevel = 'antarabangsa' | 'negeri_universiti' | 'kampus';
 
+export type EventProposal = {
+  id: string;
+  organizerId: string;
+  organizerName: string;
+  eventTitle: string;
+  eventDescription: string;
+  category: EventCategory;
+  estimatedParticipants: number;
+  proposedDate: string;
+  proposedVenue: string;
+  documents: {
+    eventProposal: string; // PDF file path/URL
+    budgetPlan: string;
+    riskAssessment: string;
+    supportingDocuments: string;
+  };
+  status: ProposalStatus;
+  adminNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  submittedAt: string;
+  updatedAt: string;
+};
+
 export type Event = {
   id: string;
+  proposalId?: string; // Link to approved proposal
   organizerId: string;
   organizerName: string;
   title: string;
@@ -81,6 +107,7 @@ export type Event = {
   links?: EventLink[];
   objectives?: string[];
   agenda?: string[];
+  adminNotes?: string;
   createdAt: string;
   updatedAt: string;
 };

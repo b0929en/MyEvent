@@ -135,7 +135,7 @@ export default function LoginPage() {
                   if (errors.email) setErrors({ ...errors, email: undefined });
                 }}
                 placeholder="Username / Email Address"
-                className={`w-full px-6 py-4 border-2 rounded-full focus:outline-none focus:border-purple-600 transition-colors ${
+                className={`w-full px-6 py-4 border-2 rounded-full text-gray-500 focus:outline-none focus:border-purple-600 transition-colors ${
                   errors.email
                     ? 'border-red-500'
                     : 'border-gray-300'
@@ -158,7 +158,7 @@ export default function LoginPage() {
                   if (errors.password) setErrors({ ...errors, password: undefined });
                 }}
                 placeholder="Password"
-                className={`w-full px-6 py-4 border-2 rounded-full focus:outline-none focus:border-purple-600 transition-colors ${
+                className={`w-full px-6 py-4 border-2 rounded-full text-gray-500 focus:outline-none focus:border-purple-600 transition-colors ${
                   errors.password
                     ? 'border-red-500'
                     : 'border-gray-300'

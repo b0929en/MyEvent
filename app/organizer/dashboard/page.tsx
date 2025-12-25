@@ -21,10 +21,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-type TabType = 'all' | 'published' | 'pending' | 'draft';
+type TabType = 'all' | 'published' | 'pending_approval' | 'draft';
 
 export default function OrganizerDashboard() {
-  const router = useRouter();
   const { user, isLoading } = useRequireRole(['organizer'], '/');
   const [activeTab, setActiveTab] = useState<TabType>('all');
 
@@ -56,7 +55,7 @@ export default function OrganizerDashboard() {
     switch (status) {
       case 'published':
         return <CheckCircle className="w-4 h-4" />;
-      case 'pending':
+      case 'pending_approval':
         return <Clock className="w-4 h-4" />;
       case 'draft':
         return <Edit className="w-4 h-4" />;
@@ -69,7 +68,7 @@ export default function OrganizerDashboard() {
     switch (status) {
       case 'published':
         return 'bg-green-100 text-green-800';
-      case 'pending':
+      case 'pending_approval':
         return 'bg-yellow-100 text-yellow-800';
       case 'draft':
         return 'bg-gray-100 text-gray-800';
@@ -101,15 +100,23 @@ export default function OrganizerDashboard() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Organizer Dashboard</h1>
-              <p className="mt-1 text-gray-600">Manage your events and view analytics</p>
+              <p className="mt-1 text-gray-600">Manage your events and proposals</p>
             </div>
-            <Link
-              href="/organizer/events/create"
-              className="mt-4 md:mt-0 inline-flex items-center gap-2 bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-3 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              Create New Event
-            </Link>
+            <div className="mt-4 md:mt-0 flex gap-3">
+              <Link
+                href="/organizer/proposals/submit"
+                className="inline-flex items-center gap-2 bg-white border-2 border-purple-600 text-purple-600 px-6 py-3 rounded-full font-medium hover:bg-purple-50 transition-all shadow-md"
+              >
+                <Plus className="w-5 h-5" />
+                Submit Proposal
+              </Link>
+              <Link
+                href="/organizer/proposals"
+                className="inline-flex items-center gap-2 bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-3 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all shadow-md"
+              >
+                View Proposals
+              </Link>
+            </div>
           </div>
 
           {/* Stats Grid */}
@@ -170,7 +177,7 @@ export default function OrganizerDashboard() {
                 {[
                   { key: 'all', label: 'All Events', count: organizerEvents.length },
                   { key: 'published', label: 'Published', count: organizerEvents.filter(e => e.status === 'published').length },
-                  { key: 'pending', label: 'Pending', count: organizerEvents.filter(e => e.status === 'pending').length },
+                  { key: 'pending_approval', label: 'Pending Approval', count: organizerEvents.filter(e => e.status === 'pending_approval').length },
                   { key: 'draft', label: 'Draft', count: organizerEvents.filter(e => e.status === 'draft').length },
                 ].map(tab => (
                   <button
