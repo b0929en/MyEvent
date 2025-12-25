@@ -73,7 +73,7 @@ export default function Home() {
 
               {/* Search Bar */}
               <SearchBar
-                placeholder="Hinted search text"
+                placeholder="Search events..."
                 className="max-w-md mx-auto"
               />
             </div>

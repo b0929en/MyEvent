@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
@@ -28,13 +28,11 @@ type AttendanceStatus = 'checked-in' | 'registered' | 'cancelled';
 
 export default function AttendeesPage() {
   const params = useParams();
-  const router = useRouter();
   const { user, isLoading: authLoading } = useRequireRole(['organizer'], '/');
   const eventId = params.id as string;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
-  const [selectedAttendee, setSelectedAttendee] = useState<string | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
 
   // Get event details

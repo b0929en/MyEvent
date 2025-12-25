@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { User, LogOut, Calendar, Award, Home as HomeIcon, Menu, X } from 'lucide-react';
+import { User, LogOut, Calendar, Award, Menu, X, Bell } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Header() {
@@ -32,13 +32,6 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link 
-              href="/" 
-              className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
-            >
-              <HomeIcon className="w-4 h-4" />
-              Home
-            </Link>
             <Link 
               href="/events" 
               className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
@@ -77,6 +70,15 @@ export default function Header() {
 
             {isAuthenticated ? (
               <>
+                <Link 
+                  href="/notifications" 
+                  className="relative flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
+                >
+                  <Bell className="w-4 h-4" />
+                  Notifications
+                  {/* Unread badge - backend will provide count */}
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                </Link>
                 <Link 
                   href="/profile" 
                   className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
@@ -120,14 +122,6 @@ export default function Header() {
           <div className="md:hidden border-t border-gray-200 py-4">
             <nav className="flex flex-col space-y-3">
               <Link 
-                href="/" 
-                className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <HomeIcon className="w-4 h-4" />
-                Home
-              </Link>
-              <Link 
                 href="/events" 
                 className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
@@ -169,6 +163,15 @@ export default function Header() {
 
               {isAuthenticated ? (
                 <>
+                  <Link 
+                    href="/notifications" 
+                    className="relative flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Bell className="w-4 h-4" />
+                    Notifications
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                  </Link>
                   <Link 
                     href="/profile" 
                     className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"

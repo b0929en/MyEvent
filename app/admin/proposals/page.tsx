@@ -7,7 +7,7 @@ import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { ArrowLeft, FileText, Download, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Download, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 import type { ProposalStatus } from '@/types';

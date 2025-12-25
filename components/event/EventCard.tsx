@@ -12,7 +12,7 @@ interface EventCardProps {
 
 export default function EventCard({ title, date, venue, price, image, id = '1' }: EventCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full">
       {/* Event Image */}
       <Link href={`/events/${id}`}>
         <div className="bg-gray-300 h-48 relative cursor-pointer">
@@ -25,7 +25,7 @@ export default function EventCard({ title, date, venue, price, image, id = '1' }
       </Link>
 
       {/* Event Details */}
-      <div className="p-4">
+      <div className="p-4 flex flex-col flex-1">
         <Link href={`/events/${id}`}>
           <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 hover:text-orange-500 cursor-pointer">
             {title}
@@ -38,7 +38,7 @@ export default function EventCard({ title, date, venue, price, image, id = '1' }
         {/* Register Button */}
         <Link
           href={`/events/${id}`}
-          className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center font-semibold py-2 px-4 rounded-full transition-colors"
+          className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center font-semibold py-2 px-4 rounded-full transition-colors mt-auto"
         >
           Register
         </Link>
