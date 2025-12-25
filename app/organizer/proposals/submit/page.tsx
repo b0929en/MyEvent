@@ -25,15 +25,67 @@ const proposalSchema = z.object({
 
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
+type DocumentsState = {
+  eventProposal: File | null;
+  budgetPlan: File | null;
+  riskAssessment: File | null;
+  supportingDocuments: File | null;
+};
+
+const FileUploadField = ({ 
+  label, 
+  field, 
+  description,
+  documents,
+  onFileChange
+}: { 
+  label: string; 
+  field: keyof DocumentsState;
+  description: string;
+  documents: DocumentsState;
+  onFileChange: (field: keyof DocumentsState, file: File | null) => void;
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label} <span className="text-red-500">*</span>
+    </label>
+    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-purple-500 transition-colors">
+      <div className="flex items-center gap-4">
+        <div className="shrink-0">
+          <FileText className="w-10 h-10 text-gray-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm text-gray-700 font-medium mb-1">{description}</p>
+          <p className="text-xs text-gray-500 mb-2">PDF format, max 10MB</p>
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={(e) => onFileChange(field, e.target.files?.[0] || null)}
+            className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+          />
+        </div>
+      </div>
+      {documents[field] && (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <p className="text-sm text-green-600 flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            {documents[field]!.name}
+          </p>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 export default function SubmitProposalPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useRequireRole(['organizer'], '/');
   
-  const [documents, setDocuments] = useState({
-    eventProposal: null as File | null,
-    budgetPlan: null as File | null,
-    riskAssessment: null as File | null,
-    supportingDocuments: null as File | null,
+  const [documents, setDocuments] = useState<DocumentsState>({
+    eventProposal: null,
+    budgetPlan: null,
+    riskAssessment: null,
+    supportingDocuments: null,
   });
 
   const {
@@ -44,7 +96,7 @@ export default function SubmitProposalPage() {
     resolver: zodResolver(proposalSchema),
   });
 
-  const handleFileChange = (field: keyof typeof documents, file: File | null) => {
+  const handleFileChange = (field: keyof DocumentsState, file: File | null) => {
     setDocuments(prev => ({ ...prev, [field]: file }));
   };
 
@@ -88,47 +140,6 @@ export default function SubmitProposalPage() {
       toast.error('Failed to submit proposal. Please try again.');
     }
   };
-
-  const FileUploadField = ({ 
-    label, 
-    field, 
-    description 
-  }: { 
-    label: string; 
-    field: keyof typeof documents;
-    description: string;
-  }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label} <span className="text-red-500">*</span>
-      </label>
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-purple-500 transition-colors">
-        <div className="flex items-center gap-4">
-          <div className="shrink-0">
-            <FileText className="w-10 h-10 text-gray-400" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm text-gray-700 font-medium mb-1">{description}</p>
-            <p className="text-xs text-gray-500 mb-2">PDF format, max 10MB</p>
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => handleFileChange(field, e.target.files?.[0] || null)}
-              className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-            />
-          </div>
-        </div>
-        {documents[field] && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <p className="text-sm text-green-600 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              {documents[field]!.name}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 
   if (authLoading) {
     return (
@@ -305,24 +316,32 @@ export default function SubmitProposalPage() {
                   label="1. Event Proposal"
                   field="eventProposal"
                   description="Detailed event proposal including objectives, timeline, and expected outcomes"
+                  documents={documents}
+                  onFileChange={handleFileChange}
                 />
 
                 <FileUploadField
                   label="2. Budget Plan"
                   field="budgetPlan"
                   description="Comprehensive budget breakdown including income and expenses"
+                  documents={documents}
+                  onFileChange={handleFileChange}
                 />
 
                 <FileUploadField
                   label="3. Risk Assessment"
                   field="riskAssessment"
                   description="Safety and risk management plan for the event"
+                  documents={documents}
+                  onFileChange={handleFileChange}
                 />
 
                 <FileUploadField
                   label="4. Supporting Documents"
                   field="supportingDocuments"
                   description="Additional documents such as partnership agreements, venue bookings, etc."
+                  documents={documents}
+                  onFileChange={handleFileChange}
                 />
               </div>
             </div>

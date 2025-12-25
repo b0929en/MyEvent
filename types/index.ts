@@ -159,6 +159,7 @@ export type Registration = {
   paymentStatus?: PaymentStatus;
   paymentAmount?: number;
   attendanceMarkedAt?: string;
+  checkInTime?: string;
   qrCode?: string;
   registeredAt: string;
   updatedAt: string;
