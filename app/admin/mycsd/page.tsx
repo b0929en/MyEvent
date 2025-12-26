@@ -6,95 +6,42 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-// Mock data will be provided by backend
 import { format } from 'date-fns';
 import { ArrowLeft, TrendingUp, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
-import type { MyCSDStatus } from '@/types';
+import type { MyCSDStatus, MyCSDRecord } from '@/types';
 
-// Mock MyCSD submissions (backend will provide this)
-const mockMyCSDSubmissions = [
-  {
-    id: 'mycsd1',
-    userId: 'user1',
-    userName: 'John Lim',
-    userEmail: 'jm@student.usm.my',
-    eventId: 'event1',
-    eventName: 'Tech Talk: AI in Healthcare',
-    category: 'teras' as const,
-    level: 'universiti' as const,
-    points: 5,
-    role: 'participant' as const,
-    status: 'pending' as MyCSDStatus,
-    proofDocument: '/mycsd/proof-event1-user1.pdf',
-    submittedAt: '2026-01-20T10:00:00Z',
-    updatedAt: '2026-01-20T10:00:00Z'
-  },
-  {
-    id: 'mycsd2',
-    userId: 'user2',
-    userName: 'Sarah Ahmad',
-    userEmail: 'sarah@student.usm.my',
-    eventId: 'event2',
-    eventName: 'Hackathon 2026',
-    category: 'baruna' as const,
-    level: 'antarabangsa' as const,
-    points: 10,
-    role: 'committee' as const,
-    status: 'pending' as MyCSDStatus,
-    proofDocument: '/mycsd/proof-event2-user2.pdf',
-    submittedAt: '2026-01-19T14:30:00Z',
-    updatedAt: '2026-01-19T14:30:00Z'
-  },
-  {
-    id: 'mycsd3',
-    userId: 'user3',
-    userName: 'Ahmad Zaki',
-    userEmail: 'zaki@student.usm.my',
-    eventId: 'event3',
-    eventName: 'Cultural Night 2026',
-    category: 'advance' as const,
-    level: 'kampus' as const,
-    points: 8,
-    role: 'participant' as const,
-    status: 'approved' as MyCSDStatus,
-    proofDocument: '/mycsd/proof-event3-user3.pdf',
-    submittedAt: '2026-01-15T09:00:00Z',
-    updatedAt: '2026-01-16T11:00:00Z',
-    reviewedBy: 'admin1',
-    reviewedAt: '2026-01-16T11:00:00Z',
-    adminNotes: 'Verified attendance. Approved.'
-  }
-];
-
+// TODO: Backend team should provide MyCSD API
 type FilterStatus = MyCSDStatus | 'all';
 
 export default function AdminMyCSDPage() {
   const { user, isLoading } = useRequireRole(['admin'], '/');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('pending');
-  const [selectedSubmission, setSelectedSubmission] = useState<typeof mockMyCSDSubmissions[0] | null>(null);
+  // TODO: Backend team should provide API to fetch MyCSD submissions with user details
+  const [submissions] = useState<MyCSDRecord[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<MyCSDRecord | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [adminNotes, setAdminNotes] = useState('');
 
   const filteredSubmissions = useMemo(() => {
-    if (statusFilter === 'all') return mockMyCSDSubmissions;
-    return mockMyCSDSubmissions.filter(s => s.status === statusFilter);
-  }, [statusFilter]);
+    if (statusFilter === 'all') return submissions;
+    return submissions.filter(s => s.status === statusFilter);
+  }, [statusFilter, submissions]);
 
   const stats = useMemo(() => {
     return {
-      pending: mockMyCSDSubmissions.filter(s => s.status === 'pending').length,
-      approved: mockMyCSDSubmissions.filter(s => s.status === 'approved').length,
-      rejected: mockMyCSDSubmissions.filter(s => s.status === 'rejected').length,
-      totalPoints: mockMyCSDSubmissions
+      pending: submissions.filter(s => s.status === 'pending').length,
+      approved: submissions.filter(s => s.status === 'approved').length,
+      rejected: submissions.filter(s => s.status === 'rejected').length,
+      totalPoints: submissions
         .filter(s => s.status === 'approved')
         .reduce((sum, s) => sum + s.points, 0)
     };
-  }, []);
+  }, [submissions]);
 
-  const handleReview = (submission: typeof mockMyCSDSubmissions[0], action: 'approve' | 'reject') => {
+  const handleReview = (submission: MyCSDRecord, action: 'approve' | 'reject') => {
     setSelectedSubmission(submission);
     setReviewAction(action);
     setAdminNotes('');
@@ -250,8 +197,8 @@ export default function AdminMyCSDPage() {
                       <tr key={submission.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{submission.userName}</div>
-                            <div className="text-xs text-gray-500">{submission.userEmail}</div>
+                            <div className="text-sm font-medium text-gray-900">User ID: {submission.userId}</div>
+                            <div className="text-xs text-gray-500">TODO: Fetch user details</div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -336,7 +283,7 @@ export default function AdminMyCSDPage() {
             <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Student:</span>
-                <span className="text-sm font-medium text-gray-900">{selectedSubmission.userName}</span>
+                <span className="text-sm font-medium text-gray-900">User ID: {selectedSubmission.userId}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Event:</span>

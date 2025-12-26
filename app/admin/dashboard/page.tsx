@@ -16,9 +16,7 @@ import {
   FileText, 
   TrendingUp,
   Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle
+  type LucideIcon
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -26,7 +24,6 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,8 +38,6 @@ export default function AdminDashboard() {
         if (fetchedRegistrations) setRegistrations(fetchedRegistrations);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-      } finally {
-        setIsLoadingData(false);
       }
     };
     fetchData();
@@ -56,8 +51,8 @@ export default function AdminDashboard() {
     const pendingApproval = events.filter(e => e.status === 'pending_approval').length;
     const totalRegistrations = registrations.length;
     
-    // Mock proposal data (in real app, this would come from backend)
-    const pendingProposals = 8;
+    // TODO: Backend team should provide proposal data
+    const pendingProposals = 0;
     
     return {
       totalUsers,
@@ -67,47 +62,17 @@ export default function AdminDashboard() {
       pendingProposals,
       totalRegistrations,
     };
-  }, []);
+  }, [usersList.length, events, registrations.length]);
 
-  // Recent activity (mock data)
-  const recentActivity = useMemo(() => [
-    {
-      id: '1',
-      type: 'proposal_submitted',
-      title: 'New proposal: Tech Talk Series',
-      user: 'Computer Science Society',
-      time: '2 hours ago',
-      icon: FileText,
-      color: 'blue'
-    },
-    {
-      id: '2',
-      type: 'event_approved',
-      title: 'Approved: Hackathon 2026',
-      user: 'Admin Team',
-      time: '5 hours ago',
-      icon: CheckCircle,
-      color: 'green'
-    },
-    {
-      id: '3',
-      type: 'proposal_rejected',
-      title: 'Rejected: Late Night Event',
-      user: 'Admin Team',
-      time: '1 day ago',
-      icon: XCircle,
-      color: 'red'
-    },
-    {
-      id: '4',
-      type: 'mycsd_pending',
-      title: 'MyCSD points pending approval',
-      user: '15 events',
-      time: '2 days ago',
-      icon: AlertCircle,
-      color: 'yellow'
-    },
-  ], []);
+  // TODO: Backend team should provide recent activity data
+  const recentActivity = useMemo<Array<{
+    id: string;
+    icon: LucideIcon;
+    color: string;
+    title: string;
+    user: string;
+    time: string;
+  }>>(() => [], []);
 
   if (isLoading) {
     return (
@@ -268,32 +233,36 @@ export default function AdminDashboard() {
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
                 <div className="space-y-4">
-                  {recentActivity.map((activity) => {
-                    const Icon = activity.icon;
-                    const colorClasses = {
-                      blue: 'bg-blue-100 text-blue-600',
-                      green: 'bg-green-100 text-green-600',
-                      red: 'bg-red-100 text-red-600',
-                      yellow: 'bg-yellow-100 text-yellow-600'
-                    };
+                  {recentActivity.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No recent activity</p>
+                  ) : (
+                    recentActivity.map((activity) => {
+                      const Icon = activity.icon;
+                      const colorClasses = {
+                        blue: 'bg-blue-100 text-blue-600',
+                        green: 'bg-green-100 text-green-600',
+                        red: 'bg-red-100 text-red-600',
+                        yellow: 'bg-yellow-100 text-yellow-600'
+                      };
 
-                    return (
-                      <div key={activity.id} className="flex items-start gap-4 pb-4 border-b border-gray-100 last:border-0">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${colorClasses[activity.color as keyof typeof colorClasses]}`}>
-                          <Icon className="w-5 h-5" />
+                      return (
+                        <div key={activity.id} className="flex items-start gap-4 pb-4 border-b border-gray-100 last:border-0">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${colorClasses[activity.color as keyof typeof colorClasses]}`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900">{activity.title}</p>
+                            <p className="text-sm text-gray-600">{activity.user}</p>
+                          </div>
+                          <p className="text-sm text-gray-500 shrink-0">{activity.time}</p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900">{activity.title}</p>
-                          <p className="text-sm text-gray-600">{activity.user}</p>
-                        </div>
-                        <p className="text-sm text-gray-500 shrink-0">{activity.time}</p>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
-              {/* System Overview (maybe delete?)*/}
+              {/* System Overview */}
               <div className="bg-white rounded-lg shadow-md p-6 mt-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">System Overview</h2>
                 <div className="grid grid-cols-2 gap-4">
@@ -304,18 +273,20 @@ export default function AdminDashboard() {
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">Active Organizers</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockUsers.filter(u => u.role === 'organizer').length}
+                      {usersList.filter(u => u.role === 'organizer').length}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">Completed Events</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockEvents.filter(e => e.status === 'completed').length}
+                      {events.filter(e => e.status === 'completed').length}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">Average Attendance</p>
-                    <p className="text-2xl font-bold text-gray-900">85%</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.totalRegistrations > 0 ? Math.round((events.reduce((sum, e) => sum + e.registeredCount, 0) / stats.totalRegistrations) * 100) : 0}%
+                    </p>
                   </div>
                 </div>
               </div>
