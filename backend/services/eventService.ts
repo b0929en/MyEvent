@@ -2,6 +2,12 @@ import { supabase } from '../supabase/supabase';
 import { Event, EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
 
 const mapEvent = (dbEvent: any): Event => {
+  // Extract MyCSD info if available
+  // Assuming mycsd_requests is an array (one-to-many) but we usually take the approved one
+  const mycsdRequest = dbEvent.mycsd_requests?.find((req: any) => req.status === 'approved') || dbEvent.mycsd_requests?.[0];
+  const eventMycsd = mycsdRequest?.event_mycsd?.[0]; // Assuming one-to-one
+  const mycsdRecord = eventMycsd?.mycsd_records;
+
   return {
     id: dbEvent.event_id,
     title: dbEvent.event_name,
@@ -17,9 +23,13 @@ const mapEvent = (dbEvent: any): Event => {
     category: (dbEvent.category as EventCategory) || 'other',
     organizerId: dbEvent.event_requests?.org_id || '',
     organizerName: dbEvent.event_requests?.organizations?.org_name || 'Unknown Organizer',
-    // Missing fields - defaulting
+    
     participationFee: 0,
-    hasMyCSD: false,
+    hasMyCSD: !!mycsdRequest && mycsdRequest.status === 'approved',
+    mycsdCategory: eventMycsd?.mycsd_category as MyCSDCategory,
+    mycsdLevel: eventMycsd?.event_level as MyCSDLevel,
+    mycsdPoints: mycsdRecord?.mycsd_score,
+    
     status: dbEvent.event_requests?.status || 'published',
     registrationDeadline: dbEvent.event_date,
     createdAt: new Date().toISOString(),
@@ -43,6 +53,16 @@ export async function getEvents(filters?: {
         status,
         organizations (
           org_name
+        )
+      ),
+      mycsd_requests (
+        status,
+        event_mycsd (
+          mycsd_category,
+          event_level,
+          mycsd_records (
+            mycsd_score
+          )
         )
       )
     `);
@@ -75,6 +95,16 @@ export async function getEventById(id: string) {
         status,
         organizations (
           org_name
+        )
+      ),
+      mycsd_requests (
+        status,
+        event_mycsd (
+          mycsd_category,
+          event_level,
+          mycsd_records (
+            mycsd_score
+          )
         )
       )
     `)

@@ -284,42 +284,17 @@ export default function EventsPage() {
               <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
                 <h3 className="font-semibold text-gray-900 mb-3">MYCSD CATEGORY</h3>
                 <div className="space-y-2">
-                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
-                      className="mr-2 cursor-pointer"
-                      checked={selectedMyCSDCategories.includes('advance')}
-                      onChange={() => toggleMyCSDCategory('advance')}
-                    />
-                    <span className="text-gray-700">Advance <span className="text-gray-400">({mycsdCategoryCounts['advance'] || 0})</span></span>
-                  </label>
-                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
-                      className="mr-2 cursor-pointer"
-                      checked={selectedMyCSDCategories.includes('baruna')}
-                      onChange={() => toggleMyCSDCategory('baruna')}
-                    />
-                    <span className="text-gray-700">Baruna <span className="text-gray-400">({mycsdCategoryCounts['baruna'] || 0})</span></span>
-                  </label>
-                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
-                      className="mr-2 cursor-pointer"
-                      checked={selectedMyCSDCategories.includes('labels')}
-                      onChange={() => toggleMyCSDCategory('labels')}
-                    />
-                    <span className="text-gray-700">Labels <span className="text-gray-400">({mycsdCategoryCounts['labels'] || 0})</span></span>
-                  </label>
-                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
-                      className="mr-2 cursor-pointer"
-                      checked={selectedMyCSDCategories.includes('teras')}
-                      onChange={() => toggleMyCSDCategory('teras')}
-                    />
-                    <span className="text-gray-700">Teras <span className="text-gray-400">({mycsdCategoryCounts['teras'] || 0})</span></span>
-                  </label>
+                  {(['REKA CIPTA DAN INOVASI', 'KEUSAHAWAN', 'KEBUDAYAAN', 'SUKAN/REKREASI/SOSIALISASI', 'KEPIMPINAN'] as MyCSDCategory[]).map((category) => (
+                    <label key={category} className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
+                      <input 
+                        type="checkbox" 
+                        className="mr-2 cursor-pointer"
+                        checked={selectedMyCSDCategories.includes(category)}
+                        onChange={() => toggleMyCSDCategory(category)}
+                      />
+                      <span className="text-gray-700">{category} <span className="text-gray-400">({mycsdCategoryCounts[category] || 0})</span></span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
