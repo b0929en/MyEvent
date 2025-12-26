@@ -17,9 +17,7 @@ import {
   FileText, 
   TrendingUp,
   Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle
+  type LucideIcon
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -45,8 +43,6 @@ export default function AdminDashboard() {
         if (fetchedProposals) setProposals(fetchedProposals);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-      } finally {
-        setIsLoadingData(false);
       }
     };
     fetchData();
@@ -266,32 +262,36 @@ export default function AdminDashboard() {
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
                 <div className="space-y-4">
-                  {recentActivity.map((activity) => {
-                    const Icon = activity.icon;
-                    const colorClasses = {
-                      blue: 'bg-blue-100 text-blue-600',
-                      green: 'bg-green-100 text-green-600',
-                      red: 'bg-red-100 text-red-600',
-                      yellow: 'bg-yellow-100 text-yellow-600'
-                    };
+                  {recentActivity.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No recent activity</p>
+                  ) : (
+                    recentActivity.map((activity) => {
+                      const Icon = activity.icon;
+                      const colorClasses = {
+                        blue: 'bg-blue-100 text-blue-600',
+                        green: 'bg-green-100 text-green-600',
+                        red: 'bg-red-100 text-red-600',
+                        yellow: 'bg-yellow-100 text-yellow-600'
+                      };
 
-                    return (
-                      <div key={activity.id} className="flex items-start gap-4 pb-4 border-b border-gray-100 last:border-0">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${colorClasses[activity.color as keyof typeof colorClasses]}`}>
-                          <Icon className="w-5 h-5" />
+                      return (
+                        <div key={activity.id} className="flex items-start gap-4 pb-4 border-b border-gray-100 last:border-0">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${colorClasses[activity.color as keyof typeof colorClasses]}`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900">{activity.title}</p>
+                            <p className="text-sm text-gray-600">{activity.user}</p>
+                          </div>
+                          <p className="text-sm text-gray-500 shrink-0">{activity.time}</p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900">{activity.title}</p>
-                          <p className="text-sm text-gray-600">{activity.user}</p>
-                        </div>
-                        <p className="text-sm text-gray-500 shrink-0">{activity.time}</p>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
-              {/* System Overview (maybe delete?)*/}
+              {/* System Overview */}
               <div className="bg-white rounded-lg shadow-md p-6 mt-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">System Overview</h2>
                 <div className="grid grid-cols-2 gap-4">
@@ -313,7 +313,9 @@ export default function AdminDashboard() {
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">Average Attendance</p>
-                    <p className="text-2xl font-bold text-gray-900">85%</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.totalRegistrations > 0 ? Math.round((events.reduce((sum, e) => sum + e.registeredCount, 0) / stats.totalRegistrations) * 100) : 0}%
+                    </p>
                   </div>
                 </div>
               </div>

@@ -31,6 +31,7 @@ interface MyCSDRequest {
   updatedAt: string;
 }
 
+// TODO: Backend team should provide MyCSD API
 type FilterStatus = MyCSDStatus | 'all';
 
 export default function AdminMyCSDPage() {
@@ -251,8 +252,8 @@ export default function AdminMyCSDPage() {
                       <tr key={submission.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{submission.userName}</div>
-                            <div className="text-xs text-gray-500">{submission.userEmail}</div>
+                            <div className="text-sm font-medium text-gray-900">User ID: {submission.userId}</div>
+                            <div className="text-xs text-gray-500">TODO: Fetch user details</div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -337,7 +338,7 @@ export default function AdminMyCSDPage() {
             <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Student:</span>
-                <span className="text-sm font-medium text-gray-900">{selectedSubmission.userName}</span>
+                <span className="text-sm font-medium text-gray-900">User ID: {selectedSubmission.userId}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Event:</span>

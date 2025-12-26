@@ -2,10 +2,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Search, ArrowUpDown, ChevronUp, ChevronDown, Award, Calendar, Layers, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserMyCSDRecords, getUserClubPositions, calculateMyCSDSummary } from '@/backend/services/mycsdService';
@@ -98,12 +99,12 @@ export default function MyCSDPage() {
     mata: position.points
   }));
 
-  const categoriesOrder = [
+  const categoriesOrder = React.useMemo(() => [
     'TERAS',
     'BARUNA',
     'ADVANCE',
     'LABELS',
-  ];
+  ], []);
 
   const COLORS_MAP: Record<string, string> = {
     'TERAS': '#DAA520',
@@ -132,11 +133,17 @@ export default function MyCSDPage() {
 
 
   // --- Filter Reset Logic ---
-  useEffect(() => {
+  // Automatically reset to page 1 when filters or search changes
+  const eventPageRef = React.useRef(eventPage);
+  const posPageRef = React.useRef(posPage);
+  
+  React.useEffect(() => {
+    eventPageRef.current = 1;
     setEventPage(1);
   }, [searchQuery, filters]);
 
-  useEffect(() => {
+  React.useEffect(() => {
+    posPageRef.current = 1;
     setPosPage(1);
   }, [posSearchQuery, posFilters]);
 
@@ -178,7 +185,7 @@ export default function MyCSDPage() {
       teras: key,
       ...grouped[key]
     }));
-  }, [mycsdRecords]);
+  }, [categoriesOrder, eventData]);
 
   const grandTotal = summaryTableData.reduce((acc, curr) => ({
     count: acc.count + curr.count,
@@ -302,7 +309,7 @@ export default function MyCSDPage() {
             <div className="relative overflow-hidden rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow bg-purple-900 text-white group border border-purple-800">
               <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
                 {/* Watermark Background */}
-                <img src="/usm-card-background.webp" alt="" className="w-full h-full object-cover grayscale opacity-50 mix-blend-overlay" />
+                <Image src="/usm-card-background.webp" alt="" fill className="object-cover grayscale opacity-50 mix-blend-overlay" />
               </div>
               <div className="relative z-10 flex justify-between items-start">
                 <div>
@@ -318,7 +325,7 @@ export default function MyCSDPage() {
             {/* Total Events - Orange */}
             <div className="relative overflow-hidden rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow bg-orange-500 text-white border border-orange-400">
               <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-                <img src="/usm-card-background.webp" alt="" className="w-full h-full object-cover grayscale opacity-50 mix-blend-overlay" />
+                <Image src="/usm-card-background.webp" alt="" fill className="object-cover grayscale opacity-50 mix-blend-overlay" />
               </div>
               <div className="relative z-10 flex justify-between items-start">
                 <div>
@@ -334,7 +341,7 @@ export default function MyCSDPage() {
             {/* Events This Month - Purple */}
             <div className="relative overflow-hidden rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow bg-purple-900 text-white border border-purple-800">
               <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-                <img src="/usm-card-background.webp" alt="" className="w-full h-full object-cover grayscale opacity-50 mix-blend-overlay" />
+                <Image src="/usm-card-background.webp" alt="" fill className="object-cover grayscale opacity-50 mix-blend-overlay" />
               </div>
               <div className="relative z-10 flex items-center space-x-2 mb-2">
                 <Layers className="h-4 w-4 text-purple-200" />
@@ -348,7 +355,7 @@ export default function MyCSDPage() {
             {/* Points This Month - Orange */}
             <div className="relative overflow-hidden rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow bg-orange-500 text-white border border-orange-400">
               <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-                <img src="/usm-card-background.webp" alt="" className="w-full h-full object-cover grayscale opacity-50 mix-blend-overlay" />
+                <Image src="/usm-card-background.webp" alt="" fill className="object-cover grayscale opacity-50 mix-blend-overlay" />
               </div>
               <div className="relative z-10 flex items-center space-x-2 mb-2">
                 <Activity className="h-4 w-4 text-orange-100" />
@@ -378,7 +385,7 @@ export default function MyCSDPage() {
                       fill="#8884d8"
                       paddingAngle={2}
                       dataKey="value"
-                      label={({ percent }: any) => `${((percent || 0) * 100).toFixed(0)}%`}
+                      label={({ percent }: { percent?: number }) => `${((percent || 0) * 100).toFixed(0)}%`}
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS_MAP[entry.name] || '#999'} />

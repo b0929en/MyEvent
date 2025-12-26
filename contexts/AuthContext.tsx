@@ -2,8 +2,7 @@
 
 /**
  * Authentication Context for MyEvent @ USM
- * Simulates authentication state for frontend development
- * Backend team will replace with actual authentication logic
+ * Handles user authentication state and session management
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -24,10 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user from localStorage on mount (simulate session persistence)
+  // Load user from localStorage on mount
   useEffect(() => {
     const initAuth = async () => {
-      const storedUser = localStorage.getItem('mockUser');
+      const storedUser = localStorage.getItem('currentUser');
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
@@ -35,14 +34,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const latestUser = await getUserByEmail(parsedUser.email);
           if (latestUser) {
             setUser(latestUser);
-            localStorage.setItem('mockUser', JSON.stringify(latestUser));
+            localStorage.setItem('currentUser', JSON.stringify(latestUser));
           } else {
             // If user not found (e.g. deleted), clear session
-            localStorage.removeItem('mockUser');
+            localStorage.removeItem('currentUser');
           }
         } catch (error) {
           console.error('Failed to parse stored user:', error);
-          localStorage.removeItem('mockUser');
+          localStorage.removeItem('currentUser');
         }
       }
       setIsLoading(false);
@@ -51,11 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Mock login function
-   * In production, this will call backend API
+   * Login function
+   * TODO: Implement proper password validation and authentication
    * 
    * @param email - User's USM email
-   * @param password - User's password (currently not validated in mock mode)
    * @returns Promise with success status and optional error message
    */
   const login = async (email: string): Promise<{ success: boolean; error?: string }> => {
@@ -74,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
     
-    // Find user in mock data
+    // Find user in database
     const foundUser = await getUserByEmail(email);
     
     if (!foundUser) {
@@ -85,12 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
     
-    // In mock mode, any password is accepted for existing users
-    // Backend will implement proper password validation
+    // TODO: Backend team should implement proper password validation
     
     // Store user in state and localStorage
     setUser(foundUser);
-    localStorage.setItem('mockUser', JSON.stringify(foundUser));
+    localStorage.setItem('currentUser', JSON.stringify(foundUser));
     
     setIsLoading(false);
     return { success: true };
@@ -102,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('mockUser');
+    localStorage.removeItem('currentUser');
   };
 
   const value: AuthContextType = {
@@ -138,17 +135,14 @@ export function useAuth() {
  */
 export function useRequireAuth(redirectUrl: string = '/login') {
   const { user, isLoading } = useAuth();
-  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      setShouldRedirect(true);
       window.location.href = redirectUrl;
     }
   }, [user, isLoading, redirectUrl]);
 
-  return { user, isLoading, shouldRedirect };
+  return { user, isLoading, shouldRedirect: !user };
 }
 
 /**
@@ -157,7 +151,6 @@ export function useRequireAuth(redirectUrl: string = '/login') {
  */
 export function useRequireRole(allowedRoles: string[], redirectUrl: string = '/') {
   const { user, isLoading } = useAuth();
-  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
@@ -165,12 +158,10 @@ export function useRequireRole(allowedRoles: string[], redirectUrl: string = '/'
         window.location.href = '/login';
       } else if (!allowedRoles.includes(user.role)) {
         window.location.href = redirectUrl;
-      } else {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        setHasAccess(true);
       }
     }
   }, [user, isLoading, allowedRoles, redirectUrl]);
 
+  const hasAccess = !isLoading && user !== null && allowedRoles.includes(user.role);
   return { user, isLoading, hasAccess };
 }

@@ -20,132 +20,13 @@ type Notification = {
   createdAt: string;
 };
 
-// Mock notifications (backend will provide these)
-const mockNotifications: Notification[] = [
-  {
-    id: 'notif1',
-    type: 'registration',
-    title: 'Registration Confirmed',
-    message: 'Your registration for "Tech Talk: AI in Healthcare" has been confirmed.',
-    link: '/events/event1',
-    isRead: false,
-    createdAt: '2026-01-20T10:30:00Z'
-  },
-  {
-    id: 'notif2',
-    type: 'event',
-    title: 'New Event Available',
-    message: 'Hackathon 2026 is now open for registration!',
-    link: '/events/event2',
-    isRead: false,
-    createdAt: '2026-01-19T14:00:00Z'
-  },
-  {
-    id: 'notif3',
-    type: 'mycsd',
-    title: 'MyCSD Points Approved',
-    message: 'You have been awarded 5 MyCSD points for "Tech Talk: AI in Healthcare".',
-    link: '/mycsd',
-    isRead: true,
-    createdAt: '2026-01-18T09:15:00Z'
-  },
-  {
-    id: 'notif4',
-    type: 'event',
-    title: 'Event Reminder',
-    message: 'Tech Talk: AI in Healthcare starts in 2 days. Don\'t forget to attend!',
-    link: '/events/event1',
-    isRead: true,
-    createdAt: '2026-01-17T16:00:00Z'
-  },
-  {
-    id: 'notif5',
-    type: 'admin',
-    title: 'System Maintenance',
-    message: 'MyEvent @ USM will undergo scheduled maintenance on Jan 25, 2026.',
-    isRead: true,
-    createdAt: '2026-01-15T08:00:00Z'
-  }
-];
-
-// Organizer-specific notifications
-const organizerNotifications: Notification[] = [
-  {
-    id: 'org1',
-    type: 'proposal',
-    title: 'Proposal Approved',
-    message: 'Your proposal for "Tech Talk Series" has been approved. You can now create the event.',
-    link: '/organizer/events/create',
-    isRead: false,
-    createdAt: '2026-01-21T11:00:00Z'
-  },
-  {
-    id: 'org2',
-    type: 'event',
-    title: 'Event Published',
-    message: 'Your event "Hackathon 2026" has been approved and published.',
-    link: '/organizer/dashboard',
-    isRead: true,
-    createdAt: '2026-01-20T15:30:00Z'
-  },
-  {
-    id: 'org3',
-    type: 'registration',
-    title: 'New Registrations',
-    message: '15 new students registered for "Hackathon 2026".',
-    link: '/organizer/events/event2/attendees',
-    isRead: true,
-    createdAt: '2026-01-19T12:00:00Z'
-  }
-];
-
-// Admin-specific notifications
-const adminNotifications: Notification[] = [
-  {
-    id: 'admin1',
-    type: 'proposal',
-    title: 'New Proposal Submitted',
-    message: 'Computer Science Society submitted a proposal for "Tech Talk Series 2026".',
-    link: '/admin/proposals',
-    isRead: false,
-    createdAt: '2026-01-22T09:00:00Z'
-  },
-  {
-    id: 'admin2',
-    type: 'event',
-    title: 'Event Pending Approval',
-    message: '3 events are waiting for your approval.',
-    link: '/admin/events',
-    isRead: false,
-    createdAt: '2026-01-21T14:30:00Z'
-  },
-  {
-    id: 'admin3',
-    type: 'mycsd',
-    title: 'MyCSD Points Pending',
-    message: '8 MyCSD point submissions are pending review.',
-    link: '/admin/mycsd',
-    isRead: true,
-    createdAt: '2026-01-20T10:00:00Z'
-  }
-];
-
+// TODO: Backend team should provide notifications API
 export default function NotificationsPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<NotificationType | 'all'>('all');
   
-  // Load notifications based on user role
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    let allNotifs = [...mockNotifications];
-    
-    if (user?.role === 'organizer') {
-      allNotifs = [...organizerNotifications, ...mockNotifications];
-    } else if (user?.role === 'admin') {
-      allNotifs = [...adminNotifications, ...mockNotifications];
-    }
-    
-    return allNotifs;
-  });
+  // TODO: Load notifications from backend API
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const filteredNotifications = useMemo(() => {
     if (filter === 'all') return notifications;
