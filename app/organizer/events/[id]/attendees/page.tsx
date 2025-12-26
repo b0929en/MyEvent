@@ -40,10 +40,31 @@ export default function AttendeesPage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [origin, setOrigin] = useState('');
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [qrTimestamp, setQrTimestamp] = useState(Date.now());
 
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  useEffect(() => {
+    if (!showQRModal) {
+      setTimeLeft(30);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setQrTimestamp(Date.now());
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showQRModal]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -437,20 +458,26 @@ export default function AttendeesPage() {
           <p className="text-gray-600 mb-6">
             Scan this QR code to check in attendees quickly
           </p>
-          <div className="inline-block p-6 bg-white border-2 border-gray-200 rounded-lg">
+          <div className="inline-block p-6 bg-white border-2 border-gray-200 rounded-lg relative">
             <QRCodeSVG
-              value={`${origin}/checkin?eventId=${event.id}`}
+              value={`${origin}/checkin?eventId=${event.id}&t=${qrTimestamp}`}
               size={256}
               level="H"
               includeMargin
             />
+            <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-white px-2 py-1 rounded-full border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-1 text-xs font-medium text-gray-600">
+                <Clock className="w-3 h-3" />
+                <span>Refreshing in {timeLeft}s</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600">
               Event ID: <span className="font-mono font-semibold">{event.id}</span>
             </p>
             <div className="mt-2 p-2 bg-yellow-50 border border-yellow-100 rounded text-xs text-yellow-800 break-all">
-               <strong>Encoded URL:</strong> {`${origin}/checkin?eventId=${event.id}`}
+               <strong>Encoded URL:</strong> {`${origin}/checkin?eventId=${event.id}&t=${qrTimestamp}`}
                {origin.includes('localhost') && (
                  <div className="mt-1 font-bold text-red-600">
                    Warning: You are on localhost. Phone scanning will fail. Access this page via your Network IP (e.g., 192.168.x.x) on this computer.
