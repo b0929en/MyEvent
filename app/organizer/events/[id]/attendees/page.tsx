@@ -39,6 +39,11 @@ export default function AttendeesPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [origin, setOrigin] = useState('');
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -434,7 +439,7 @@ export default function AttendeesPage() {
           </p>
           <div className="inline-block p-6 bg-white border-2 border-gray-200 rounded-lg">
             <QRCodeSVG
-              value={`myevent://checkin/${event.id}`}
+              value={`${origin}/checkin?eventId=${event.id}`}
               size={256}
               level="H"
               includeMargin
@@ -445,13 +450,12 @@ export default function AttendeesPage() {
               Event ID: <span className="font-mono font-semibold">{event.id}</span>
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              <strong>Backend Implementation Required:</strong>
+              <strong>How to Test:</strong>
             </p>
             <ul className="text-xs text-gray-500 mt-1 space-y-1 text-left">
-              <li>• Generate time-based tokens (20s expiry) via API endpoint</li>
-              <li>• Frontend will fetch new token every 20s and update QR code</li>
-              <li>• Validate token on check-in to prevent QR code sharing</li>
-              <li>• QR format: <code className="bg-gray-200 px-1 rounded">myevent://checkin/{`{eventId}/{token}`}</code></li>
+              <li>1. Scan this code with your phone (ensure phone is on same network and use IP instead of localhost)</li>
+              <li>2. Or copy the link: <a href={`${origin}/checkin?eventId=${event.id}`} target="_blank" className="text-purple-600 underline">Check-in Link</a></li>
+              <li>3. Or manually enter the Event ID at <Link href="/checkin" className="text-purple-600 underline">/checkin</Link></li>
             </ul>
           </div>
         </div>

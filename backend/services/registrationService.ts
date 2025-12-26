@@ -105,3 +105,20 @@ export async function createRegistration(registration: Partial<Registration>) {
 
   return data;
 }
+
+export async function checkInUser(eventId: string, userId: string) {
+  const { data, error } = await supabase
+    .from('registrations')
+    .update({ attendance: 'present' })
+    .eq('event_id', eventId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error checking in user:', error);
+    throw error;
+  }
+
+  return data;
+}
