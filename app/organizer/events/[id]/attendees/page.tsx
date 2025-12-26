@@ -449,6 +449,14 @@ export default function AttendeesPage() {
             <p className="text-sm text-gray-600">
               Event ID: <span className="font-mono font-semibold">{event.id}</span>
             </p>
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-100 rounded text-xs text-yellow-800 break-all">
+               <strong>Encoded URL:</strong> {`${origin}/checkin?eventId=${event.id}`}
+               {origin.includes('localhost') && (
+                 <div className="mt-1 font-bold text-red-600">
+                   Warning: You are on localhost. Phone scanning will fail. Access this page via your Network IP (e.g., 192.168.x.x) on this computer.
+                 </div>
+               )}
+            </div>
             <p className="text-xs text-gray-500 mt-2">
               <strong>How to Test:</strong>
             </p>
