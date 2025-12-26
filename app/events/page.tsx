@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import EventCard from '@/components/event/EventCard';
 import SearchBar from '@/components/SearchBar';
 import Breadcrumb from '@/components/Breadcrumb';
-import { getFilteredEvents, mockEvents } from '@/lib/mockData';
-import { EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
+import { getEvents } from '@/backend/services/eventService';
+import { Event, EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
 import { format } from 'date-fns';
 
 export default function EventsPage() {
@@ -17,20 +17,63 @@ export default function EventsPage() {
   const [hasMyCSD, setHasMyCSD] = useState<boolean | undefined>(undefined);
   const [selectedMyCSDCategories, setSelectedMyCSDCategories] = useState<MyCSDCategory[]>([]);
   const [selectedMyCSDLevels, setSelectedMyCSDLevels] = useState<MyCSDLevel[]>([]);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const itemsPerPage = 12;
 
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const events = await getEvents();
+        setAllEvents(events);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
   // Filter and search events
   const filteredEvents = useMemo(() => {
-    const events = getFilteredEvents({
-      search: searchQuery,
-      category: selectedCategories.length > 0 ? selectedCategories : undefined,
-      hasMyCSD: hasMyCSD,
-      mycsdCategory: selectedMyCSDCategories.length > 0 ? selectedMyCSDCategories : undefined,
-      mycsdLevel: selectedMyCSDLevels.length > 0 ? selectedMyCSDLevels : undefined,
-    });
-    return events;
-  }, [searchQuery, selectedCategories, hasMyCSD, selectedMyCSDCategories, selectedMyCSDLevels]);
+    let filtered = [...allEvents];
+
+    if (searchQuery) {
+      const search = searchQuery.toLowerCase();
+      filtered = filtered.filter(event => 
+        event.title.toLowerCase().includes(search) ||
+        event.description.toLowerCase().includes(search) ||
+        event.organizerName.toLowerCase().includes(search)
+      );
+    }
+
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter(event => 
+        selectedCategories.includes(event.category)
+      );
+    }
+
+    if (hasMyCSD !== undefined) {
+      filtered = filtered.filter(event => event.hasMyCSD === hasMyCSD);
+    }
+
+    if (selectedMyCSDCategories.length > 0) {
+      filtered = filtered.filter(event => 
+        event.mycsdCategory && selectedMyCSDCategories.includes(event.mycsdCategory)
+      );
+    }
+
+    if (selectedMyCSDLevels.length > 0) {
+      filtered = filtered.filter(event => 
+        event.mycsdLevel && selectedMyCSDLevels.includes(event.mycsdLevel)
+      );
+    }
+
+    return filtered;
+  }, [searchQuery, selectedCategories, hasMyCSD, selectedMyCSDCategories, selectedMyCSDLevels, allEvents]);
 
   // Pagination
   const totalResults = filteredEvents.length;
@@ -80,31 +123,31 @@ export default function EventsPage() {
   // Count events per category
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    mockEvents.forEach(event => {
+    allEvents.forEach(event => {
       counts[event.category] = (counts[event.category] || 0) + 1;
     });
     return counts;
-  }, []);
+  }, [allEvents]);
 
   const mycsdCategoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    mockEvents.forEach(event => {
+    allEvents.forEach(event => {
       if (event.mycsdCategory) {
         counts[event.mycsdCategory] = (counts[event.mycsdCategory] || 0) + 1;
       }
     });
     return counts;
-  }, []);
+  }, [allEvents]);
 
   const mycsdLevelCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    mockEvents.forEach(event => {
+    allEvents.forEach(event => {
       if (event.mycsdLevel) {
         counts[event.mycsdLevel] = (counts[event.mycsdLevel] || 0) + 1;
       }
     });
     return counts;
-  }, []);
+  }, [allEvents]);
 
   // Pagination handlers
   const goToPage = (page: number) => {
@@ -317,101 +360,113 @@ export default function EventsPage() {
 
             {/* Events Grid */}
             <div className="grow">
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-sm text-gray-600">
-                  Showing {totalResults > 0 ? startIndex + 1 : 0}-{Math.min(endIndex, totalResults)} of <span className="font-semibold">{totalResults}</span> results
-                </p>
-                
-                {/* Clear filters button */}
-                {(selectedCategories.length > 0 || hasMyCSD !== undefined || selectedMyCSDCategories.length > 0 || selectedMyCSDLevels.length > 0) && (
-                  <button
-                    onClick={() => {
-                      setSelectedCategories([]);
-                      setHasMyCSD(undefined);
-                      setSelectedMyCSDCategories([]);
-                      setSelectedMyCSDLevels([]);
-                      setCurrentPage(1);
-                    }}
-                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
-                  >
-                    Clear all filters
-                  </button>
-                )}
-              </div>
-
-              {eventsToDisplay.length > 0 ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading events...</p>
+                  </div>
+                </div>
+              ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    {eventsToDisplay.map((event) => (
-                      <EventCard 
-                        key={event.id}
-                        id={event.id}
-                        title={event.title}
-                        date={format(new Date(event.startDate), 'EEEE • h:mma')}
-                        venue={event.venue}
-                        price={event.participationFee === 0 ? 'Free' : `RM${event.participationFee}`}
-                      />
-                    ))}
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-sm text-gray-600">
+                      Showing {totalResults > 0 ? startIndex + 1 : 0}-{Math.min(endIndex, totalResults)} of <span className="font-semibold">{totalResults}</span> results
+                    </p>
+                    
+                    {/* Clear filters button */}
+                    {(selectedCategories.length > 0 || hasMyCSD !== undefined || selectedMyCSDCategories.length > 0 || selectedMyCSDLevels.length > 0) && (
+                      <button
+                        onClick={() => {
+                          setSelectedCategories([]);
+                          setHasMyCSD(undefined);
+                          setSelectedMyCSDCategories([]);
+                          setSelectedMyCSDLevels([]);
+                          setCurrentPage(1);
+                        }}
+                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                      >
+                        Clear all filters
+                      </button>
+                    )}
                   </div>
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-2 mt-8">
-                      <button 
-                        onClick={goToPrevPage}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        ← Previous
-                      </button>
-                      
-                      {getPaginationNumbers().map((page, index) => (
-                        typeof page === 'number' ? (
-                          <button
-                            key={index}
-                            onClick={() => goToPage(page)}
-                            className={`px-3 py-1 rounded transition-colors ${
-                              currentPage === page
-                                ? 'bg-gray-900 text-white'
-                                : 'text-gray-700 hover:bg-gray-100'
-                            }`}
+                  {eventsToDisplay.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        {eventsToDisplay.map((event) => (
+                          <EventCard 
+                            key={event.id}
+                            id={event.id}
+                            title={event.title}
+                            date={format(new Date(event.startDate), 'EEEE • h:mma')}
+                            venue={event.venue}
+                            price={event.participationFee === 0 ? 'Free' : `RM${event.participationFee}`}
+                            image={event.bannerImage}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-2 mt-8">
+                          <button 
+                            onClick={goToPrevPage}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {page}
+                            ← Previous
                           </button>
-                        ) : (
-                          <span key={index} className="px-2 text-gray-400">
-                            {page}
-                          </span>
-                        )
-                      ))}
-                      
-                      <button 
-                        onClick={goToNextPage}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          
+                          {getPaginationNumbers().map((page, index) => (
+                            typeof page === 'number' ? (
+                              <button
+                                key={index}
+                                onClick={() => goToPage(page)}
+                                className={`px-3 py-1 rounded transition-colors ${
+                                  currentPage === page
+                                    ? 'bg-gray-900 text-white'
+                                    : 'text-gray-700 hover:bg-gray-100'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            ) : (
+                              <span key={index} className="px-2 text-gray-400">
+                                {page}
+                              </span>
+                            )
+                          ))}
+                          
+                          <button 
+                            onClick={goToNextPage}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next →
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500 text-lg">No events found matching your criteria.</p>
+                      <button
+                        onClick={() => {
+                          setSearchQuery('');
+                          setSelectedCategories([]);
+                          setHasMyCSD(undefined);
+                          setSelectedMyCSDCategories([]);
+                          setSelectedMyCSDLevels([]);
+                          setCurrentPage(1);
+                        }}
+                        className="mt-4 text-purple-600 hover:text-purple-700 font-medium"
                       >
-                        Next →
+                        Clear all filters
                       </button>
                     </div>
                   )}
                 </>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-500 text-lg">No events found matching your criteria.</p>
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategories([]);
-                      setHasMyCSD(undefined);
-                      setSelectedMyCSDCategories([]);
-                      setSelectedMyCSDLevels([]);
-                      setCurrentPage(1);
-                    }}
-                    className="mt-4 text-purple-600 hover:text-purple-700 font-medium"
-                  >
-                    Clear all filters
-                  </button>
-                </div>
               )}
             </div>
           </div>

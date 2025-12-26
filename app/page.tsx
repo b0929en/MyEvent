@@ -4,17 +4,21 @@ import EventCard from '@/components/event/EventCard';
 import SearchBar from '@/components/SearchBar';
 import Link from 'next/link';
 import { Users, GraduationCap, Music, Lightbulb, Heart, Trophy } from 'lucide-react';
-import { mockEvents } from '@/lib/mockData';
+import { getEvents } from '@/backend/services/eventService';
 import { format } from 'date-fns';
 
-export default function Home() {
+export default async function Home() {
+  const events = await getEvents();
+  const allEvents = events || [];
+
   // Get trending events (sort by registrations)
-  const trendingEvents = [...mockEvents]
+  const trendingEvents = [...allEvents]
     .sort((a, b) => b.registeredCount - a.registeredCount)
     .slice(0, 4)
     .map(event => {
       const eventDateTime = new Date(`${event.startDate}T${event.startTime}`);
       return {
+        id: event.id,
         title: event.title,
         date: `${format(eventDateTime, 'EEEE')} • ${format(eventDateTime, 'h:mma')}`,
         venue: event.venue,
@@ -23,7 +27,7 @@ export default function Home() {
     });
 
   // Get recommended events (upcoming events)
-  const recommendedEvents = [...mockEvents]
+  const recommendedEvents = [...allEvents]
     .filter(event => {
       const eventDateTime = new Date(`${event.startDate}T${event.startTime}`);
       return eventDateTime > new Date();
@@ -37,6 +41,7 @@ export default function Home() {
     .map(event => {
       const eventDateTime = new Date(`${event.startDate}T${event.startTime}`);
       return {
+        id: event.id,
         title: event.title,
         date: `${format(eventDateTime, 'EEEE')} • ${format(eventDateTime, 'h:mma')}`,
         venue: event.venue,

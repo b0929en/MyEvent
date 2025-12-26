@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { mockUsers } from '@/lib/mockData';
+import { getUsers } from '@/backend/services/userService';
+import { User } from '@/types';
 import { format } from 'date-fns';
 import { ArrowLeft, Users as UsersIcon, Search, Filter, Shield } from 'lucide-react';
 import type { UserRole } from '@/types';
@@ -17,9 +18,25 @@ export default function AdminUsersPage() {
   const { user, isLoading } = useRequireRole(['admin'], '/');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<FilterRole>('all');
+  const [usersList, setUsersList] = useState<User[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const fetchedUsers = await getUsers();
+        if (fetchedUsers) setUsersList(fetchedUsers);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const filteredUsers = useMemo(() => {
-    let filtered = mockUsers;
+    let filtered = usersList;
 
     // Role filter
     if (roleFilter !== 'all') {
@@ -32,21 +49,21 @@ export default function AdminUsersPage() {
       filtered = filtered.filter(u => 
         u.name.toLowerCase().includes(query) ||
         u.email.toLowerCase().includes(query) ||
-        u.matricNumber?.toLowerCase().includes(query)
+        (u.matricNumber && u.matricNumber.toLowerCase().includes(query))
       );
     }
 
     return filtered;
-  }, [searchQuery, roleFilter]);
+  }, [searchQuery, roleFilter, usersList]);
 
   const stats = useMemo(() => {
     return {
-      total: mockUsers.length,
-      students: mockUsers.filter(u => u.role === 'student').length,
-      organizers: mockUsers.filter(u => u.role === 'organizer').length,
-      admins: mockUsers.filter(u => u.role === 'admin').length,
+      total: usersList.length,
+      students: usersList.filter(u => u.role === 'student').length,
+      organizers: usersList.filter(u => u.role === 'organizer').length,
+      admins: usersList.filter(u => u.role === 'admin').length,
     };
-  }, []);
+  }, [usersList]);
 
   const getRoleBadge = (role: UserRole) => {
     switch (role) {

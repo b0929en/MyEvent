@@ -8,7 +8,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
-import { getUserByEmail } from '@/lib/mockData';
+import { getUserByEmail } from '@/backend/services/userService';
 
 type AuthContextType = {
   user: User | null;
@@ -26,18 +26,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load user from localStorage on mount (simulate session persistence)
   useEffect(() => {
-    const storedUser = localStorage.getItem('mockUser');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Failed to parse stored user:', error);
-        localStorage.removeItem('mockUser');
+    const initAuth = async () => {
+      const storedUser = localStorage.getItem('mockUser');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          // Fetch latest user data
+          const latestUser = await getUserByEmail(parsedUser.email);
+          if (latestUser) {
+            setUser(latestUser);
+            localStorage.setItem('mockUser', JSON.stringify(latestUser));
+          } else {
+            // If user not found (e.g. deleted), clear session
+            localStorage.removeItem('mockUser');
+          }
+        } catch (error) {
+          console.error('Failed to parse stored user:', error);
+          localStorage.removeItem('mockUser');
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+    initAuth();
   }, []);
 
   /**
@@ -65,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Find user in mock data
-    const foundUser = getUserByEmail(email);
+    const foundUser = await getUserByEmail(email);
     
     if (!foundUser) {
       setIsLoading(false);

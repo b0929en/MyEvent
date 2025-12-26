@@ -1,12 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { mockEvents, mockUsers, mockRegistrations } from '@/lib/mockData';
+import { getEvents } from '@/backend/services/eventService';
+import { getUsers } from '@/backend/services/userService';
+import { getAllRegistrations } from '@/backend/services/registrationService';
+import { Event, User, Registration } from '@/types';
 import { 
   Users, 
   Calendar, 
@@ -20,14 +23,38 @@ import {
 
 export default function AdminDashboard() {
   const { user, isLoading } = useRequireRole(['admin'], '/');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [usersList, setUsersList] = useState<User[]>([]);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [fetchedEvents, fetchedUsers, fetchedRegistrations] = await Promise.all([
+          getEvents(),
+          getUsers(),
+          getAllRegistrations()
+        ]);
+        if (fetchedEvents) setEvents(fetchedEvents);
+        if (fetchedUsers) setUsersList(fetchedUsers);
+        if (fetchedRegistrations) setRegistrations(fetchedRegistrations);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const totalUsers = mockUsers.length;
-    const totalEvents = mockEvents.length;
-    const publishedEvents = mockEvents.filter(e => e.status === 'published').length;
-    const pendingApproval = mockEvents.filter(e => e.status === 'pending_approval').length;
-    const totalRegistrations = mockRegistrations.length;
+    const totalUsers = usersList.length;
+    const totalEvents = events.length;
+    const publishedEvents = events.filter(e => e.status === 'published').length;
+    const pendingApproval = events.filter(e => e.status === 'pending_approval').length;
+    const totalRegistrations = registrations.length;
     
     // Mock proposal data (in real app, this would come from backend)
     const pendingProposals = 8;

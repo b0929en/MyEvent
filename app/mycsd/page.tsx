@@ -8,13 +8,25 @@ import Breadcrumb from '@/components/Breadcrumb';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Search, ArrowUpDown, ChevronUp, ChevronDown, Award, Calendar, Layers, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserMyCSDRecords, getUserClubPositions, calculateMyCSDSummary } from '@/lib/mockData';
+import { getUserMyCSDRecords, getUserClubPositions, calculateMyCSDSummary } from '@/backend/services/mycsdService';
+import { MyCSDRecord, ClubPosition } from '@/types';
 
 export default function MyCSDPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'events' | 'positions'>('events');
   const ITEMS_PER_PAGE = 10;
+
+  const [mycsdRecords, setMycsdRecords] = useState<MyCSDRecord[]>([]);
+  const [clubPositions, setClubPositions] = useState<ClubPosition[]>([]);
+  const [summary, setSummary] = useState({
+    totalPoints: 0,
+    totalEvents: 0,
+    pointsByCategory: { teras: 0, baruna: 0, advance: 0, labels: 0 } as Record<string, number>,
+    pointsByLevel: { antarabangsa: 0, negeri_universiti: 0, kampus: 0 } as Record<string, number>,
+    eventsThisMonth: 0,
+    pointsThisMonth: 0,
+  });
 
   // Redirect if not authenticated or not a student
   useEffect(() => {
@@ -24,16 +36,18 @@ export default function MyCSDPage() {
   }, [isLoading, isAuthenticated, user, router]);
 
   // Get real data for the logged-in user
-  const mycsdRecords = user ? getUserMyCSDRecords(user.id) : [];
-  const clubPositions = user ? getUserClubPositions(user.id) : [];
-  const summary = user ? calculateMyCSDSummary(user.id) : {
-    totalPoints: 0,
-    totalEvents: 0,
-    pointsByCategory: { teras: 0, baruna: 0, advance: 0, labels: 0 },
-    pointsByLevel: { antarabangsa: 0, negeri_universiti: 0, kampus: 0 },
-    eventsThisMonth: 0,
-    pointsThisMonth: 0,
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      if (user) {
+        const records = await getUserMyCSDRecords(user.id);
+        const positions = await getUserClubPositions(user.id);
+        setMycsdRecords(records);
+        setClubPositions(positions);
+        setSummary(calculateMyCSDSummary(user.id, records, positions));
+      }
+    };
+    if (user) fetchData();
+  }, [user]);
 
   // --- Events Tab State ---
   const [searchQuery, setSearchQuery] = useState('');

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { mockEvents } from '@/lib/mockData';
+import { getEvents } from '@/backend/services/eventService';
+import { Event } from '@/types';
 import { format } from 'date-fns';
 import { 
   Plus, 
@@ -26,12 +27,29 @@ type TabType = 'all' | 'published' | 'pending_approval' | 'draft';
 export default function OrganizerDashboard() {
   const { user, isLoading } = useRequireRole(['organizer'], '/');
   const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
+  const [isEventsLoading, setIsEventsLoading] = useState(true);
 
-  // Get organizer's events
-  const organizerEvents = useMemo(() => {
-    if (!user) return [];
-    return mockEvents.filter(event => event.organizerId === user.id);
-  }, [user]);
+  useEffect(() => {
+    const fetchEvents = async () => {
+      if (user?.organizationId) {
+        try {
+          const allEvents = await getEvents();
+          if (allEvents) {
+            setOrganizerEvents(allEvents.filter(event => event.organizerId === user.organizationId));
+          }
+        } catch (error) {
+          console.error('Error fetching events:', error);
+        } finally {
+          setIsEventsLoading(false);
+        }
+      } else if (!isLoading && !user) {
+         setIsEventsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [user, isLoading]);
 
   // Filter events by tab
   const filteredEvents = useMemo(() => {

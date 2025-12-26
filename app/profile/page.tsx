@@ -17,7 +17,8 @@ import {
   Clock,
   XCircle
 } from 'lucide-react';
-import { getUserRegistrations, getEventById, mockEvents } from '@/lib/mockData';
+import { getUserRegistrations } from '@/backend/services/registrationService';
+import { getEventById } from '@/backend/services/eventService';
 import { Event, Registration } from '@/types';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -34,16 +35,28 @@ export default function ProfilePage() {
   }, [isLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (user) {
-      const userRegs = getUserRegistrations(user.id);
-      const regsWithEvents = userRegs.map(reg => ({
-        ...reg,
-        event: getEventById(reg.eventId) || mockEvents[0],
-      }));
-      // Update registrations with events
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      setRegistrations(regsWithEvents);
-    }
+    const fetchRegistrations = async () => {
+      if (user) {
+        try {
+          const userRegs = await getUserRegistrations(user.id);
+          const regsWithEvents = await Promise.all(userRegs.map(async (reg) => {
+            const event = await getEventById(reg.eventId);
+            return {
+              ...reg,
+              event: event,
+            };
+          }));
+          
+          // Filter out registrations where event could not be found
+          const validRegs = regsWithEvents.filter(item => item.event !== null) as (Registration & { event: Event })[];
+          setRegistrations(validRegs);
+        } catch (error) {
+          console.error('Error fetching registrations:', error);
+        }
+      }
+    };
+
+    fetchRegistrations();
   }, [user]);
 
   if (isLoading) {

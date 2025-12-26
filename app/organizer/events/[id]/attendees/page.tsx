@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { mockEvents, mockRegistrations, mockUsers } from '@/lib/mockData';
+import { getEventById } from '@/backend/services/eventService';
+import { getEventRegistrations } from '@/backend/services/registrationService';
+import { Event, Registration } from '@/types';
 import { format } from 'date-fns';
 import { 
   ArrowLeft, 
@@ -34,31 +36,50 @@ export default function AttendeesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
   const [showQRModal, setShowQRModal] = useState(false);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
-  // Get event details
-  const event = useMemo(() => {
-    return mockEvents.find(e => e.id === eventId);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (eventId) {
+        try {
+          const [fetchedEvent, fetchedRegistrations] = await Promise.all([
+            getEventById(eventId),
+            getEventRegistrations(eventId)
+          ]);
+          setEvent(fetchedEvent);
+          setRegistrations(fetchedRegistrations);
+        } catch (error) {
+          console.error('Error fetching data:', error);
+        } finally {
+          setIsLoadingData(false);
+        }
+      }
+    };
+    fetchData();
   }, [eventId]);
 
   // Get attendees for this event
   const attendees = useMemo(() => {
-    const eventRegistrations = mockRegistrations.filter(reg => reg.eventId === eventId);
-    
-    return eventRegistrations.map(reg => {
-      const attendeeUser = mockUsers.find(u => u.id === reg.userId);
+    return registrations.map(reg => {
+      let status: AttendanceStatus = 'registered';
+      if (reg.status === 'attended') status = 'checked-in';
+      if (reg.status === 'cancelled') status = 'cancelled';
+
       return {
         id: reg.id,
         userId: reg.userId,
-        name: attendeeUser?.name || 'Unknown',
-        email: attendeeUser?.email || '',
-        matricNumber: attendeeUser?.matricNumber || '',
-        faculty: attendeeUser?.faculty || '',
+        name: reg.userName,
+        email: reg.userEmail,
+        matricNumber: reg.matricNumber || '',
+        faculty: '',
         registeredAt: reg.registeredAt,
-        status: reg.status as AttendanceStatus,
-        checkInTime: reg.checkInTime,
+        status: status,
+        checkInTime: reg.status === 'attended' ? reg.updatedAt : null,
       };
     });
-  }, [eventId]);
+  }, [registrations]);
 
   // Filter attendees
   const filteredAttendees = useMemo(() => {

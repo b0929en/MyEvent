@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { mockEvents } from '@/lib/mockData';
+import { getEvents } from '@/backend/services/eventService';
+import { Event } from '@/types';
 import { format } from 'date-fns';
 import { ArrowLeft, Calendar, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import Modal from '@/components/Modal';
@@ -18,29 +19,47 @@ type FilterStatus = 'pending_approval' | 'approved' | 'rejected' | 'all';
 export default function AdminEventsPage() {
   const { user, isLoading } = useRequireRole(['admin'], '/');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('pending_approval');
-  const [selectedEvent, setSelectedEvent] = useState<typeof mockEvents[0] | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [adminNotes, setAdminNotes] = useState('');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isEventsLoading, setIsEventsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const allEvents = await getEvents();
+        if (allEvents) {
+          setEvents(allEvents);
+        }
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      } finally {
+        setIsEventsLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   const filteredEvents = useMemo(() => {
-    const events = mockEvents.filter(e => 
+    const relevantEvents = events.filter(e => 
       ['pending_approval', 'approved', 'rejected'].includes(e.status)
     );
     
-    if (statusFilter === 'all') return events;
-    return events.filter(e => e.status === statusFilter);
-  }, [statusFilter]);
+    if (statusFilter === 'all') return relevantEvents;
+    return relevantEvents.filter(e => e.status === statusFilter);
+  }, [statusFilter, events]);
 
   const stats = useMemo(() => {
     return {
-      pending: mockEvents.filter(e => e.status === 'pending_approval').length,
-      approved: mockEvents.filter(e => e.status === 'approved').length,
-      rejected: mockEvents.filter(e => e.status === 'rejected').length,
+      pending: events.filter(e => e.status === 'pending_approval').length,
+      approved: events.filter(e => e.status === 'approved').length,
+      rejected: events.filter(e => e.status === 'rejected').length,
     };
-  }, []);
+  }, [events]);
 
-  const handleReview = (event: typeof mockEvents[0], action: 'approve' | 'reject') => {
+  const handleReview = (event: Event, action: 'approve' | 'reject') => {
     setSelectedEvent(event);
     setReviewAction(action);
     setAdminNotes('');

@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import Modal from '@/components/Modal';
-import { getEventById } from '@/lib/mockData';
+import { getEventById } from '@/backend/services/eventService';
+import { createRegistration, getUserRegistrations } from '@/backend/services/registrationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Calendar, Clock, MapPin, Users, DollarSign, Award } from 'lucide-react';
 import { toast } from 'sonner';
+import { Event } from '@/types';
 
 export default function EventDetailsPage() {
   const params = useParams();
@@ -18,8 +20,52 @@ export default function EventDetailsPage() {
   const { user, isAuthenticated } = useAuth();
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRegistered, setIsRegistered] = useState(false);
 
-  const event = getEventById(params.id as string);
+  useEffect(() => {
+    const fetchEvent = async () => {
+      if (params.id) {
+        try {
+          const fetchedEvent = await getEventById(params.id as string);
+          setEvent(fetchedEvent);
+        } catch (error) {
+          console.error('Error fetching event:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchEvent();
+  }, [params.id]);
+
+  useEffect(() => {
+    const checkRegistration = async () => {
+      if (user && event) {
+        try {
+          const registrations = await getUserRegistrations(user.id);
+          const isReg = registrations.some(reg => reg.eventId === event.id);
+          setIsRegistered(isReg);
+        } catch (error) {
+          console.error('Error checking registration:', error);
+        }
+      }
+    };
+    checkRegistration();
+  }, [user, event]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading event details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!event) {
     return (
@@ -58,14 +104,25 @@ export default function EventDetailsPage() {
   };
 
   const handleConfirmRegistration = async () => {
+    if (!user || !event) return;
+
     setIsRegistering(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsRegistering(false);
-    setShowRegistrationModal(false);
-    toast.success('Successfully registered for ' + event.title);
+    try {
+      await createRegistration({
+        eventId: event.id,
+        userId: user.id,
+      });
+      
+      toast.success('Successfully registered for ' + event.title);
+      setShowRegistrationModal(false);
+      router.push('/profile');
+    } catch (error) {
+      console.error('Registration failed:', error);
+      toast.error('Failed to register for event. Please try again.');
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   const eventDate = new Date(event.startDate);
@@ -213,12 +270,16 @@ export default function EventDetailsPage() {
             <div className="mt-6 flex items-center gap-4">
               <button 
                 onClick={handleRSVP}
-                disabled={isPastDeadline || isFull}
-                className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-8 rounded-full transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={isPastDeadline || isFull || isRegistered}
+                className={`font-semibold py-3 px-8 rounded-full transition-colors disabled:cursor-not-allowed ${
+                  isRegistered 
+                    ? 'bg-gray-400 text-white' 
+                    : 'bg-orange-500 hover:bg-orange-600 text-white disabled:bg-gray-400'
+                }`}
               >
-                {isPastDeadline ? 'Registration Closed' : isFull ? 'Event Full' : 'RSVP Now'}
+                {isRegistered ? 'Registered' : isPastDeadline ? 'Registration Closed' : isFull ? 'Event Full' : 'RSVP Now'}
               </button>
-              {!isPastDeadline && (
+              {!isPastDeadline && !isRegistered && (
                 <p className="text-sm text-gray-600">
                   Registration deadline: {format(registrationDeadline, 'MMM dd, yyyy')}
                 </p>
