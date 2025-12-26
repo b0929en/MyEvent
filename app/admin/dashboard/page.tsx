@@ -9,6 +9,7 @@ import { useRequireRole } from '@/contexts/AuthContext';
 import { getEvents } from '@/backend/services/eventService';
 import { getUsers } from '@/backend/services/userService';
 import { getAllRegistrations } from '@/backend/services/registrationService';
+import { getAllProposals } from '@/backend/services/proposalService';
 import { Event, User, Registration } from '@/types';
 import { 
   Users, 
@@ -26,19 +27,22 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [proposals, setProposals] = useState<any[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fetchedEvents, fetchedUsers, fetchedRegistrations] = await Promise.all([
+        const [fetchedEvents, fetchedUsers, fetchedRegistrations, fetchedProposals] = await Promise.all([
           getEvents(),
           getUsers(),
-          getAllRegistrations()
+          getAllRegistrations(),
+          getAllProposals()
         ]);
         if (fetchedEvents) setEvents(fetchedEvents);
         if (fetchedUsers) setUsersList(fetchedUsers);
         if (fetchedRegistrations) setRegistrations(fetchedRegistrations);
+        if (fetchedProposals) setProposals(fetchedProposals);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -56,8 +60,7 @@ export default function AdminDashboard() {
     const pendingApproval = events.filter(e => e.status === 'pending_approval').length;
     const totalRegistrations = registrations.length;
     
-    // Mock proposal data (in real app, this would come from backend)
-    const pendingProposals = 8;
+    const pendingProposals = proposals.filter(p => p.status === 'pending').length;
     
     return {
       totalUsers,
@@ -67,47 +70,42 @@ export default function AdminDashboard() {
       pendingProposals,
       totalRegistrations,
     };
-  }, []);
+  }, [usersList, events, registrations, proposals]);
 
-  // Recent activity (mock data)
-  const recentActivity = useMemo(() => [
-    {
-      id: '1',
-      type: 'proposal_submitted',
-      title: 'New proposal: Tech Talk Series',
-      user: 'Computer Science Society',
-      time: '2 hours ago',
-      icon: FileText,
-      color: 'blue'
-    },
-    {
-      id: '2',
-      type: 'event_approved',
-      title: 'Approved: Hackathon 2026',
-      user: 'Admin Team',
-      time: '5 hours ago',
-      icon: CheckCircle,
-      color: 'green'
-    },
-    {
-      id: '3',
-      type: 'proposal_rejected',
-      title: 'Rejected: Late Night Event',
-      user: 'Admin Team',
-      time: '1 day ago',
-      icon: XCircle,
-      color: 'red'
-    },
-    {
-      id: '4',
-      type: 'mycsd_pending',
-      title: 'MyCSD points pending approval',
-      user: '15 events',
-      time: '2 days ago',
-      icon: AlertCircle,
-      color: 'yellow'
-    },
-  ], []);
+  // Recent activity (derived from data)
+  const recentActivity = useMemo(() => {
+    const activity = [];
+    
+    // Add recent proposals
+    proposals.slice(0, 3).forEach(p => {
+      activity.push({
+        id: `prop-${p.id}`,
+        type: 'proposal_submitted',
+        title: `New proposal: ${p.eventTitle}`,
+        user: p.organizerName,
+        time: new Date(p.submittedAt).toLocaleDateString(),
+        icon: FileText,
+        color: 'blue'
+      });
+    });
+
+    // Add recent events
+    events.slice(0, 3).forEach(e => {
+      if (e.status === 'published') {
+        activity.push({
+          id: `event-${e.id}`,
+          type: 'event_approved',
+          title: `Event Published: ${e.title}`,
+          user: e.organizerName,
+          time: new Date(e.updatedAt).toLocaleDateString(),
+          icon: CheckCircle,
+          color: 'green'
+        });
+      }
+    });
+
+    return activity.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 5);
+  }, [proposals, events]);
 
   if (isLoading) {
     return (
@@ -304,13 +302,13 @@ export default function AdminDashboard() {
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">Active Organizers</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockUsers.filter(u => u.role === 'organizer').length}
+                      {usersList.filter(u => u.role === 'organizer').length}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">Completed Events</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockEvents.filter(e => e.status === 'completed').length}
+                      {events.filter(e => e.status === 'completed').length}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">

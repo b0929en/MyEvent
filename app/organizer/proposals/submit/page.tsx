@@ -12,6 +12,7 @@ import { useRequireRole } from '@/contexts/AuthContext';
 import { EventCategory } from '@/types';
 import { ArrowLeft, Upload, FileText, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { createProposal } from '@/backend/services/proposalService';
 import { toast } from 'sonner';
 
 const proposalSchema = z.object({
@@ -101,6 +102,11 @@ export default function SubmitProposalPage() {
   };
 
   const onSubmit = async (data: ProposalFormData) => {
+    if (!user) {
+      toast.error('You must be logged in to submit a proposal');
+      return;
+    }
+
     // Validate all documents are uploaded
     const missingDocs = Object.entries(documents)
       .filter(([_, file]) => !file)
@@ -130,14 +136,14 @@ export default function SubmitProposalPage() {
       console.log('Proposal data to submit:', proposalData);
       console.log('Files to upload:', documents);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await createProposal(proposalData);
       
       toast.success('Proposal submitted successfully! Awaiting admin approval.');
-      router.push('/organizer/proposals');
-    } catch (error) {
+      router.push('/organizer/dashboard'); // Redirect to dashboard instead of proposals list for now
+    } catch (error: any) {
       console.error('Error submitting proposal:', error);
-      toast.error('Failed to submit proposal. Please try again.');
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      toast.error(`Failed to submit proposal: ${error.message || 'Unknown error'}`);
     }
   };
 

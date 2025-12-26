@@ -6,7 +6,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { getEvents } from '@/backend/services/eventService';
+import { getEvents, updateEventStatus } from '@/backend/services/eventService';
 import { Event } from '@/types';
 import { format } from 'date-fns';
 import { ArrowLeft, Calendar, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
@@ -66,12 +66,30 @@ export default function AdminEventsPage() {
     setShowReviewModal(true);
   };
 
-  const submitReview = () => {
-    // Backend will implement actual review submission
-    toast.success(`Event ${reviewAction}d successfully!`);
-    setShowReviewModal(false);
-    setSelectedEvent(null);
-    setAdminNotes('');
+  const submitReview = async () => {
+    if (!selectedEvent) return;
+
+    try {
+      // Map 'approve'/'reject' to EventStatus
+      // If approved, status becomes 'published' (or 'approved' if that's the flow)
+      // If rejected, status becomes 'rejected'
+      const newStatus = reviewAction === 'approve' ? 'published' : 'rejected';
+      
+      await updateEventStatus(selectedEvent.id, newStatus);
+      
+      toast.success(`Event ${reviewAction}d successfully!`);
+      
+      // Refresh events
+      const updatedEvents = await getEvents();
+      setEvents(updatedEvents);
+      
+      setShowReviewModal(false);
+      setSelectedEvent(null);
+      setAdminNotes('');
+    } catch (error) {
+      console.error('Error updating event status:', error);
+      toast.error('Failed to update event status');
+    }
   };
 
   const getStatusBadge = (status: EventStatus) => {

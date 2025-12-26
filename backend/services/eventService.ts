@@ -20,7 +20,7 @@ const mapEvent = (dbEvent: any): Event => {
     // Missing fields - defaulting
     participationFee: 0,
     hasMyCSD: false,
-    status: 'published',
+    status: dbEvent.event_requests?.status || 'published',
     registrationDeadline: dbEvent.event_date,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -40,6 +40,7 @@ export async function getEvents(filters?: {
       *,
       event_requests (
         org_id,
+        status,
         organizations (
           org_name
         )
@@ -71,6 +72,7 @@ export async function getEventById(id: string) {
       *,
       event_requests (
         org_id,
+        status,
         organizations (
           org_name
         )
@@ -98,6 +100,25 @@ export async function getEventById(id: string) {
   }
 
   return mapEvent(data);
+}
+
+export async function updateEventStatus(eventId: string, status: string) {
+  // First get the event_request_id
+  const { data: event, error: fetchError } = await supabase
+    .from('events')
+    .select('event_request_id')
+    .eq('event_id', eventId)
+    .single();
+
+  if (fetchError || !event) throw fetchError || new Error('Event not found');
+
+  // Update the status in event_requests
+  const { error } = await supabase
+    .from('event_requests')
+    .update({ status })
+    .eq('event_request_id', event.event_request_id);
+
+  if (error) throw error;
 }
 
 export const getFilteredEvents = getEvents;

@@ -1,124 +1,91 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
+import { getAllProposals, updateProposalStatus, Proposal } from '@/backend/services/proposalService';
 import { format } from 'date-fns';
 import { ArrowLeft, FileText, Download, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 import type { ProposalStatus } from '@/types';
 
-// Mock proposal data (backend will provide this)
-const mockProposals = [
-  {
-    id: 'prop1',
-    organizerId: 'org1',
-    organizerName: 'Computer Science Society',
-    eventTitle: 'Tech Talk Series 2026',
-    eventDescription: 'A series of technical talks featuring industry experts and researchers.',
-    category: 'talk' as const,
-    estimatedParticipants: 150,
-    proposedDate: '2026-03-15',
-    proposedVenue: 'Lecture Hall A',
-    documents: {
-      eventProposal: '/proposals/tech-talk-proposal.pdf',
-      budgetPlan: '/proposals/tech-talk-budget.pdf',
-      riskAssessment: '/proposals/tech-talk-risk.pdf',
-      supportingDocuments: '/proposals/tech-talk-support.pdf'
-    },
-    status: 'pending' as ProposalStatus,
-    submittedAt: '2026-01-15T10:00:00Z',
-    updatedAt: '2026-01-15T10:00:00Z'
-  },
-  {
-    id: 'prop2',
-    organizerId: 'org2',
-    organizerName: 'Engineering Society',
-    eventTitle: 'Hackathon 2026',
-    eventDescription: '24-hour coding competition for students to showcase their skills.',
-    category: 'competition' as const,
-    estimatedParticipants: 200,
-    proposedDate: '2026-04-20',
-    proposedVenue: 'Engineering Complex',
-    documents: {
-      eventProposal: '/proposals/hackathon-proposal.pdf',
-      budgetPlan: '/proposals/hackathon-budget.pdf',
-      riskAssessment: '/proposals/hackathon-risk.pdf',
-      supportingDocuments: '/proposals/hackathon-support.pdf'
-    },
-    status: 'approved' as ProposalStatus,
-    submittedAt: '2026-01-10T14:30:00Z',
-    updatedAt: '2026-01-12T09:00:00Z',
-    reviewedBy: 'admin1',
-    reviewedAt: '2026-01-12T09:00:00Z',
-    adminNotes: 'Excellent proposal with detailed planning. Approved.'
-  },
-  {
-    id: 'prop3',
-    organizerId: 'org3',
-    organizerName: 'Sports Club',
-    eventTitle: 'Late Night Sports Festival',
-    eventDescription: 'An overnight sports event.',
-    category: 'sport' as const,
-    estimatedParticipants: 100,
-    proposedDate: '2026-05-01',
-    proposedVenue: 'Sports Complex',
-    documents: {
-      eventProposal: '/proposals/sports-proposal.pdf',
-      budgetPlan: '/proposals/sports-budget.pdf',
-      riskAssessment: '/proposals/sports-risk.pdf',
-      supportingDocuments: '/proposals/sports-support.pdf'
-    },
-    status: 'rejected' as ProposalStatus,
-    submittedAt: '2026-01-08T16:00:00Z',
-    updatedAt: '2026-01-09T11:00:00Z',
-    reviewedBy: 'admin1',
-    reviewedAt: '2026-01-09T11:00:00Z',
-    adminNotes: 'Safety concerns for overnight event. Please revise and resubmit with additional safety measures.'
-  }
-];
-
 type FilterStatus = ProposalStatus | 'all';
 
 export default function ProposalsPage() {
   const { user, isLoading } = useRequireRole(['admin'], '/');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
-  const [selectedProposal, setSelectedProposal] = useState<typeof mockProposals[0] | null>(null);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | 'revision'>('approve');
   const [adminNotes, setAdminNotes] = useState('');
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  useEffect(() => {
+    fetchProposals();
+  }, []);
+
+  const fetchProposals = async () => {
+    try {
+      const data = await getAllProposals();
+      setProposals(data);
+    } catch (error) {
+      console.error('Error fetching proposals:', error);
+      toast.error('Failed to load proposals');
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
 
   const filteredProposals = useMemo(() => {
-    if (statusFilter === 'all') return mockProposals;
-    return mockProposals.filter(p => p.status === statusFilter);
-  }, [statusFilter]);
+    if (statusFilter === 'all') return proposals;
+    return proposals.filter(p => p.status === statusFilter);
+  }, [statusFilter, proposals]);
 
   const stats = useMemo(() => {
     return {
-      pending: mockProposals.filter(p => p.status === 'pending').length,
-      approved: mockProposals.filter(p => p.status === 'approved').length,
-      rejected: mockProposals.filter(p => p.status === 'rejected').length,
-      revision: mockProposals.filter(p => p.status === 'revision_needed').length,
+      pending: proposals.filter(p => p.status === 'pending').length,
+      approved: proposals.filter(p => p.status === 'approved').length,
+      rejected: proposals.filter(p => p.status === 'rejected').length,
+      revision: proposals.filter(p => p.status === 'revision_needed').length,
     };
-  }, []);
+  }, [proposals]);
 
-  const handleReview = (proposal: typeof mockProposals[0], action: 'approve' | 'reject' | 'revision') => {
+  const handleReview = (proposal: Proposal, action: 'approve' | 'reject' | 'revision') => {
     setSelectedProposal(proposal);
     setReviewAction(action);
     setAdminNotes('');
     setShowReviewModal(true);
   };
 
-  const submitReview = () => {
-    // Backend will implement actual review submission
-    toast.success(`Proposal ${reviewAction}d successfully!`);
-    setShowReviewModal(false);
-    setSelectedProposal(null);
-    setAdminNotes('');
+  const submitReview = async () => {
+    if (!selectedProposal) return;
+
+    try {
+      // Map action to status
+      let newStatus = 'pending';
+      if (reviewAction === 'approve') newStatus = 'approved';
+      else if (reviewAction === 'reject') newStatus = 'rejected';
+      else if (reviewAction === 'revision') newStatus = 'revision_needed';
+
+      await updateProposalStatus(selectedProposal.id, newStatus);
+      
+      toast.success(`Proposal ${reviewAction}d successfully!`);
+      
+      // Refresh
+      fetchProposals();
+      
+      setShowReviewModal(false);
+      setSelectedProposal(null);
+      setAdminNotes('');
+    } catch (error) {
+      console.error('Error updating proposal:', error);
+      toast.error('Failed to update proposal');
+    }
   };
 
   const getStatusBadge = (status: ProposalStatus) => {

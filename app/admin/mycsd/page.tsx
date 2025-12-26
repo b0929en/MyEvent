@@ -6,99 +6,100 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-// Mock data will be provided by backend
+import { getAllMyCSDRequests, updateMyCSDRequestStatus } from '@/backend/services/mycsdService';
 import { format } from 'date-fns';
 import { ArrowLeft, TrendingUp, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 import type { MyCSDStatus } from '@/types';
 
-// Mock MyCSD submissions (backend will provide this)
-const mockMyCSDSubmissions = [
-  {
-    id: 'mycsd1',
-    userId: 'user1',
-    userName: 'John Lim',
-    userEmail: 'jm@student.usm.my',
-    eventId: 'event1',
-    eventName: 'Tech Talk: AI in Healthcare',
-    category: 'teras' as const,
-    level: 'universiti' as const,
-    points: 5,
-    role: 'participant' as const,
-    status: 'pending' as MyCSDStatus,
-    proofDocument: '/mycsd/proof-event1-user1.pdf',
-    submittedAt: '2026-01-20T10:00:00Z',
-    updatedAt: '2026-01-20T10:00:00Z'
-  },
-  {
-    id: 'mycsd2',
-    userId: 'user2',
-    userName: 'Sarah Ahmad',
-    userEmail: 'sarah@student.usm.my',
-    eventId: 'event2',
-    eventName: 'Hackathon 2026',
-    category: 'baruna' as const,
-    level: 'antarabangsa' as const,
-    points: 10,
-    role: 'committee' as const,
-    status: 'pending' as MyCSDStatus,
-    proofDocument: '/mycsd/proof-event2-user2.pdf',
-    submittedAt: '2026-01-19T14:30:00Z',
-    updatedAt: '2026-01-19T14:30:00Z'
-  },
-  {
-    id: 'mycsd3',
-    userId: 'user3',
-    userName: 'Ahmad Zaki',
-    userEmail: 'zaki@student.usm.my',
-    eventId: 'event3',
-    eventName: 'Cultural Night 2026',
-    category: 'advance' as const,
-    level: 'kampus' as const,
-    points: 8,
-    role: 'participant' as const,
-    status: 'approved' as MyCSDStatus,
-    proofDocument: '/mycsd/proof-event3-user3.pdf',
-    submittedAt: '2026-01-15T09:00:00Z',
-    updatedAt: '2026-01-16T11:00:00Z',
-    reviewedBy: 'admin1',
-    reviewedAt: '2026-01-16T11:00:00Z',
-    adminNotes: 'Verified attendance. Approved.'
-  }
-];
+// Define type for MyCSD Request based on service return
+interface MyCSDRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  eventId: string;
+  eventName: string;
+  category: string;
+  level: string;
+  points: number;
+  role: string;
+  status: MyCSDStatus;
+  proofDocument: string;
+  submittedAt: string;
+  updatedAt: string;
+}
 
 type FilterStatus = MyCSDStatus | 'all';
 
 export default function AdminMyCSDPage() {
   const { user, isLoading } = useRequireRole(['admin'], '/');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('pending');
-  const [selectedSubmission, setSelectedSubmission] = useState<typeof mockMyCSDSubmissions[0] | null>(null);
+  const [submissions, setSubmissions] = useState<MyCSDRequest[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<MyCSDRequest | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [adminNotes, setAdminNotes] = useState('');
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  useEffect(() => {
+    fetchSubmissions();
+  }, []);
+
+  const fetchSubmissions = async () => {
+    try {
+      const data = await getAllMyCSDRequests();
+      // Cast to MyCSDRequest if needed, or ensure service returns compatible type
+      setSubmissions(data as unknown as MyCSDRequest[]);
+    } catch (error) {
+      console.error('Error fetching MyCSD requests:', error);
+      toast.error('Failed to load MyCSD requests');
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
 
   const filteredSubmissions = useMemo(() => {
-    if (statusFilter === 'all') return mockMyCSDSubmissions;
-    return mockMyCSDSubmissions.filter(s => s.status === statusFilter);
-  }, [statusFilter]);
+    if (statusFilter === 'all') return submissions;
+    return submissions.filter(s => s.status === statusFilter);
+  }, [statusFilter, submissions]);
 
   const stats = useMemo(() => {
     return {
-      pending: mockMyCSDSubmissions.filter(s => s.status === 'pending').length,
-      approved: mockMyCSDSubmissions.filter(s => s.status === 'approved').length,
-      rejected: mockMyCSDSubmissions.filter(s => s.status === 'rejected').length,
-      totalPoints: mockMyCSDSubmissions
+      pending: submissions.filter(s => s.status === 'pending').length,
+      approved: submissions.filter(s => s.status === 'approved').length,
+      rejected: submissions.filter(s => s.status === 'rejected').length,
+      totalPoints: submissions
         .filter(s => s.status === 'approved')
         .reduce((sum, s) => sum + s.points, 0)
     };
-  }, []);
+  }, [submissions]);
 
-  const handleReview = (submission: typeof mockMyCSDSubmissions[0], action: 'approve' | 'reject') => {
+  const handleReview = (submission: MyCSDRequest, action: 'approve' | 'reject') => {
     setSelectedSubmission(submission);
     setReviewAction(action);
     setAdminNotes('');
     setShowReviewModal(true);
+  };
+
+  const submitReview = async () => {
+    if (!selectedSubmission) return;
+
+    try {
+      await updateMyCSDRequestStatus(selectedSubmission.id, reviewAction === 'approve' ? 'approved' : 'rejected');
+      
+      toast.success(`Request ${reviewAction}d successfully!`);
+      
+      fetchSubmissions();
+      
+      setShowReviewModal(false);
+      setSelectedSubmission(null);
+      setAdminNotes('');
+    } catch (error) {
+      console.error('Error updating request:', error);
+      toast.error('Failed to update request');
+    }
   };
 
   const submitReview = () => {

@@ -101,30 +101,77 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
     }
   });
   
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  
-  const eventsThisMonth = records.filter(record => {
-    const date = new Date(record.submittedAt);
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-  }).length;
-  
-  const pointsThisMonth = records
-    .filter(record => {
-      const date = new Date(record.submittedAt);
-      return date.getMonth() === currentMonth && 
-             date.getFullYear() === currentYear &&
-             record.status === 'approved';
-    })
-    .reduce((sum, r) => sum + r.points, 0);
-  
   return {
     totalPoints,
     totalEvents,
     pointsByCategory,
     pointsByLevel,
-    eventsThisMonth,
-    pointsThisMonth,
+    eventsThisMonth: 0, // Mock
+    pointsThisMonth: 0, // Mock
   };
+}
+
+export async function getAllMyCSDRequests() {
+  const { data, error } = await supabase
+    .from('mycsd_requests')
+    .select(`
+      *,
+      users (
+        user_name,
+        user_email
+      ),
+      events (
+        event_name,
+        category,
+        event_requests (
+          organizations (
+            org_name
+          )
+        )
+      ),
+      event_mycsd (
+        event_level,
+        event_type,
+        mycsd_records (
+          mycsd_score
+        )
+      )
+    `);
+
+  if (error) {
+    console.error('Error fetching mycsd requests:', error);
+    return [];
+  }
+
+  return data.map((req: any) => {
+    const event = req.events;
+    const eventMycsd = req.event_mycsd?.[0]; // Assuming one-to-one
+    const record = eventMycsd?.mycsd_records;
+
+    return {
+      id: req.mr_id,
+      userId: req.user_id,
+      userName: req.users?.user_name || 'Unknown User',
+      userEmail: req.users?.user_email || '',
+      eventId: req.event_id,
+      eventName: event?.event_name || 'Unknown Event',
+      category: eventMycsd?.event_type || 'other',
+      level: eventMycsd?.event_level || 'kampus',
+      points: record?.mycsd_score || 0,
+      role: 'participant', // Default, as mycsd_requests doesn't store role directly, it's in logs
+      status: req.status,
+      proofDocument: req.lk_document,
+      submittedAt: new Date().toISOString(), // No submitted_at in mycsd_requests
+      updatedAt: new Date().toISOString(),
+    };
+  });
+}
+
+export async function updateMyCSDRequestStatus(requestId: string, status: string) {
+  const { error } = await supabase
+    .from('mycsd_requests')
+    .update({ status })
+    .eq('mr_id', requestId);
+
+  if (error) throw error;
 }
