@@ -151,7 +151,7 @@ CREATE TABLE organization_mycsd (
 -- 13. EVENT_MYCSD (Inherits from MYCSD_RECORD)
 CREATE TABLE event_mycsd (
     record_id UUID PRIMARY KEY REFERENCES mycsd_records(record_id) ON DELETE CASCADE,
-    event_type TEXT,
+    mycsd_category TEXT,
     event_level TEXT,
     mr_id UUID REFERENCES mycsd_requests(mr_id)
 );

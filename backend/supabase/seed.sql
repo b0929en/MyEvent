@@ -2,8 +2,8 @@
 
 -- Organizations
 INSERT INTO organizations (org_id, org_name, org_description, org_contact_email, org_social_link, org_logo) VALUES
-('10000000-0000-0000-0000-000000000001', 'Kelab Sukan USM', 'Official sports club of Universiti Sains Malaysia promoting physical fitness and competitive sports among students.', 'kelab.sukan@usm.my', 'https://facebook.com/kelabsukanusm', NULL),
-('10000000-0000-0000-0000-000000000002', 'Persatuan Mahasiswa Sains Komputer', 'Computer Science Student Association fostering innovation and technology excellence.', 'pmsk@student.usm.my', 'https://instagram.com/pmskusm', NULL),
+('10000000-0000-0000-0000-000000000001', 'Computer Science Society', 'Official Computer Science Society of Universiti Sains Malaysia fostering innovation and technology excellence.', 'css@usm.my', 'https://facebook.com/cssusm', NULL),
+('10000000-0000-0000-0000-000000000002', 'Kelab Sukan USM', 'Official sports club of Universiti Sains Malaysia promoting physical fitness and competitive sports among students.', 'kelab.sukan@usm.my', 'https://facebook.com/kelabsukanusm', NULL),
 ('10000000-0000-0000-0000-000000000003', 'Kelab Robotik USM', 'Robotics club dedicated to advancing robotics knowledge and skills through hands-on projects.', 'robotics@student.usm.my', NULL, NULL),
 ('10000000-0000-0000-0000-000000000004', 'Persatuan Debat USM', 'Debate society promoting critical thinking and public speaking excellence.', 'debat@student.usm.my', NULL, NULL);
 
@@ -11,9 +11,9 @@ INSERT INTO organizations (org_id, org_name, org_description, org_contact_email,
 INSERT INTO users (user_id, user_email, user_role, user_name, created_at) VALUES
 ('00000000-0000-0000-0000-000000000001', 'jm@student.usm.my', 'student', 'Ahmad Ibrahim', '2024-09-01T08:00:00Z'),
 ('00000000-0000-0000-0000-000000000002', 'siti.nurhaliza@student.usm.my', 'student', 'Siti Nurhaliza', '2024-09-01T08:00:00Z'),
-('00000000-0000-0000-0000-000000000003', 'css@usm.my', 'organization_admin', 'Kelab Sukan USM Admin', '2024-01-01T08:00:00Z'),
+('00000000-0000-0000-0000-000000000003', 'css@usm.my', 'organization_admin', 'Computer Science Society Admin', '2024-01-01T08:00:00Z'),
 ('00000000-0000-0000-0000-000000000004', 'bhepa@usm.my', 'admin', 'BHEPA Administrator', '2024-01-01T08:00:00Z'),
-('00000000-0000-0000-0000-000000000005', 'pmsk@student.usm.my', 'organization_admin', 'PMSK Admin', '2024-01-01T08:00:00Z'),
+('00000000-0000-0000-0000-000000000005', 'kelab.sukan@usm.my', 'organization_admin', 'Kelab Sukan Admin', '2024-01-01T08:00:00Z'),
 ('00000000-0000-0000-0000-000000000006', 'robotics@student.usm.my', 'organization_admin', 'Robotik Admin', '2024-01-01T08:00:00Z'),
 ('00000000-0000-0000-0000-000000000007', 'debat@student.usm.my', 'organization_admin', 'Debat Admin', '2024-01-01T08:00:00Z');
 
@@ -35,12 +35,12 @@ INSERT INTO admins (user_id, admin_role) VALUES
 
 -- Event Requests (Proposals)
 INSERT INTO event_requests (event_request_id, org_id, user_id, status, submitted_at) VALUES
-('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'published', '2024-12-01T08:00:00Z'),
-('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', 'published', '2024-11-15T08:00:00Z'),
-('50000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000006', 'published', '2024-12-10T08:00:00Z'),
+('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', 'published', '2024-12-01T08:00:00Z'),
+('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'published', '2024-11-15T08:00:00Z'),
+('50000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'published', '2024-12-10T08:00:00Z'),
 ('50000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000007', 'published', '2024-12-05T08:00:00Z'),
-('50000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', 'published', '2024-12-20T08:00:00Z'),
-('50000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'published', '2024-12-15T08:00:00Z');
+('50000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'published', '2024-12-20T08:00:00Z'),
+('50000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', 'published', '2024-12-15T08:00:00Z');
 
 -- Events
 INSERT INTO events (event_id, event_name, event_date, event_description, event_venue, start_time, end_time, end_date, capacity, category, registered_count, event_request_id) VALUES
@@ -66,8 +66,8 @@ INSERT INTO payments (payment_id, event_id, user_id, payment_amount, payment_sta
 -- MyCSD Requests (Organizer requests MyCSD points for an event)
 INSERT INTO mycsd_requests (mr_id, user_id, event_id, status) VALUES
 ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000003', 'approved'), -- Arduino Workshop
-('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', 'approved'), -- Sports Carnival
-('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000002', 'approved'); -- HackUSM
+('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000001', 'approved'), -- Sports Carnival
+('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000002', 'approved'); -- HackUSM
 
 -- MyCSD Records
 INSERT INTO mycsd_records (record_id, mycsd_score, mycsd_type) VALUES
@@ -76,10 +76,10 @@ INSERT INTO mycsd_records (record_id, mycsd_score, mycsd_type) VALUES
 ('40000000-0000-0000-0000-000000000003', 30, 'event');
 
 -- Event MyCSD
-INSERT INTO event_mycsd (record_id, event_type, event_level, mr_id) VALUES
-('40000000-0000-0000-0000-000000000001', 'workshop', 'kampus', '60000000-0000-0000-0000-000000000001'),
-('40000000-0000-0000-0000-000000000002', 'sport', 'negeri_universiti', '60000000-0000-0000-0000-000000000002'),
-('40000000-0000-0000-0000-000000000003', 'competition', 'antarabangsa', '60000000-0000-0000-0000-000000000003');
+INSERT INTO event_mycsd (record_id, mycsd_category, event_level, mr_id) VALUES
+('40000000-0000-0000-0000-000000000001', 'REKA CIPTA DAN INOVASI', 'kampus', '60000000-0000-0000-0000-000000000001'),
+('40000000-0000-0000-0000-000000000002', 'SUKAN/REKREASI/SOSIALISASI', 'negeri_universiti', '60000000-0000-0000-0000-000000000002'),
+('40000000-0000-0000-0000-000000000003', 'REKA CIPTA DAN INOVASI', 'antarabangsa', '60000000-0000-0000-0000-000000000003');
 
 -- MyCSD Logs
 INSERT INTO mycsd_logs (matric_no, record_id, score, position) VALUES
