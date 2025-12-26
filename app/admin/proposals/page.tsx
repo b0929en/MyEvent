@@ -6,12 +6,17 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { getAllProposals, updateProposalStatus, Proposal } from '@/backend/services/proposalService';
+import { getAllProposals, updateProposalStatus, Proposal as BaseProposal } from '@/backend/services/proposalService';
 import { format } from 'date-fns';
 import { ArrowLeft, FileText, Download, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 import type { ProposalStatus } from '@/types';
+
+interface Proposal extends BaseProposal {
+  adminNotes?: string;
+  reviewedAt?: string;
+}
 
 type FilterStatus = ProposalStatus | 'all';
 

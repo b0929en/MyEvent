@@ -53,7 +53,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       eventId: event?.event_id || '', 
       eventName: event?.event_name || 'Unknown Event', 
       organizationName: organization?.org_name || 'Unknown Organization', 
-      category: eventMycsd?.event_type || 'other',
+      category: eventMycsd?.mycsd_category || 'REKA CIPTA DAN INOVASI',
       level: eventMycsd?.event_level || 'kampus',
       role: log.position,
       points: log.score,
@@ -77,10 +77,11 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
   const totalEvents = records.length;
   
   const pointsByCategory: Record<string, number> = {
-    teras: 0,
-    baruna: 0,
-    advance: 0,
-    labels: 0,
+    'REKA CIPTA DAN INOVASI': 0,
+    'KEUSAHAWAN': 0,
+    'KEBUDAYAAN': 0,
+    'SUKAN/REKREASI/SOSIALISASI': 0,
+    'KEPIMPINAN': 0,
   };
   
   records.forEach(record => {
@@ -131,7 +132,7 @@ export async function getAllMyCSDRequests() {
       ),
       event_mycsd (
         event_level,
-        event_type,
+        mycsd_category,
         mycsd_records (
           mycsd_score
         )
@@ -155,7 +156,7 @@ export async function getAllMyCSDRequests() {
       userEmail: req.users?.user_email || '',
       eventId: req.event_id,
       eventName: event?.event_name || 'Unknown Event',
-      category: eventMycsd?.event_type || 'other',
+      category: eventMycsd?.mycsd_category || 'REKA CIPTA DAN INOVASI',
       level: eventMycsd?.event_level || 'kampus',
       points: record?.mycsd_score || 0,
       role: 'participant', // Default, as mycsd_requests doesn't store role directly, it's in logs

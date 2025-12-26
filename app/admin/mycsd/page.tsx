@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -101,14 +101,6 @@ export default function AdminMyCSDPage() {
       console.error('Error updating request:', error);
       toast.error('Failed to update request');
     }
-  };
-
-  const submitReview = () => {
-    // Backend will implement actual review submission
-    toast.success(`MyCSD points ${reviewAction}d successfully!`);
-    setShowReviewModal(false);
-    setSelectedSubmission(null);
-    setAdminNotes('');
   };
 
   const getStatusBadge = (status: MyCSDStatus) => {

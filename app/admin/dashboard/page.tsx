@@ -17,6 +17,7 @@ import {
   FileText, 
   TrendingUp,
   Clock,
+  CheckCircle,
   type LucideIcon
 } from 'lucide-react';
 
@@ -70,7 +71,7 @@ export default function AdminDashboard() {
 
   // Recent activity (derived from data)
   const recentActivity = useMemo(() => {
-    const activity = [];
+    const activity: any[] = [];
     
     // Add recent proposals
     proposals.slice(0, 3).forEach(p => {

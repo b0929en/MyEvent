@@ -53,7 +53,12 @@ export type Organization = {
 export type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'revision_needed';
 export type EventStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
 export type EventCategory = 'sport' | 'academic' | 'cultural' | 'social' | 'competition' | 'talk' | 'workshop' | 'other';
-export type MyCSDCategory = 'teras' | 'baruna' | 'advance' | 'labels';
+export type MyCSDCategory = 
+  | 'REKA CIPTA DAN INOVASI'
+  | 'KEUSAHAWAN'
+  | 'KEBUDAYAAN'
+  | 'SUKAN/REKREASI/SOSIALISASI'
+  | 'KEPIMPINAN';
 export type MyCSDLevel = 'antarabangsa' | 'negeri_universiti' | 'kampus';
 
 export type EventProposal = {

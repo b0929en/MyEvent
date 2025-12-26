@@ -186,7 +186,7 @@ export default function AttendeesPage() {
   }
 
   // Check if user is the organizer of this event
-  if (event.organizerId !== user.id) {
+  if (event.organizerId !== user.organizationId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

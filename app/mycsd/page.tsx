@@ -23,7 +23,13 @@ export default function MyCSDPage() {
   const [summary, setSummary] = useState({
     totalPoints: 0,
     totalEvents: 0,
-    pointsByCategory: { teras: 0, baruna: 0, advance: 0, labels: 0 } as Record<string, number>,
+    pointsByCategory: { 
+      'REKA CIPTA DAN INOVASI': 0, 
+      'KEUSAHAWAN': 0, 
+      'KEBUDAYAAN': 0, 
+      'SUKAN/REKREASI/SOSIALISASI': 0, 
+      'KEPIMPINAN': 0 
+    } as Record<string, number>,
     pointsByLevel: { antarabangsa: 0, negeri_universiti: 0, kampus: 0 } as Record<string, number>,
     eventsThisMonth: 0,
     pointsThisMonth: 0,
@@ -100,17 +106,19 @@ export default function MyCSDPage() {
   }));
 
   const categoriesOrder = React.useMemo(() => [
-    'TERAS',
-    'BARUNA',
-    'ADVANCE',
-    'LABELS',
+    'REKA CIPTA DAN INOVASI',
+    'KEUSAHAWAN',
+    'KEBUDAYAAN',
+    'SUKAN/REKREASI/SOSIALISASI',
+    'KEPIMPINAN'
   ], []);
 
   const COLORS_MAP: Record<string, string> = {
-    'TERAS': '#DAA520',
-    'BARUNA': '#0088FE',
-    'ADVANCE': '#800080',
-    'LABELS': '#FF0000',
+    'REKA CIPTA DAN INOVASI': '#0088FE',
+    'KEUSAHAWAN': '#00C49F',
+    'KEBUDAYAAN': '#800080',
+    'SUKAN/REKREASI/SOSIALISASI': '#FF8042',
+    'KEPIMPINAN': '#DAA520',
   };
 
   // --- Helper for Badges ---
