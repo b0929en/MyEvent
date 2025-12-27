@@ -10,6 +10,7 @@ import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
 import { EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
+import { getPointsForLevel } from '@/backend/utils';
 import { ArrowLeft, Upload, Plus, X, Search, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -30,14 +31,20 @@ const eventSchema = z.object({
   capacity: z.number().min(1, 'Capacity must be at least 1').max(10000, 'Capacity too large'),
   participationFee: z.number().min(0, 'Fee cannot be negative'),
   hasMyCSD: z.boolean(),
-  mycsdCategory: z.enum(['teras', 'baruna', 'advance', 'labels']).optional(),
+  mycsdCategory: z.enum([
+    'REKA CIPTA DAN INOVASI',
+    'KEUSAHAWAN',
+    'KEBUDAYAAN',
+    'SUKAN/REKREASI/SOSIALISASI',
+    'KEPIMPINAN'
+  ]).optional(),
   mycsdLevel: z.enum(['antarabangsa', 'negeri_universiti', 'kampus']).optional(),
-  mycsdPoints: z.number().min(0).max(100).optional(),
+  // mycsdPoints removed: points are computed from level
   registrationDeadline: z.string().min(1, 'Registration deadline is required'),
   objectives: z.array(z.string()).min(1, 'Add at least one objective'),
 }).refine(data => {
   if (data.hasMyCSD) {
-    return data.mycsdCategory && data.mycsdLevel && data.mycsdPoints;
+    return data.mycsdCategory && data.mycsdLevel;
   }
   return true;
 }, {
@@ -203,7 +210,7 @@ export default function CreateEventPage() {
         has_mycsd: data.hasMyCSD,
         mycsd_category: data.mycsdCategory,
         mycsd_level: data.mycsdLevel,
-        mycsd_points: data.mycsdPoints,
+        mycsd_points: getPointsForLevel(data.mycsdLevel),
       });
 
       // Update status to published
@@ -546,7 +553,7 @@ export default function CreateEventPage() {
                 </div>
 
                 {hasMyCSD && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pl-6 border-l-2 border-purple-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-purple-200">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Category <span className="text-red-500">*</span>
@@ -556,10 +563,12 @@ export default function CreateEventPage() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                       >
                         <option value="">Select</option>
-                        <option value="teras">Teras</option>
-                        <option value="baruna">Baruna</option>
-                        <option value="advance">Advance</option>
-                        <option value="labels">Labels</option>
+                        <option value="">Select</option>
+                        <option value="REKA CIPTA DAN INOVASI">REKA CIPTA DAN INOVASI</option>
+                        <option value="KEUSAHAWAN">KEUSAHAWAN</option>
+                        <option value="KEBUDAYAAN">KEBUDAYAAN</option>
+                        <option value="SUKAN/REKREASI/SOSIALISASI">SUKAN/REKREASI/SOSIALISASI</option>
+                        <option value="KEPIMPINAN">KEPIMPINAN</option>
                       </select>
                       {errors.mycsdCategory && (
                         <p className="mt-1 text-sm text-red-600">{errors.mycsdCategory.message}</p>
@@ -581,21 +590,6 @@ export default function CreateEventPage() {
                       </select>
                       {errors.mycsdLevel && (
                         <p className="mt-1 text-sm text-red-600">{errors.mycsdLevel.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Points <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        {...register('mycsdPoints', { valueAsNumber: true })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                        placeholder="10"
-                      />
-                      {errors.mycsdPoints && (
-                        <p className="mt-1 text-sm text-red-600">{errors.mycsdPoints.message}</p>
                       )}
                     </div>
                   </div>

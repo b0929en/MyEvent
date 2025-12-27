@@ -87,7 +87,16 @@ export default function MyCSDPage() {
     teras: record.category.toUpperCase(),
     namaProjek: record.eventName,
     persatuan: record.organizationName,
-    jawatan: record.role === 'participant' ? 'Peserta' : record.role === 'committee' ? 'AJK' : 'Penganjur',
+    
+    // --- CHANGE THIS LINE ---
+    // Use .toLowerCase() to handle 'Participant', 'participant', 'PARTICIPANT' safely
+    jawatan: (record.role || '').toLowerCase() === 'participant' 
+      ? 'Peserta' 
+      : (record.role || '').toLowerCase() === 'committee' 
+        ? 'AJK' 
+        : 'Penganjur', 
+    // ------------------------
+
     peringkat: record.level === 'antarabangsa' ? 'Antarabangsa' : 
                record.level === 'negeri_universiti' ? 'Universiti' : 
                'P.Pengajian / Desasiswa / Persatuan / Kelab',

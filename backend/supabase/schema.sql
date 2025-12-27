@@ -1,7 +1,8 @@
--- Enable UUID extension
+﻿-- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Drop existing tables and types to ensure a clean slate
+DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS mycsd_logs CASCADE;
 DROP TABLE IF EXISTS event_mycsd CASCADE;
 DROP TABLE IF EXISTS organization_mycsd CASCADE;
@@ -36,7 +37,7 @@ CREATE TYPE mycsd_type_enum AS ENUM ('event', 'organization');
 CREATE TABLE users (
     user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_email TEXT UNIQUE NOT NULL,
-    user_password TEXT, -- Note: In Supabase, auth is usually handled by auth.users, but keeping this for ERD compliance
+    user_password TEXT,
     user_name TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     last_login TIMESTAMPTZ,
@@ -78,7 +79,6 @@ CREATE TABLE event_requests (
     event_request_file TEXT,
     org_id UUID REFERENCES organizations(org_id),
     user_id UUID REFERENCES users(user_id),
-    -- Additional attributes
     status event_status_enum DEFAULT 'pending',
     submitted_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -91,7 +91,6 @@ CREATE TABLE events (
     event_description TEXT,
     event_venue TEXT,
     event_request_id UUID REFERENCES event_requests(event_request_id),
-    -- Additional attributes for functionality
     start_time TIME,
     end_time TIME,
     end_date DATE,
@@ -99,14 +98,14 @@ CREATE TABLE events (
     banner_image TEXT,
     category TEXT,
     registered_count INT DEFAULT 0,
-    -- New fields for event details
     objectives TEXT[],
     links JSONB,
     has_mycsd BOOLEAN DEFAULT false,
     mycsd_category TEXT,
     mycsd_level TEXT,
     mycsd_points INT,
-    agenda TEXT[]
+    agenda TEXT[],
+    is_mycsd_claimed BOOLEAN DEFAULT false
 );
 
 -- 8. REGISTRATION
@@ -114,7 +113,7 @@ CREATE TABLE registrations (
     event_id UUID REFERENCES events(event_id),
     user_id UUID REFERENCES users(user_id),
     attendance attendance_status_enum,
-    event_status event_status_enum, -- Status of the registration/event context
+    event_status event_status_enum,
     registration_date TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (event_id, user_id)
 );
@@ -173,8 +172,21 @@ CREATE TABLE mycsd_logs (
     PRIMARY KEY (matric_no, record_id)
 );
 
--- RLS Policies (Basic Setup)
+-- 15. NOTIFICATIONS
+CREATE TABLE notifications (
+    notification_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL,
+    link TEXT,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS Policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organization_admins ENABLE ROW LEVEL SECURITY;
@@ -208,43 +220,58 @@ CREATE POLICY "Public insert access" ON events FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public update access" ON events FOR UPDATE USING (true);
 
 CREATE POLICY "Public read access" ON mycsd_requests FOR SELECT USING (true);
+CREATE POLICY "Public insert access" ON mycsd_requests FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update access" ON mycsd_requests FOR UPDATE USING (true);
+
+-- FIX: Added insert access for record tables
 CREATE POLICY "Public read access" ON mycsd_records FOR SELECT USING (true);
+CREATE POLICY "Public insert access" ON mycsd_records FOR INSERT WITH CHECK (true);
+
 CREATE POLICY "Public read access" ON organization_mycsd FOR SELECT USING (true);
+CREATE POLICY "Public insert access" ON organization_mycsd FOR INSERT WITH CHECK (true);
+
 CREATE POLICY "Public read access" ON event_mycsd FOR SELECT USING (true);
+CREATE POLICY "Public insert access" ON event_mycsd FOR INSERT WITH CHECK (true);
+
 CREATE POLICY "Public read access" ON mycsd_logs FOR SELECT USING (true);
+CREATE POLICY "Public insert access" ON mycsd_logs FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Public read access" ON notifications FOR SELECT USING (true);
+CREATE POLICY "Public insert access" ON notifications FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update access" ON notifications FOR UPDATE USING (true);
 
 -- Storage Bucket Setup
 INSERT INTO storage.buckets (id, name, public) 
-VALUES ('event-banners', 'event-banners', true)
+VALUES 
+  ('event-banners', 'event-banners', true),
+  ('documents', 'documents', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Storage Policies (Drop existing ones first to ensure idempotency)
+-- Storage Policies
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 CREATE POLICY "Public Access" 
 ON storage.objects FOR SELECT 
-USING ( bucket_id = 'event-banners' );
+USING ( bucket_id IN ('event-banners', 'documents') );
 
 DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
 DROP POLICY IF EXISTS "Public Upload" ON storage.objects;
 CREATE POLICY "Public Upload" 
 ON storage.objects FOR INSERT 
-WITH CHECK ( 
-  bucket_id = 'event-banners' 
-);
+WITH CHECK ( bucket_id IN ('event-banners', 'documents') );
 
 DROP POLICY IF EXISTS "Owner Update" ON storage.objects;
 DROP POLICY IF EXISTS "Public Update" ON storage.objects;
 CREATE POLICY "Public Update" 
 ON storage.objects FOR UPDATE 
-USING ( bucket_id = 'event-banners' );
+USING ( bucket_id IN ('event-banners', 'documents') );
 
 DROP POLICY IF EXISTS "Owner Delete" ON storage.objects;
 DROP POLICY IF EXISTS "Public Delete" ON storage.objects;
 CREATE POLICY "Public Delete" 
 ON storage.objects FOR DELETE 
-USING ( bucket_id = 'event-banners' );
+USING ( bucket_id IN ('event-banners', 'documents') );
 
--- Trigger to automatically update registered_count in events table
+-- Triggers
 CREATE OR REPLACE FUNCTION update_event_registered_count()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -268,4 +295,3 @@ CREATE TRIGGER update_event_count_trigger
 AFTER INSERT OR DELETE ON registrations
 FOR EACH ROW
 EXECUTE FUNCTION update_event_registered_count();
-

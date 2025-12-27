@@ -7,6 +7,8 @@ import Footer from '@/components/layout/Footer';
 import { useRequireRole } from '@/contexts/AuthContext';
 import { getEvents, deleteEvent } from '@/backend/services/eventService';
 import { getAllProposals, Proposal } from '@/backend/services/proposalService';
+import { submitMyCSDClaim } from '@/backend/services/mycsdService';
+import { uploadDocument } from '@/backend/services/storageService';
 import { Event } from '@/types';
 import { format } from 'date-fns';
 import { 
@@ -20,10 +22,13 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Copy
+  Copy,
+  Award,
+  Upload
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import Modal from '@/components/Modal';
 
 type TabType = 'all' | 'published' | 'pending_approval' | 'draft';
 
@@ -33,6 +38,12 @@ export default function OrganizerDashboard() {
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [approvedProposals, setApprovedProposals] = useState<Proposal[]>([]);
   const [isEventsLoading, setIsEventsLoading] = useState(true);
+  
+  // MyCSD Claim State
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [selectedEventForClaim, setSelectedEventForClaim] = useState<Event | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [laporanFile, setLaporanFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -80,6 +91,36 @@ export default function OrganizerDashboard() {
 
     return { totalEvents, totalParticipants, upcomingEvents, publishedEvents };
   }, [organizerEvents]);
+
+  const handleClaimMyCSD = async () => {
+    if (!selectedEventForClaim) return;
+    if (!laporanFile) {
+      toast.error('Please upload the Laporan Kejayaan file');
+      return;
+    }
+
+    setIsClaiming(true);
+    try {
+      // Upload the file
+      const path = `documents/${selectedEventForClaim.id}/${Date.now()}-${laporanFile.name}`;
+      const url = await uploadDocument(laporanFile, path);
+      
+      // Submit the claim
+      await submitMyCSDClaim(selectedEventForClaim.id, url);
+      
+      toast.success('Laporan submitted successfully! Points will be distributed upon admin approval.');
+      setShowClaimModal(false);
+      setLaporanFile(null);
+      
+      // Refresh events to update the claimed status (though it won't be claimed yet, just pending)
+      // Ideally we should show "Pending Approval" status for the claim
+    } catch (error: any) {
+      console.error('Error claiming MyCSD:', JSON.stringify(error, null, 2));
+      toast.error(error.message || 'Failed to submit MyCSD claim');
+    } finally {
+      setIsClaiming(false);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -175,8 +216,24 @@ export default function OrganizerDashboard() {
                       <code className="text-sm font-mono font-bold text-purple-600 select-all">{proposal.id}</code>
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(proposal.id);
-                          toast.success('Secret Key copied to clipboard');
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(proposal.id)
+                              .then(() => toast.success('Secret Key copied to clipboard'))
+                              .catch(() => toast.error('Failed to copy key'));
+                          } else {
+                            // Fallback
+                            const textArea = document.createElement("textarea");
+                            textArea.value = proposal.id;
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            try {
+                              document.execCommand('copy');
+                              toast.success('Secret Key copied to clipboard');
+                            } catch (err) {
+                              toast.error('Failed to copy key');
+                            }
+                            document.body.removeChild(textArea);
+                          }
                         }}
                         className="text-gray-400 hover:text-purple-600 transition-colors"
                         title="Copy Secret Key"
@@ -352,6 +409,23 @@ export default function OrganizerDashboard() {
                             >
                               <Users className="w-4 h-4" />
                             </Link>
+                            
+                            {/* MyCSD Claim Button */}
+                            {event.hasMyCSD && 
+                             event.status === 'completed' && 
+                             !event.is_mycsd_claimed && (
+                              <button
+                                onClick={() => {
+                                  setSelectedEventForClaim(event);
+                                  setShowClaimModal(true);
+                                }}
+                                className="text-orange-600 hover:text-orange-900 p-2 hover:bg-orange-50 rounded transition-colors"
+                                title="Submit Laporan & Claim MyCSD"
+                              >
+                                <Award className="w-4 h-4" />
+                              </button>
+                            )}
+
                             <button
                               onClick={async () => {
                                 if (confirm('Are you sure you want to delete this event?')) {
@@ -400,6 +474,63 @@ export default function OrganizerDashboard() {
       </main>
 
       <Footer />
+
+      {/* MyCSD Claim Modal */}
+      <Modal
+        isOpen={showClaimModal}
+        onClose={() => setShowClaimModal(false)}
+        title="Submit Laporan Kejayaan & Claim MyCSD"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Upload the Laporan Kejayaan to distribute MyCSD points to all present participants for <strong>{selectedEventForClaim?.title}</strong>.
+          </p>
+          
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={(e) => setLaporanFile(e.target.files?.[0] || null)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-600 font-medium">
+              {laporanFile ? laporanFile.name : 'Click to upload Laporan (PDF/Doc)'}
+            </p>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800 flex items-start gap-2">
+            <Award className="w-4 h-4 mt-0.5 shrink-0" />
+            <p>
+              This action will automatically award <strong>{selectedEventForClaim?.mycsdPoints} points</strong> to all participants marked as "Present". This cannot be undone.
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={() => setShowClaimModal(false)}
+              className="flex-1 px-4 py-2 text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isClaiming}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleClaimMyCSD}
+              disabled={isClaiming || !laporanFile}
+              className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {isClaiming ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                'Submit & Distribute'
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

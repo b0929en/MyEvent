@@ -70,10 +70,11 @@ INSERT INTO mycsd_requests (mr_id, user_id, event_id, status) VALUES
 ('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000002', 'approved'); -- HackUSM
 
 -- MyCSD Records
+-- Use fixed scores based on level: kampus=2, negeri_universiti=4, antarabangsa=8
 INSERT INTO mycsd_records (record_id, mycsd_score, mycsd_type) VALUES
-('40000000-0000-0000-0000-000000000001', 5, 'event'),
-('40000000-0000-0000-0000-000000000002', 15, 'event'),
-('40000000-0000-0000-0000-000000000003', 30, 'event');
+('40000000-0000-0000-0000-000000000001', 2, 'event'),
+('40000000-0000-0000-0000-000000000002', 4, 'event'),
+('40000000-0000-0000-0000-000000000003', 8, 'event');
 
 -- Event MyCSD
 INSERT INTO event_mycsd (record_id, mycsd_category, event_level, mr_id) VALUES
@@ -83,6 +84,11 @@ INSERT INTO event_mycsd (record_id, mycsd_category, event_level, mr_id) VALUES
 
 -- MyCSD Logs
 INSERT INTO mycsd_logs (matric_no, record_id, score, position) VALUES
-('165432', '40000000-0000-0000-0000-000000000001', 5, 'participant'),
-('165432', '40000000-0000-0000-0000-000000000002', 15, 'participant'),
-('165432', '40000000-0000-0000-0000-000000000003', 30, 'participant');
+('165432', '40000000-0000-0000-0000-000000000001', 2, 'participant'),
+('165432', '40000000-0000-0000-0000-000000000002', 4, 'participant'),
+('165432', '40000000-0000-0000-0000-000000000003', 8, 'participant');
+
+-- Mark events with MyCSD and store the computed points (helps UI/queries that read events.mycsd_points)
+UPDATE events SET has_mycsd = true, mycsd_level = 'kampus', mycsd_points = 2 WHERE event_id = '20000000-0000-0000-0000-000000000003';
+UPDATE events SET has_mycsd = true, mycsd_level = 'negeri_universiti', mycsd_points = 4 WHERE event_id = '20000000-0000-0000-0000-000000000001';
+UPDATE events SET has_mycsd = true, mycsd_level = 'antarabangsa', mycsd_points = 8 WHERE event_id = '20000000-0000-0000-0000-000000000002';

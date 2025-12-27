@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/supabase';
 import { Event, EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
+import { getPointsForLevel } from '../utils';
 
 const mapEvent = (dbEvent: any): Event => {
   // Extract MyCSD info if available
@@ -7,6 +8,8 @@ const mapEvent = (dbEvent: any): Event => {
   const mycsdRequest = dbEvent.mycsd_requests?.find((req: any) => req.status === 'approved') || dbEvent.mycsd_requests?.[0];
   const eventMycsd = mycsdRequest?.event_mycsd?.[0]; // Assuming one-to-one
   const mycsdRecord = eventMycsd?.mycsd_records;
+  const resolvedLevel = dbEvent.mycsd_level || eventMycsd?.event_level;
+  const resolvedPoints = mycsdRecord?.mycsd_score ?? getPointsForLevel(resolvedLevel);
 
   return {
     id: dbEvent.event_id,
@@ -28,11 +31,12 @@ const mapEvent = (dbEvent: any): Event => {
     hasMyCSD: dbEvent.has_mycsd ?? (!!mycsdRequest && mycsdRequest.status === 'approved'),
     mycsdCategory: (dbEvent.mycsd_category || eventMycsd?.mycsd_category) as MyCSDCategory,
     mycsdLevel: (dbEvent.mycsd_level || eventMycsd?.event_level) as MyCSDLevel,
-    mycsdPoints: dbEvent.mycsd_points || mycsdRecord?.mycsd_score,
+    mycsdPoints: resolvedPoints,
     
     objectives: dbEvent.objectives || [],
     links: dbEvent.links || [],
     agenda: dbEvent.agenda || [],
+    is_mycsd_claimed: dbEvent.is_mycsd_claimed || false,
 
     status: dbEvent.event_requests?.status || 'published',
     registrationDeadline: dbEvent.event_date,

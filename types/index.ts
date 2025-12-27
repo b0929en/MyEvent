@@ -112,6 +112,7 @@ export type Event = {
   links?: EventLink[];
   objectives?: string[];
   agenda?: string[];
+  is_mycsd_claimed?: boolean;
   adminNotes?: string;
   createdAt: string;
   updatedAt: string;

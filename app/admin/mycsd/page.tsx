@@ -6,14 +6,14 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { getAllMyCSDRequests, updateMyCSDRequestStatus } from '@/backend/services/mycsdService';
+// FIX 1: Imported approveMyCSDRequest
+import { getAllMyCSDRequests, updateMyCSDRequestStatus, approveMyCSDRequest } from '@/backend/services/mycsdService';
 import { format } from 'date-fns';
 import { ArrowLeft, TrendingUp, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 import type { MyCSDStatus } from '@/types';
 
-// Define type for MyCSD Request based on service return
 interface MyCSDRequest {
   id: string;
   userId: string;
@@ -31,7 +31,6 @@ interface MyCSDRequest {
   updatedAt: string;
 }
 
-// TODO: Backend team should provide MyCSD API
 type FilterStatus = MyCSDStatus | 'all';
 
 export default function AdminMyCSDPage() {
@@ -51,7 +50,6 @@ export default function AdminMyCSDPage() {
   const fetchSubmissions = async () => {
     try {
       const data = await getAllMyCSDRequests();
-      // Cast to MyCSDRequest if needed, or ensure service returns compatible type
       setSubmissions(data as unknown as MyCSDRequest[]);
     } catch (error) {
       console.error('Error fetching MyCSD requests:', error);
@@ -88,7 +86,14 @@ export default function AdminMyCSDPage() {
     if (!selectedSubmission) return;
 
     try {
-      await updateMyCSDRequestStatus(selectedSubmission.id, reviewAction === 'approve' ? 'approved' : 'rejected');
+      // FIX 2: Call the correct function based on action
+      if (reviewAction === 'approve') {
+        // approving triggers point calculation and log creation
+        await approveMyCSDRequest(selectedSubmission.id);
+      } else {
+        // rejecting only updates the status
+        await updateMyCSDRequestStatus(selectedSubmission.id, 'rejected');
+      }
       
       toast.success(`Request ${reviewAction}d successfully!`);
       
