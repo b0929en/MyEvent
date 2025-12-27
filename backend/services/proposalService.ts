@@ -138,3 +138,49 @@ export async function createProposal(proposalData: any) {
 
   return request;
 }
+
+export async function getProposalById(id: string) {
+  const { data, error } = await supabase
+    .from('event_requests')
+    .select(`
+      *,
+      organizations (
+        org_name
+      ),
+      events (
+        event_name,
+        event_description,
+        category,
+        capacity,
+        event_date,
+        event_venue
+      )
+    `)
+    .eq('event_request_id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching proposal:', error);
+    return null;
+  }
+
+  const event = data.events?.[0] || {};
+  
+  return {
+    id: data.event_request_id,
+    organizerId: data.org_id,
+    organizerName: data.organizations?.org_name || 'Unknown',
+    eventTitle: event.event_name || 'Untitled Proposal',
+    eventDescription: event.event_description || '',
+    category: event.category || 'other',
+    estimatedParticipants: event.capacity || 0,
+    proposedDate: event.event_date,
+    proposedVenue: event.event_venue,
+    documents: {
+      eventProposal: data.event_request_file || '',
+    },
+    status: data.status,
+    submittedAt: data.submitted_at,
+    updatedAt: data.submitted_at,
+  };
+}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
@@ -10,7 +11,6 @@ import { getEventById } from '@/backend/services/eventService';
 import { createRegistration, getUserRegistrations } from '@/backend/services/registrationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { Calendar, Clock, MapPin, Users, DollarSign, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { Event } from '@/types';
 
@@ -131,143 +131,88 @@ export default function EventDetailsPage() {
   const isFull = event.registeredCount >= event.capacity;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      <main className="grow bg-gray-50">
+      <main className="grow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Breadcrumb */}
-          <Breadcrumb
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Events', href: '/events' },
-              { label: event.title }
-            ]}
-          />
+          <div className="mb-6">
+            <Breadcrumb
+              items={[
+                { label: 'Home', href: '/' },
+                { label: 'Events', href: '/events' },
+                { label: event.title }
+              ]}
+            />
+          </div>
 
           {/* Event Banner */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
-            <div className="relative w-full h-80 bg-linear-to-r from-purple-500 via-purple-600 to-orange-500">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center text-white">
-                  <h2 className="text-5xl font-bold mb-2">{event.title}</h2>
+          <div className="w-full h-[300px] md:h-[400px] relative mb-8 rounded-lg overflow-hidden bg-gray-100">
+            {event.bannerImage ? (
+              <Image
+                src={event.bannerImage}
+                alt={event.title}
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-linear-to-r from-purple-500 via-purple-600 to-orange-500">
+                <div className="text-center text-white p-4">
+                  <h2 className="text-4xl font-bold mb-2">{event.title}</h2>
                   <p className="text-xl">{event.organizerName}</p>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Event Title and Tags */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">{event.title}</h1>
-            <div className="flex flex-wrap gap-2">
-              {event.hasMyCSD && (
+          {/* Event Title and Badges */}
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
+            <div className="flex flex-wrap gap-3">
+              {event.hasMyCSD ? (
                 <span className="px-4 py-1 bg-orange-500 text-white text-sm font-medium rounded-full">
-                  MyCSD: {event.mycsdPoints} Points
+                  MyCSD Available
+                </span>
+              ) : (
+                <span className="px-4 py-1 bg-gray-500 text-white text-sm font-medium rounded-full">
+                  MyCSD Not Available
                 </span>
               )}
-              {event.mycsdLevel === 'antarabangsa' && (
-                <span className="px-4 py-1 bg-purple-600 text-white text-sm font-medium rounded-full">
-                  International
-                </span>
-              )}
-              {event.mycsdLevel === 'negeri_universiti' && (
-                <span className="px-4 py-1 bg-blue-600 text-white text-sm font-medium rounded-full">
-                  University Level
-                </span>
-              )}
-              <span className="px-4 py-1 bg-gray-200 text-gray-700 text-sm font-medium rounded-full capitalize">
-                {event.category}
-              </span>
-              {event.status === 'published' && (
-                <span className="px-4 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
-                  Registration Open
+              
+              {event.hasMyCSD && event.mycsdLevel && (
+                <span className="px-4 py-1 bg-purple-400 text-white text-sm font-medium rounded-full capitalize">
+                  {event.mycsdLevel.replace('_', ' ')}
                 </span>
               )}
             </div>
           </div>
 
           {/* General Information */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="mb-10">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">General Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-start gap-3">
-                <Users className="w-5 h-5 text-purple-600 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Organizer</p>
-                  <p className="text-gray-900 font-medium">{event.organizerName}</p>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 text-gray-700">
+              <div>
+                <p className="mb-2">
+                  <span className="font-medium text-gray-900">Organizer:</span> {event.organizerName}
+                </p>
+                <p>
+                  <span className="font-medium text-gray-900">Participation Fee:</span> {event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`}
+                </p>
               </div>
-              
-              <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-purple-600 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Date</p>
-                  <p className="text-gray-900 font-medium">
-                    {format(eventDate, 'EEEE, MMMM dd, yyyy')}
-                  </p>
-                </div>
+              <div>
+                <p className="mb-2">
+                  <span className="font-medium text-gray-900">Date:</span> {format(eventDate, 'do MMMM yyyy (EEEE)')}
+                </p>
+                <p>
+                  <span className="font-medium text-gray-900">Time:</span> {event.startTime} - {event.endTime} (GMT+8)
+                </p>
               </div>
-              
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-purple-600 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Time</p>
-                  <p className="text-gray-900 font-medium">
-                    {event.startTime} - {event.endTime}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-purple-600 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Venue</p>
-                  <p className="text-gray-900 font-medium">{event.venue}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <DollarSign className="w-5 h-5 text-purple-600 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Participation Fee</p>
-                  <p className="text-gray-900 font-medium">
-                    {event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Users className="w-5 h-5 text-purple-600 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Capacity</p>
-                  <p className="text-gray-900 font-medium">
-                    {event.registeredCount} / {event.capacity} registered
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-purple-600 h-2 rounded-full transition-all"
-                      style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {event.hasMyCSD && (
-                <div className="flex items-start gap-3">
-                  <Award className="w-5 h-5 text-purple-600 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">MyCSD Category</p>
-                    <p className="text-gray-900 font-medium capitalize">
-                      {event.mycsdCategory} - {event.mycsdLevel?.replace('_', ' ')}
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* RSVP Button */}
-            <div className="mt-6 flex items-center gap-4">
+            <div className="mt-8">
               <button 
                 onClick={handleRSVP}
                 disabled={isPastDeadline || isFull || isRegistered}
@@ -279,16 +224,11 @@ export default function EventDetailsPage() {
               >
                 {isRegistered ? 'Registered' : isPastDeadline ? 'Registration Closed' : isFull ? 'Event Full' : 'RSVP Now'}
               </button>
-              {!isPastDeadline && !isRegistered && (
-                <p className="text-sm text-gray-600">
-                  Registration deadline: {format(registrationDeadline, 'MMM dd, yyyy')}
-                </p>
-              )}
             </div>
           </div>
 
           {/* Description */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="mb-10">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Description</h2>
             <p className="text-gray-700 leading-relaxed whitespace-pre-line">{event.description}</p>
             
@@ -302,36 +242,38 @@ export default function EventDetailsPage() {
                 </ul>
               </div>
             )}
+          </div>
 
-            {event.agenda && event.agenda.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Agenda</h3>
-                <ul className="list-disc list-inside space-y-2">
-                  {event.agenda.map((item, index) => (
-                    <li key={index} className="text-gray-700">{item}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          {/* Gallery */}
+          <div className="mb-10">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Gallery</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Placeholder gallery items as per design */}
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+            </div>
           </div>
 
           {/* Links */}
           {event.links && event.links.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="mb-10">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Links</h2>
-              <div className="space-y-2">
+              <ul className="list-disc list-inside space-y-2">
                 {event.links.map((link, index) => (
-                  <a
-                    key={index}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-purple-600 hover:text-purple-700 hover:underline"
-                  >
-                    {link.title}
-                  </a>
+                  <li key={index}>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-900 hover:text-purple-600 hover:underline"
+                    >
+                      {link.title}
+                    </a>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
         </div>

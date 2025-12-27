@@ -98,7 +98,15 @@ CREATE TABLE events (
     capacity INT DEFAULT 0,
     banner_image TEXT,
     category TEXT,
-    registered_count INT DEFAULT 0
+    registered_count INT DEFAULT 0,
+    -- New fields for event details
+    objectives TEXT[],
+    links JSONB,
+    has_mycsd BOOLEAN DEFAULT false,
+    mycsd_category TEXT,
+    mycsd_level TEXT,
+    mycsd_points INT,
+    agenda TEXT[]
 );
 
 -- 8. REGISTRATION
@@ -204,3 +212,60 @@ CREATE POLICY "Public read access" ON mycsd_records FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON organization_mycsd FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON event_mycsd FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON mycsd_logs FOR SELECT USING (true);
+
+-- Storage Bucket Setup
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('event-banners', 'event-banners', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage Policies (Drop existing ones first to ensure idempotency)
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+CREATE POLICY "Public Access" 
+ON storage.objects FOR SELECT 
+USING ( bucket_id = 'event-banners' );
+
+DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
+DROP POLICY IF EXISTS "Public Upload" ON storage.objects;
+CREATE POLICY "Public Upload" 
+ON storage.objects FOR INSERT 
+WITH CHECK ( 
+  bucket_id = 'event-banners' 
+);
+
+DROP POLICY IF EXISTS "Owner Update" ON storage.objects;
+DROP POLICY IF EXISTS "Public Update" ON storage.objects;
+CREATE POLICY "Public Update" 
+ON storage.objects FOR UPDATE 
+USING ( bucket_id = 'event-banners' );
+
+DROP POLICY IF EXISTS "Owner Delete" ON storage.objects;
+DROP POLICY IF EXISTS "Public Delete" ON storage.objects;
+CREATE POLICY "Public Delete" 
+ON storage.objects FOR DELETE 
+USING ( bucket_id = 'event-banners' );
+
+-- Trigger to automatically update registered_count in events table
+CREATE OR REPLACE FUNCTION update_event_registered_count()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    UPDATE events
+    SET registered_count = registered_count + 1
+    WHERE event_id = NEW.event_id;
+    RETURN NEW;
+  ELSIF (TG_OP = 'DELETE') THEN
+    UPDATE events
+    SET registered_count = registered_count - 1
+    WHERE event_id = OLD.event_id;
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_event_count_trigger ON registrations;
+CREATE TRIGGER update_event_count_trigger
+AFTER INSERT OR DELETE ON registrations
+FOR EACH ROW
+EXECUTE FUNCTION update_event_registered_count();
+

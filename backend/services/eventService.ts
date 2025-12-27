@@ -25,11 +25,15 @@ const mapEvent = (dbEvent: any): Event => {
     organizerName: dbEvent.event_requests?.organizations?.org_name || 'Unknown Organizer',
     
     participationFee: 0,
-    hasMyCSD: !!mycsdRequest && mycsdRequest.status === 'approved',
-    mycsdCategory: eventMycsd?.mycsd_category as MyCSDCategory,
-    mycsdLevel: eventMycsd?.event_level as MyCSDLevel,
-    mycsdPoints: mycsdRecord?.mycsd_score,
+    hasMyCSD: dbEvent.has_mycsd ?? (!!mycsdRequest && mycsdRequest.status === 'approved'),
+    mycsdCategory: (dbEvent.mycsd_category || eventMycsd?.mycsd_category) as MyCSDCategory,
+    mycsdLevel: (dbEvent.mycsd_level || eventMycsd?.event_level) as MyCSDLevel,
+    mycsdPoints: dbEvent.mycsd_points || mycsdRecord?.mycsd_score,
     
+    objectives: dbEvent.objectives || [],
+    links: dbEvent.links || [],
+    agenda: dbEvent.agenda || [],
+
     status: dbEvent.event_requests?.status || 'published',
     registrationDeadline: dbEvent.event_date,
     createdAt: new Date().toISOString(),
@@ -152,3 +156,34 @@ export async function updateEventStatus(eventId: string, status: string) {
 }
 
 export const getFilteredEvents = getEvents;
+
+export async function updateEventByRequestId(requestId: string, updates: any) {
+  const { error } = await supabase
+    .from('events')
+    .update(updates)
+    .eq('event_request_id', requestId);
+
+  if (error) throw error;
+}
+
+export async function deleteEvent(eventId: string) {
+  // Soft delete: Update status to 'cancelled' because RLS prevents hard delete
+  // and to preserve data integrity (foreign keys)
+  
+  // 1. Get the event_request_id
+  const { data: event, error: fetchError } = await supabase
+    .from('events')
+    .select('event_request_id')
+    .eq('event_id', eventId)
+    .single();
+    
+  if (fetchError) throw fetchError;
+
+  // 2. Update status to 'cancelled'
+  const { error } = await supabase
+    .from('event_requests')
+    .update({ status: 'cancelled' })
+    .eq('event_request_id', event.event_request_id);
+
+  if (error) throw error;
+}

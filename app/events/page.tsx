@@ -39,7 +39,7 @@ export default function EventsPage() {
 
   // Filter and search events
   const filteredEvents = useMemo(() => {
-    let filtered = [...allEvents];
+    let filtered = allEvents.filter(event => event.status === 'published');
 
     if (searchQuery) {
       const search = searchQuery.toLowerCase();
