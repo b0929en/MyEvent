@@ -4,12 +4,15 @@ import { getPointsForLevel } from '../utils';
 
 const mapEvent = (dbEvent: any): Event => {
   // Extract MyCSD info if available
-  // Assuming mycsd_requests is an array (one-to-many) but we usually take the approved one
   const mycsdRequest = dbEvent.mycsd_requests?.find((req: any) => req.status === 'approved') || dbEvent.mycsd_requests?.[0];
-  const eventMycsd = mycsdRequest?.event_mycsd?.[0]; // Assuming one-to-one
+  const eventMycsd = mycsdRequest?.event_mycsd?.[0]; 
   const mycsdRecord = eventMycsd?.mycsd_records;
   const resolvedLevel = dbEvent.mycsd_level || eventMycsd?.event_level;
   const resolvedPoints = mycsdRecord?.mycsd_score ?? getPointsForLevel(resolvedLevel);
+
+  // Use the proposal's submission time as the event creation time
+  // Fallback to current time only if data is missing
+  const createdDate = dbEvent.event_requests?.submitted_at || new Date().toISOString();
 
   return {
     id: dbEvent.event_id,
@@ -40,8 +43,8 @@ const mapEvent = (dbEvent: any): Event => {
 
     status: dbEvent.event_requests?.status || 'published',
     registrationDeadline: dbEvent.event_date,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: createdDate, // Now using real data
+    updatedAt: createdDate,
   };
 };
 
@@ -59,6 +62,7 @@ export async function getEvents(filters?: {
       event_requests (
         org_id,
         status,
+        submitted_at, 
         organizations (
           org_name
         )
@@ -101,6 +105,7 @@ export async function getEventById(id: string) {
       event_requests (
         org_id,
         status,
+        submitted_at,
         organizations (
           org_name
         )
@@ -121,27 +126,13 @@ export async function getEventById(id: string) {
 
   if (error) {
     console.error('Error fetching event with joins:', error);
-    
-    // Fallback: fetch without joins
-    const { data: simpleData, error: simpleError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('event_id', id)
-      .single();
-      
-    if (simpleError) {
-       console.error('Error fetching event simple:', simpleError);
-       return null;
-    }
-    
-    return mapEvent(simpleData);
+    return null;
   }
 
   return mapEvent(data);
 }
 
 export async function updateEventStatus(eventId: string, status: string) {
-  // First get the event_request_id
   const { data: event, error: fetchError } = await supabase
     .from('events')
     .select('event_request_id')
@@ -150,7 +141,6 @@ export async function updateEventStatus(eventId: string, status: string) {
 
   if (fetchError || !event) throw fetchError || new Error('Event not found');
 
-  // Update the status in event_requests
   const { error } = await supabase
     .from('event_requests')
     .update({ status })
@@ -171,10 +161,6 @@ export async function updateEventByRequestId(requestId: string, updates: any) {
 }
 
 export async function deleteEvent(eventId: string) {
-  // Soft delete: Update status to 'cancelled' because RLS prevents hard delete
-  // and to preserve data integrity (foreign keys)
-  
-  // 1. Get the event_request_id
   const { data: event, error: fetchError } = await supabase
     .from('events')
     .select('event_request_id')
@@ -183,7 +169,6 @@ export async function deleteEvent(eventId: string) {
     
   if (fetchError) throw fetchError;
 
-  // 2. Update status to 'cancelled'
   const { error } = await supabase
     .from('event_requests')
     .update({ status: 'cancelled' })

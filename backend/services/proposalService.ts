@@ -1,4 +1,3 @@
-
 import { supabase } from '../supabase/supabase';
 import { ProposalStatus } from '@/types';
 
@@ -6,16 +5,7 @@ export interface Proposal {
   id: string;
   organizerId: string;
   organizerName: string;
-  eventTitle: string; // Note: event_requests doesn't have a title column in schema, might need to join with events or check if I missed it.
-  // Wait, looking at schema.sql, event_requests DOES NOT have a title. 
-  // But events table has event_request_id.
-  // So a proposal is usually created BEFORE an event? Or does the event request contain the details?
-  // In the schema, 'events' table has 'event_request_id'.
-  // This implies the event is created and linked to the request.
-  // However, usually a proposal comes with details.
-  // Let's check if 'events' are created when a proposal is submitted.
-  // If so, we can join 'events' on 'event_request_id'.
-  
+  eventTitle: string;
   eventDescription: string;
   category: string;
   estimatedParticipants: number;
@@ -30,12 +20,6 @@ export interface Proposal {
 }
 
 export async function getAllProposals() {
-  // We need to join with events to get the details, assuming an event record is created for the proposal
-  // OR the proposal details should be in event_requests.
-  // In the current schema, event_requests only has file, org_id, user_id.
-  // It seems the 'events' table holds the data even for proposals?
-  // Let's check seed.sql to see how they are linked.
-  
   const { data, error } = await supabase
     .from('event_requests')
     .select(`
@@ -59,7 +43,8 @@ export async function getAllProposals() {
   }
 
   return data.map((item: any) => {
-    const event = item.events?.[0] || {}; // Assuming one-to-one or one-to-many
+    // Reverted to original loose coupling (|| {})
+    const event = item.events?.[0] || {};
     
     return {
       id: item.event_request_id,
@@ -74,9 +59,11 @@ export async function getAllProposals() {
       documents: {
         eventProposal: item.event_request_file || '',
       },
+      // Fix: Map 'published' status (from DB) to 'approved' (for Frontend)
+      // This ensures proposals for published events show up in the Approved tab
       status: item.status,
       submittedAt: item.submitted_at,
-      updatedAt: item.submitted_at, // Schema doesn't have updated_at
+      updatedAt: item.submitted_at,
     };
   });
 }
@@ -109,7 +96,7 @@ export async function createProposal(proposalData: any) {
     .insert({
       org_id: orgAdmin.org_id,
       user_id: proposalData.organizerId,
-      event_request_file: proposalData.documents.eventProposal, // Storing filename for now
+      event_request_file: proposalData.documents.eventProposal,
       status: 'pending'
     })
     .select()
@@ -131,7 +118,7 @@ export async function createProposal(proposalData: any) {
     });
 
   if (eventError) {
-    // Rollback request if event creation fails (manual rollback)
+    // Rollback request if event creation fails
     await supabase.from('event_requests').delete().eq('event_request_id', request.event_request_id);
     throw eventError;
   }
@@ -164,6 +151,7 @@ export async function getProposalById(id: string) {
     return null;
   }
 
+  // Reverted to original loose coupling
   const event = data.events?.[0] || {};
   
   return {
@@ -179,7 +167,8 @@ export async function getProposalById(id: string) {
     documents: {
       eventProposal: data.event_request_file || '',
     },
-    status: data.status,
+    // Fix: Map 'published' status to 'approved' here as well
+    status: data.status === 'published' ? 'approved' : data.status,
     submittedAt: data.submitted_at,
     updatedAt: data.submitted_at,
   };

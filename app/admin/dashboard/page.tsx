@@ -10,6 +10,7 @@ import { getEvents } from '@/backend/services/eventService';
 import { getUsers } from '@/backend/services/userService';
 import { getAllRegistrations } from '@/backend/services/registrationService';
 import { getAllProposals } from '@/backend/services/proposalService';
+import { getAllMyCSDRequests } from '@/backend/services/mycsdService';
 import { Event, User, Registration } from '@/types';
 import { 
   Users, 
@@ -27,21 +28,24 @@ export default function AdminDashboard() {
   const [usersList, setUsersList] = useState<User[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [proposals, setProposals] = useState<any[]>([]);
+  const [mycsdRequests, setMycsdRequests] = useState<any[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fetchedEvents, fetchedUsers, fetchedRegistrations, fetchedProposals] = await Promise.all([
+        const [fetchedEvents, fetchedUsers, fetchedRegistrations, fetchedProposals, fetchedMycsd] = await Promise.all([
           getEvents(),
           getUsers(),
           getAllRegistrations(),
-          getAllProposals()
+          getAllProposals(),
+          getAllMyCSDRequests()
         ]);
         if (fetchedEvents) setEvents(fetchedEvents);
         if (fetchedUsers) setUsersList(fetchedUsers);
         if (fetchedRegistrations) setRegistrations(fetchedRegistrations);
         if (fetchedProposals) setProposals(fetchedProposals);
+        if (fetchedMycsd) setMycsdRequests(fetchedMycsd);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       }
@@ -57,7 +61,9 @@ export default function AdminDashboard() {
     const pendingApproval = events.filter(e => e.status === 'pending_approval').length;
     const totalRegistrations = registrations.length;
     
+    // "Pending Events" and "Proposals" are treated as the same queue for the admin
     const pendingProposals = proposals.filter(p => p.status === 'pending').length;
+    const pendingMyCSDClaims = mycsdRequests.filter(r => r.status === 'pending').length;
     
     return {
       totalUsers,
@@ -65,43 +71,49 @@ export default function AdminDashboard() {
       publishedEvents,
       pendingApproval,
       pendingProposals,
+      pendingMyCSDClaims,
       totalRegistrations,
     };
-  }, [usersList, events, registrations, proposals]);
+  }, [usersList, events, registrations, proposals, mycsdRequests]);
 
   // Recent activity (derived from data)
   const recentActivity = useMemo(() => {
     const activity: any[] = [];
     
-    // Add recent proposals
-    proposals.slice(0, 3).forEach(p => {
+    // 1. Add ALL proposals to the pool
+    proposals.forEach(p => {
       activity.push({
         id: `prop-${p.id}`,
         type: 'proposal_submitted',
         title: `New proposal: ${p.eventTitle}`,
         user: p.organizerName,
-        time: new Date(p.submittedAt).toLocaleDateString(),
+        time: p.submittedAt, // Use raw ISO string for sorting
+        displayTime: new Date(p.submittedAt).toLocaleDateString(),
         icon: FileText,
         color: 'blue'
       });
     });
 
-    // Add recent events
-    events.slice(0, 3).forEach(e => {
+    // 2. Add ALL published events to the pool
+    events.forEach(e => {
       if (e.status === 'published') {
         activity.push({
           id: `event-${e.id}`,
           type: 'event_approved',
           title: `Event Published: ${e.title}`,
           user: e.organizerName,
-          time: new Date(e.updatedAt).toLocaleDateString(),
+          time: e.createdAt, // Use raw ISO string for sorting
+          displayTime: new Date(e.createdAt).toLocaleDateString(),
           icon: CheckCircle,
           color: 'green'
         });
       }
     });
 
-    return activity.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 5);
+    // 3. Sort by time descending (newest first) and take top 5
+    return activity
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 5);
   }, [proposals, events]);
 
   if (isLoading) {
@@ -166,32 +178,34 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* Pending Events (Proposals) */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Pending Proposals</p>
-                  <p className="text-3xl font-bold text-yellow-600">{stats.pendingProposals}</p>
+                  <p className="text-sm text-gray-600 mb-1">Pending Events</p>
+                  <p className="text-3xl font-bold text-orange-600">{stats.pendingProposals}</p>
                   <Link href="/admin/proposals" className="text-xs text-purple-600 hover:underline mt-1 inline-block">
                     Review now →
                   </Link>
                 </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-yellow-600" />
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-orange-600" />
                 </div>
               </div>
             </div>
 
+            {/* Pending MyCSD Claims */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Pending Approval</p>
-                  <p className="text-3xl font-bold text-orange-600">{stats.pendingApproval}</p>
-                  <Link href="/admin/events" className="text-xs text-purple-600 hover:underline mt-1 inline-block">
+                  <p className="text-sm text-gray-600 mb-1">Pending MyCSD Claims</p>
+                  <p className="text-3xl font-bold text-green-600">{stats.pendingMyCSDClaims}</p>
+                  <Link href="/admin/mycsd" className="text-xs text-purple-600 hover:underline mt-1 inline-block">
                     Review now →
                   </Link>
                 </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </div>
@@ -210,21 +224,8 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-3">
                       <FileText className="w-5 h-5 text-purple-600" />
                       <div>
-                        <p className="font-medium text-gray-900">Review Proposals</p>
+                        <p className="font-medium text-gray-900">Review Pending Events</p>
                         <p className="text-sm text-gray-600">{stats.pendingProposals} pending</p>
-                      </div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/admin/events"
-                    className="block p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">Approve Events</p>
-                        <p className="text-sm text-gray-600">{stats.pendingApproval} pending</p>
                       </div>
                     </div>
                   </Link>
@@ -237,7 +238,7 @@ export default function AdminDashboard() {
                       <TrendingUp className="w-5 h-5 text-green-600" />
                       <div>
                         <p className="font-medium text-gray-900">MyCSD Points</p>
-                        <p className="text-sm text-gray-600">Review submissions</p>
+                        <p className="text-sm text-gray-600">{stats.pendingMyCSDClaims} submissions</p>
                       </div>
                     </div>
                   </Link>
@@ -284,7 +285,7 @@ export default function AdminDashboard() {
                             <p className="font-medium text-gray-900">{activity.title}</p>
                             <p className="text-sm text-gray-600">{activity.user}</p>
                           </div>
-                          <p className="text-sm text-gray-500 shrink-0">{activity.time}</p>
+                          <p className="text-sm text-gray-500 shrink-0">{activity.displayTime}</p>
                         </div>
                       );
                     })

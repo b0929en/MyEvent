@@ -106,7 +106,12 @@ export default function OrganizerDashboard() {
       const url = await uploadDocument(laporanFile, path);
       
       // Submit the claim
-      await submitMyCSDClaim(selectedEventForClaim.id, url);
+      await submitMyCSDClaim(
+        selectedEventForClaim.id,
+        url,
+        selectedEventForClaim.mycsdLevel || '',
+        selectedEventForClaim.mycsdCategory || ''
+      );
       
       toast.success('Laporan submitted successfully! Points will be distributed upon admin approval.');
       setShowClaimModal(false);
