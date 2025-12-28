@@ -11,6 +11,7 @@ export interface Notification {
   link?: string;
   isRead: boolean;
   createdAt: string;
+  userName?: string; // Added for Admin Dashboard display
 }
 
 export async function getUserNotifications(userId: string) {
@@ -82,4 +83,34 @@ export async function markAllNotificationsAsRead(userId: string) {
     console.error('Error marking all notifications as read:', error);
     throw error;
   }
+}
+
+// NEW: Helper for Admin Dashboard to get system activity
+export async function getAllSystemNotifications() {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select(`
+      *,
+      users (
+        user_name
+      )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error('Error fetching system notifications:', error);
+    return [];
+  }
+
+  return data.map((n: any) => ({
+    id: n.notification_id,
+    userId: n.user_id,
+    userName: n.users?.user_name || 'Unknown User',
+    type: n.type,
+    title: n.title,
+    message: n.message,
+    link: n.link,
+    createdAt: n.created_at,
+  }));
 }

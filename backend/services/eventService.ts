@@ -1,6 +1,7 @@
 import { supabase } from '../supabase/supabase';
 import { Event, EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
 import { getPointsForLevel } from '../utils';
+import { createNotification } from './notificationService';
 
 const mapEvent = (dbEvent: any): Event => {
   // Extract MyCSD info if available
@@ -13,6 +14,11 @@ const mapEvent = (dbEvent: any): Event => {
   // Use the proposal's submission time as the event creation time
   // Fallback to current time only if data is missing
   const createdDate = dbEvent.event_requests?.submitted_at || new Date().toISOString();
+  
+  // Handle potential array for event_requests in map (safety check)
+  const eventRequest = Array.isArray(dbEvent.event_requests) 
+    ? dbEvent.event_requests[0] 
+    : dbEvent.event_requests;
 
   return {
     id: dbEvent.event_id,
@@ -27,8 +33,8 @@ const mapEvent = (dbEvent: any): Event => {
     registeredCount: dbEvent.registered_count || 0,
     bannerImage: dbEvent.banner_image,
     category: (dbEvent.category as EventCategory) || 'other',
-    organizerId: dbEvent.event_requests?.org_id || '',
-    organizerName: dbEvent.event_requests?.organizations?.org_name || 'Unknown Organizer',
+    organizerId: eventRequest?.org_id || '',
+    organizerName: eventRequest?.organizations?.org_name || 'Unknown Organizer',
     
     participationFee: 0,
     hasMyCSD: dbEvent.has_mycsd ?? (!!mycsdRequest && mycsdRequest.status === 'approved'),
@@ -41,9 +47,9 @@ const mapEvent = (dbEvent: any): Event => {
     agenda: dbEvent.agenda || [],
     is_mycsd_claimed: dbEvent.is_mycsd_claimed || false,
 
-    status: dbEvent.event_requests?.status || 'published',
+    status: eventRequest?.status || 'published',
     registrationDeadline: dbEvent.event_date,
-    createdAt: createdDate, // Now using real data
+    createdAt: createdDate,
     updatedAt: createdDate,
   };
 };
@@ -135,11 +141,22 @@ export async function getEventById(id: string) {
 export async function updateEventStatus(eventId: string, status: string) {
   const { data: event, error: fetchError } = await supabase
     .from('events')
-    .select('event_request_id')
+    .select(`
+      event_id,
+      event_name,
+      event_request_id,
+      event_requests (
+        user_id
+      )
+    `)
     .eq('event_id', eventId)
     .single();
 
   if (fetchError || !event) throw fetchError || new Error('Event not found');
+
+  const eventRequest = Array.isArray(event.event_requests) 
+    ? event.event_requests[0] 
+    : event.event_requests;
 
   const { error } = await supabase
     .from('event_requests')
@@ -147,6 +164,20 @@ export async function updateEventStatus(eventId: string, status: string) {
     .eq('event_request_id', event.event_request_id);
 
   if (error) throw error;
+
+  if (status === 'published' && eventRequest?.user_id) {
+    try {
+      await createNotification({
+        userId: eventRequest.user_id,
+        type: 'event',
+        title: `Event Published: ${event.event_name}`,
+        message: `Your event "${event.event_name}" has been approved and published.`,
+        link: `/events/${eventId}`
+      });
+    } catch (notifyError) {
+      console.error('Failed to send notification:', notifyError);
+    }
+  }
 }
 
 export const getFilteredEvents = getEvents;
@@ -156,6 +187,16 @@ export async function updateEventByRequestId(requestId: string, updates: any) {
     .from('events')
     .update(updates)
     .eq('event_request_id', requestId);
+
+  if (error) throw error;
+}
+
+// NEW FUNCTION: Update event by ID
+export async function updateEvent(eventId: string, updates: any) {
+  const { error } = await supabase
+    .from('events')
+    .update(updates)
+    .eq('event_id', eventId);
 
   if (error) throw error;
 }

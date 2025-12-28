@@ -6,10 +6,9 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-// FIX 1: Imported approveMyCSDRequest
 import { getAllMyCSDRequests, updateMyCSDRequestStatus, approveMyCSDRequest } from '@/backend/services/mycsdService';
 import { format } from 'date-fns';
-import { ArrowLeft, TrendingUp, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
+import { ArrowLeft, TrendingUp, CheckCircle, XCircle, AlertCircle, Eye, Users } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 import type { MyCSDStatus } from '@/types';
@@ -21,12 +20,15 @@ interface MyCSDRequest {
   userEmail: string;
   eventId: string;
   eventName: string;
+  organizerName: string;
   category: string;
   level: string;
   points: number;
   role: string;
   status: MyCSDStatus;
   proofDocument: string;
+  participantCount: number;
+  committeeCount: number;
   submittedAt: string;
   updatedAt: string;
 }
@@ -71,7 +73,7 @@ export default function AdminMyCSDPage() {
       rejected: submissions.filter(s => s.status === 'rejected').length,
       totalPoints: submissions
         .filter(s => s.status === 'approved')
-        .reduce((sum, s) => sum + s.points, 0)
+        .reduce((sum, s) => sum + (s.points * s.participantCount), 0) // Approximation of total points distributed
     };
   }, [submissions]);
 
@@ -86,7 +88,6 @@ export default function AdminMyCSDPage() {
     if (!selectedSubmission) return;
 
     try {
-      // FIX 2: Call the correct function based on action
       if (reviewAction === 'approve') {
         // approving triggers point calculation and log creation
         await approveMyCSDRequest(selectedSubmission.id);
@@ -171,7 +172,7 @@ export default function AdminMyCSDPage() {
             </Link>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">MyCSD Points Approval</h1>
-              <p className="text-gray-600">Review and approve MyCSD points submissions</p>
+              <p className="text-gray-600">Review and approve MyCSD points for events</p>
             </div>
           </div>
 
@@ -190,7 +191,7 @@ export default function AdminMyCSDPage() {
               <p className="text-3xl font-bold text-red-600">{stats.rejected}</p>
             </div>
             <div className="bg-white rounded-lg shadow-md p-6">
-              <p className="text-sm text-gray-600 mb-1">Total Points Awarded</p>
+              <p className="text-sm text-gray-600 mb-1">Total Points Distributed</p>
               <p className="text-3xl font-bold text-purple-600">{stats.totalPoints}</p>
             </div>
           </div>
@@ -222,18 +223,18 @@ export default function AdminMyCSDPage() {
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Event
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Category
+                        Category & Level
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Role
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Participants
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Committee
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Points
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -248,27 +249,26 @@ export default function AdminMyCSDPage() {
                     {filteredSubmissions.map((submission) => (
                       <tr key={submission.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">User ID: {submission.userId}</div>
-                            <div className="text-xs text-gray-500">TODO: Fetch user details</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{submission.eventName}</div>
+                          <div className="text-sm font-medium text-gray-900">{submission.eventName}</div>
                           <div className="text-xs text-gray-500">
-                            Submitted {format(new Date(submission.submittedAt), 'MMM dd, yyyy')}
+                             Org: {submission.organizerName}
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900 capitalize">{submission.category}</div>
                           <div className="text-xs text-gray-500 capitalize">{submission.level}</div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
-                            {submission.role}
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {submission.participantCount}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {submission.committeeCount}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
                           <span className="text-lg font-bold text-purple-600">{submission.points}</span>
                         </td>
                         <td className="px-6 py-4">
@@ -334,12 +334,12 @@ export default function AdminMyCSDPage() {
           <div>
             <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-2">
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Student:</span>
-                <span className="text-sm font-medium text-gray-900">User ID: {selectedSubmission.userId}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Event:</span>
                 <span className="text-sm font-medium text-gray-900">{selectedSubmission.eventName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Organizer:</span>
+                <span className="text-sm font-medium text-gray-900">{selectedSubmission.organizerName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Category:</span>
@@ -349,12 +349,20 @@ export default function AdminMyCSDPage() {
                 <span className="text-sm text-gray-600">Level:</span>
                 <span className="text-sm font-medium text-gray-900 capitalize">{selectedSubmission.level}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Role:</span>
-                <span className="text-sm font-medium text-gray-900 capitalize">{selectedSubmission.role}</span>
+              
+              <div className="grid grid-cols-2 gap-4 border-t border-b py-2 my-2">
+                <div className="text-center">
+                   <p className="text-xs text-gray-500">Participants</p>
+                   <p className="text-lg font-bold text-gray-900">{selectedSubmission.participantCount}</p>
+                </div>
+                <div className="text-center border-l">
+                   <p className="text-xs text-gray-500">Committee</p>
+                   <p className="text-lg font-bold text-gray-900">{selectedSubmission.committeeCount}</p>
+                </div>
               </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-sm font-semibold text-gray-700">Points:</span>
+
+              <div className="flex justify-between pt-2">
+                <span className="text-sm font-semibold text-gray-700">Points per Student:</span>
                 <span className="text-lg font-bold text-purple-600">{selectedSubmission.points}</span>
               </div>
             </div>
@@ -378,9 +386,14 @@ export default function AdminMyCSDPage() {
 
             {reviewAction === 'approve' && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-900">
-                  ✓ {selectedSubmission.points} MyCSD points will be added to the student&apos;s record
-                </p>
+                <div className="flex items-start gap-2">
+                  <Users className="w-5 h-5 text-green-600 mt-0.5" />
+                  <p className="text-sm text-green-900">
+                    You are about to award <strong>{selectedSubmission.points} points</strong> to <strong>{selectedSubmission.participantCount} participants</strong>. 
+                    <br/>
+                    <span className="text-xs text-green-700 mt-1 block">Total points distributed: {selectedSubmission.points * selectedSubmission.participantCount}</span>
+                  </p>
+                </div>
               </div>
             )}
 

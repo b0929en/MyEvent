@@ -24,13 +24,17 @@ import {
   Clock,
   Copy,
   Award,
-  Upload
+  Upload,
+  Globe,       // New: for Published
+  FileText,    // New: for Draft
+  Ban,         // New: for Cancelled
+  AlertCircle  // New: for Revision/Unknown
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import Modal from '@/components/Modal';
 
-type TabType = 'all' | 'published' | 'pending_approval' | 'draft';
+type TabType = 'all' | 'published' | 'pending_approval' | 'draft' | 'completed';
 
 export default function OrganizerDashboard() {
   const { user, isLoading } = useRequireRole(['organizer'], '/');
@@ -51,10 +55,9 @@ export default function OrganizerDashboard() {
         try {
           const allEvents = await getEvents();
           if (allEvents) {
-            // Filter out cancelled events
+            // Keep all events including cancelled/completed for history
             setOrganizerEvents(allEvents.filter(event => 
-              event.organizerId === user.organizationId && 
-              event.status !== 'cancelled'
+              event.organizerId === user.organizationId
             ));
           }
           const allProposals = await getAllProposals();
@@ -85,7 +88,7 @@ export default function OrganizerDashboard() {
     const totalEvents = organizerEvents.length;
     const totalParticipants = organizerEvents.reduce((sum, event) => sum + event.registeredCount, 0);
     const upcomingEvents = organizerEvents.filter(event => 
-      new Date(event.startDate) > new Date()
+      new Date(event.startDate) > new Date() && event.status !== 'cancelled'
     ).length;
     const publishedEvents = organizerEvents.filter(event => event.status === 'published').length;
 
@@ -101,11 +104,9 @@ export default function OrganizerDashboard() {
 
     setIsClaiming(true);
     try {
-      // Upload the file
       const path = `documents/${selectedEventForClaim.id}/${Date.now()}-${laporanFile.name}`;
       const url = await uploadDocument(laporanFile, path);
       
-      // Submit the claim
       await submitMyCSDClaim(
         selectedEventForClaim.id,
         url,
@@ -116,9 +117,6 @@ export default function OrganizerDashboard() {
       toast.success('Laporan submitted successfully! Points will be distributed upon admin approval.');
       setShowClaimModal(false);
       setLaporanFile(null);
-      
-      // Refresh events to update the claimed status (though it won't be claimed yet, just pending)
-      // Ideally we should show "Pending Approval" status for the claim
     } catch (error: any) {
       console.error('Error claiming MyCSD:', JSON.stringify(error, null, 2));
       toast.error(error.message || 'Failed to submit MyCSD claim');
@@ -127,29 +125,46 @@ export default function OrganizerDashboard() {
     }
   };
 
+  // --- NEW: Status Logic ---
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'published':
+        return <Globe className="w-4 h-4" />;
+      case 'completed':
         return <CheckCircle className="w-4 h-4" />;
       case 'pending_approval':
         return <Clock className="w-4 h-4" />;
       case 'draft':
-        return <Edit className="w-4 h-4" />;
-      default:
+        return <FileText className="w-4 h-4" />;
+      case 'rejected':
         return <XCircle className="w-4 h-4" />;
+      case 'cancelled':
+        return <Ban className="w-4 h-4" />;
+      case 'revision_needed':
+        return <AlertCircle className="w-4 h-4" />;
+      default:
+        return <AlertCircle className="w-4 h-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'published':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800 border border-blue-200';
       case 'pending_approval':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-amber-100 text-amber-800 border border-amber-200';
       case 'draft':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-100 text-slate-700 border border-slate-200';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border border-red-200';
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-500 border border-gray-200 line-through';
+      case 'revision_needed':
+        return 'bg-orange-100 text-orange-800 border border-orange-200';
       default:
-        return 'bg-red-100 text-red-800';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -225,19 +240,6 @@ export default function OrganizerDashboard() {
                             navigator.clipboard.writeText(proposal.id)
                               .then(() => toast.success('Secret Key copied to clipboard'))
                               .catch(() => toast.error('Failed to copy key'));
-                          } else {
-                            // Fallback
-                            const textArea = document.createElement("textarea");
-                            textArea.value = proposal.id;
-                            document.body.appendChild(textArea);
-                            textArea.select();
-                            try {
-                              document.execCommand('copy');
-                              toast.success('Secret Key copied to clipboard');
-                            } catch (err) {
-                              toast.error('Failed to copy key');
-                            }
-                            document.body.removeChild(textArea);
                           }
                         }}
                         className="text-gray-400 hover:text-purple-600 transition-colors"
@@ -296,8 +298,8 @@ export default function OrganizerDashboard() {
                   <p className="text-sm text-gray-600 mb-1">Published Events</p>
                   <p className="text-3xl font-bold text-gray-900">{stats.publishedEvents}</p>
                 </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <Globe className="w-6 h-6 text-emerald-600" />
                 </div>
               </div>
             </div>
@@ -306,17 +308,18 @@ export default function OrganizerDashboard() {
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow-md mb-6">
             <div className="border-b border-gray-200">
-              <nav className="flex -mb-px">
+              <nav className="flex -mb-px overflow-x-auto">
                 {[
-                  { key: 'all', label: 'All Events', count: organizerEvents.length },
+                  { key: 'all', label: 'All', count: organizerEvents.length },
                   { key: 'published', label: 'Published', count: organizerEvents.filter(e => e.status === 'published').length },
-                  { key: 'pending_approval', label: 'Pending Approval', count: organizerEvents.filter(e => e.status === 'pending_approval').length },
+                  { key: 'completed', label: 'Completed', count: organizerEvents.filter(e => e.status === 'completed').length },
+                  { key: 'pending_approval', label: 'Pending', count: organizerEvents.filter(e => e.status === 'pending_approval').length },
                   { key: 'draft', label: 'Draft', count: organizerEvents.filter(e => e.status === 'draft').length },
                 ].map(tab => (
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key as TabType)}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                       activeTab === tab.key
                         ? 'border-purple-600 text-purple-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -386,9 +389,9 @@ export default function OrganizerDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusColor(event.status)}`}>
                             {getStatusIcon(event.status)}
-                            {event.status}
+                            {event.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -400,13 +403,18 @@ export default function OrganizerDashboard() {
                             >
                               <Eye className="w-4 h-4" />
                             </Link>
-                            <Link
-                              href={`/organizer/events/${event.id}/edit`}
-                              className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Link>
+                            
+                            {/* Allow edit only if not completed/cancelled for sanity */}
+                            {event.status !== 'completed' && event.status !== 'cancelled' && (
+                               <Link
+                               href={`/organizer/events/${event.id}/edit`}
+                               className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded transition-colors"
+                               title="Edit"
+                             >
+                               <Edit className="w-4 h-4" />
+                             </Link>
+                            )}
+
                             <Link
                               href={`/organizer/events/${event.id}/attendees`}
                               className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded transition-colors"

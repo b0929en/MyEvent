@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/supabase';
 import { ProposalStatus } from '@/types';
+import { createNotification } from './notificationService';
 
 export interface Proposal {
   id: string;
@@ -43,24 +44,21 @@ export async function getAllProposals() {
   }
 
   return data.map((item: any) => {
-    // Reverted to original loose coupling (|| {})
-    const event = item.events?.[0] || {};
+    const event = Array.isArray(item.events) ? item.events[0] : item.events;
     
     return {
       id: item.event_request_id,
       organizerId: item.org_id,
       organizerName: item.organizations?.org_name || 'Unknown',
-      eventTitle: event.event_name || 'Untitled Proposal',
-      eventDescription: event.event_description || '',
-      category: event.category || 'other',
-      estimatedParticipants: event.capacity || 0,
-      proposedDate: event.event_date,
-      proposedVenue: event.event_venue,
+      eventTitle: event?.event_name || 'Untitled Proposal',
+      eventDescription: event?.event_description || '',
+      category: event?.category || 'other',
+      estimatedParticipants: event?.capacity || 0,
+      proposedDate: event?.event_date,
+      proposedVenue: event?.event_venue,
       documents: {
         eventProposal: item.event_request_file || '',
       },
-      // Fix: Map 'published' status (from DB) to 'approved' (for Frontend)
-      // This ensures proposals for published events show up in the Approved tab
       status: item.status,
       submittedAt: item.submitted_at,
       updatedAt: item.submitted_at,
@@ -75,6 +73,43 @@ export async function updateProposalStatus(id: string, status: string) {
     .eq('event_request_id', id);
 
   if (error) throw error;
+
+  // NEW: Send Notification if approved
+  // This ensures the Admin Dashboard "Recent Activity" picks it up
+  if (status === 'approved') {
+    try {
+      // Fetch details needed for notification
+      const { data: request, error: fetchError } = await supabase
+        .from('event_requests')
+        .select(`
+          user_id,
+          events (
+            event_id,
+            event_name
+          )
+        `)
+        .eq('event_request_id', id)
+        .single();
+
+      if (fetchError || !request) {
+        console.error('Error fetching request details for notification:', fetchError);
+        return;
+      }
+
+      const event = Array.isArray(request.events) ? request.events[0] : request.events;
+
+      await createNotification({
+        userId: request.user_id,
+        type: 'event', 
+        title: `Event Published: ${event?.event_name || 'Untitled Event'}`,
+        message: `Your proposal for "${event?.event_name}" has been approved and published.`,
+        link: `/events/${event?.event_id}`
+      });
+
+    } catch (notifyError) {
+      console.error('Failed to send approval notification:', notifyError);
+    }
+  }
 }
 
 export async function createProposal(proposalData: any) {
@@ -151,23 +186,21 @@ export async function getProposalById(id: string) {
     return null;
   }
 
-  // Reverted to original loose coupling
-  const event = data.events?.[0] || {};
+  const event = Array.isArray(data.events) ? data.events[0] : data.events;
   
   return {
     id: data.event_request_id,
     organizerId: data.org_id,
     organizerName: data.organizations?.org_name || 'Unknown',
-    eventTitle: event.event_name || 'Untitled Proposal',
-    eventDescription: event.event_description || '',
-    category: event.category || 'other',
-    estimatedParticipants: event.capacity || 0,
-    proposedDate: event.event_date,
-    proposedVenue: event.event_venue,
+    eventTitle: event?.event_name || 'Untitled Proposal',
+    eventDescription: event?.event_description || '',
+    category: event?.category || 'other',
+    estimatedParticipants: event?.capacity || 0,
+    proposedDate: event?.event_date,
+    proposedVenue: event?.event_venue,
     documents: {
       eventProposal: data.event_request_file || '',
     },
-    // Fix: Map 'published' status to 'approved' here as well
     status: data.status === 'published' ? 'approved' : data.status,
     submittedAt: data.submitted_at,
     updatedAt: data.submitted_at,

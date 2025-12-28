@@ -1,6 +1,6 @@
 import { supabase } from '../supabase/supabase';
 import { MyCSDRecord, ClubPosition } from '@/types';
-import { createNotification } from './notificationService'; // Ensure this path is correct for your project structure
+import { createNotification } from './notificationService';
 
 // Helper to calculate points based on level string
 export function getPointsForLevel(level?: string): number {
@@ -153,8 +153,6 @@ export async function approveMyCSDRequest(requestId: string) {
       const { error: logError } = await supabase
         .from('mycsd_logs')
         .insert(logsToInsert);
-        // Note: .ignoreDuplicates() is handled by ON CONFLICT in some setups, 
-        // if plain insert fails on duplicate, ensure your DB has unique constraints or handle error.
 
       if (logError) throw logError;
     }
@@ -217,32 +215,33 @@ export async function getAllMyCSDRequests() {
     return [];
   }
 
-  return data.map((req: any) => {
+  // Use Promise.all to fetch counts for all requests in parallel
+  const requestsWithCounts = await Promise.all(data.map(async (req: any) => {
     const event = req.events;
     // For pending requests, event_mycsd is empty. We must fallback to the event table data.
     const eventMycsd = req.event_mycsd?.[0]; 
     const record = eventMycsd?.mycsd_records;
 
-    // LOGIC FIX:
-    // 1. Use the finalized level (from approved record) if it exists.
-    // 2. If not, use the proposed level (from event table).
-    // 3. Fallback to 'kampus'.
     const displayLevel = eventMycsd?.event_level || event?.mycsd_level || 'kampus';
-    
-    // LOGIC FIX:
-    // 1. Use the finalized category (from approved record) if it exists.
-    // 2. If not, use the proposed category (from event table).
     const displayCategory = eventMycsd?.mycsd_category || event?.mycsd_category || 'REKA CIPTA DAN INOVASI';
 
-    // LOGIC FIX:
-    // 1. Use the finalized score if available.
-    // 2. If not, CALCULATE the score based on the proposed displayLevel.
     let displayPoints = 0;
     if (record?.mycsd_score) {
       displayPoints = record.mycsd_score;
     } else {
       displayPoints = getPointsForLevel(displayLevel);
     }
+
+    // Fetch participant count (present)
+    const { count: participantCount } = await supabase
+      .from('registrations')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', req.event_id)
+      .eq('attendance', 'present');
+
+    // Fetch committee count (Mocked for now as schema doesn't explicit support it)
+    // In future, this could be fetched from a committee table or specific roles
+    const committeeCount = 0;
 
     return {
       id: req.mr_id,
@@ -251,16 +250,21 @@ export async function getAllMyCSDRequests() {
       userEmail: req.users?.user_email || '',
       eventId: req.event_id,
       eventName: event?.event_name || 'Unknown Event',
+      organizerName: event?.event_requests?.organizations?.org_name || 'Unknown Org',
       category: displayCategory,
       level: displayLevel,
-      points: displayPoints, // This will now show 8 if level is antarabangsa, even if pending
+      points: displayPoints, 
       role: 'participant', 
       status: req.status,
       proofDocument: req.lk_document,
-      submittedAt: new Date().toISOString(), 
+      participantCount: participantCount || 0,
+      committeeCount: committeeCount,
+      submittedAt: req.created_at || new Date().toISOString(), // Use DB created_at if available? fallback to now
       updatedAt: new Date().toISOString(),
     };
-  });
+  }));
+
+  return requestsWithCounts;
 }
 
 export async function updateMyCSDRequestStatus(requestId: string, status: string) {
@@ -272,7 +276,6 @@ export async function updateMyCSDRequestStatus(requestId: string, status: string
   if (error) throw error;
 }
 
-// ... (Keep getUserMyCSDRecords, getUserClubPositions, calculateMyCSDSummary as they were)
 export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]> {
   const { data: studentData, error: studentError } = await supabase
     .from('students')

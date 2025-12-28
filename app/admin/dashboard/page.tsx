@@ -11,6 +11,7 @@ import { getUsers } from '@/backend/services/userService';
 import { getAllRegistrations } from '@/backend/services/registrationService';
 import { getAllProposals } from '@/backend/services/proposalService';
 import { getAllMyCSDRequests } from '@/backend/services/mycsdService';
+import { getAllSystemNotifications } from '@/backend/services/notificationService';
 import { Event, User, Registration } from '@/types';
 import { 
   Users, 
@@ -29,25 +30,30 @@ export default function AdminDashboard() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [proposals, setProposals] = useState<any[]>([]);
   const [mycsdRequests, setMycsdRequests] = useState<any[]>([]);
+  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fetchedEvents, fetchedUsers, fetchedRegistrations, fetchedProposals, fetchedMycsd] = await Promise.all([
+        const [fetchedEvents, fetchedUsers, fetchedRegistrations, fetchedProposals, fetchedMycsd, fetchedNotifications] = await Promise.all([
           getEvents(),
           getUsers(),
           getAllRegistrations(),
           getAllProposals(),
-          getAllMyCSDRequests()
+          getAllMyCSDRequests(),
+          getAllSystemNotifications()
         ]);
         if (fetchedEvents) setEvents(fetchedEvents);
         if (fetchedUsers) setUsersList(fetchedUsers);
         if (fetchedRegistrations) setRegistrations(fetchedRegistrations);
         if (fetchedProposals) setProposals(fetchedProposals);
         if (fetchedMycsd) setMycsdRequests(fetchedMycsd);
+        if (fetchedNotifications) setRecentNotifications(fetchedNotifications);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoadingData(false);
       }
     };
     fetchData();
@@ -57,7 +63,7 @@ export default function AdminDashboard() {
   const stats = useMemo(() => {
     const totalUsers = usersList.length;
     const totalEvents = events.length;
-    const publishedEvents = events.filter(e => e.status === 'published').length;
+    const publishedEvents = events.filter(e => e.status === 'published' || e.status === 'approved').length;
     const pendingApproval = events.filter(e => e.status === 'pending_approval').length;
     const totalRegistrations = registrations.length;
     
@@ -80,29 +86,51 @@ export default function AdminDashboard() {
   const recentActivity = useMemo(() => {
     const activity: any[] = [];
     
-    // 1. Add ALL proposals to the pool
+    // 1. Add ALL proposals to the pool (Proposal Submitted)
     proposals.forEach(p => {
       activity.push({
         id: `prop-${p.id}`,
         type: 'proposal_submitted',
         title: `New proposal: ${p.eventTitle}`,
         user: p.organizerName,
-        time: p.submittedAt, // Use raw ISO string for sorting
+        time: p.submittedAt, 
         displayTime: new Date(p.submittedAt).toLocaleDateString(),
         icon: FileText,
         color: 'blue'
       });
     });
 
-    // 2. Add ALL published events to the pool
+    // 2. Add System Notifications (Event Published)
+    // This is the source of truth for "Event Published" as it captures the approval action
+    recentNotifications.forEach(n => {
+      if (n.title.includes('Event Published')) {
+        activity.push({
+          id: `notif-${n.id}`,
+          type: 'event_approved',
+          title: n.title, // e.g. "Event Published: Event Name"
+          user: n.userName, // Recipient (Organizer)
+          time: n.createdAt,
+          displayTime: new Date(n.createdAt).toLocaleDateString(),
+          icon: CheckCircle,
+          color: 'green'
+        });
+      }
+    });
+
+    // 3. Fallback: Add older published events derived from Event objects
+    // Only if we don't already have a notification for it
+    const notifiedEventNames = new Set(recentNotifications
+      .filter(n => n.title.includes('Event Published'))
+      .map(n => n.title.replace('Event Published: ', '')));
+
     events.forEach(e => {
-      if (e.status === 'published') {
+      if ((e.status === 'published' || e.status === 'approved') && !notifiedEventNames.has(e.title)) {
         activity.push({
           id: `event-${e.id}`,
           type: 'event_approved',
           title: `Event Published: ${e.title}`,
           user: e.organizerName,
-          time: e.createdAt, // Use raw ISO string for sorting
+          time: e.createdAt, // This might be submission time, but it's a valid fallback
           displayTime: new Date(e.createdAt).toLocaleDateString(),
           icon: CheckCircle,
           color: 'green'
@@ -110,11 +138,11 @@ export default function AdminDashboard() {
       }
     });
 
-    // 3. Sort by time descending (newest first) and take top 5
+    // 4. Sort by time descending (newest first) and take top 5
     return activity
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
       .slice(0, 5);
-  }, [proposals, events]);
+  }, [proposals, events, recentNotifications]);
 
   if (isLoading) {
     return (
@@ -127,9 +155,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
