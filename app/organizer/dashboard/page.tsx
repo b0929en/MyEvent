@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useRequireRole } from '@/contexts/AuthContext';
@@ -12,23 +11,9 @@ import { uploadDocument } from '@/backend/services/storageService';
 import { Event } from '@/types';
 import { format } from 'date-fns';
 import { 
-  Plus, 
-  Calendar, 
-  Users, 
-  TrendingUp, 
-  Edit, 
-  Trash2, 
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Copy,
-  Award,
-  Upload,
-  Globe,       // New: for Published
-  FileText,    // New: for Draft
-  Ban,         // New: for Cancelled
-  AlertCircle  // New: for Revision/Unknown
+  Plus, Calendar, Users, TrendingUp, Edit, Trash2, Eye,
+  CheckCircle, XCircle, Clock, Copy, Award, Upload, Globe,
+  FileText, Ban, AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -41,7 +26,7 @@ export default function OrganizerDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [approvedProposals, setApprovedProposals] = useState<Proposal[]>([]);
-  const [isEventsLoading, setIsEventsLoading] = useState(true);
+  const [actionProposals, setActionProposals] = useState<Proposal[]>([]); 
   
   // MyCSD Claim State
   const [showClaimModal, setShowClaimModal] = useState(false);
@@ -55,35 +40,34 @@ export default function OrganizerDashboard() {
         try {
           const allEvents = await getEvents();
           if (allEvents) {
-            // Keep all events including cancelled/completed for history
             setOrganizerEvents(allEvents.filter(event => 
               event.organizerId === user.organizationId
             ));
           }
           const allProposals = await getAllProposals();
           if (allProposals) {
-             setApprovedProposals(allProposals.filter((p: Proposal) => p.organizerId === user.organizationId && p.status === 'approved'));
+             const myProposals = allProposals.filter((p: Proposal) => p.organizerId === user.organizationId);
+             
+             // Filter Approved
+             setApprovedProposals(myProposals.filter(p => p.status === 'approved'));
+             
+             // NEW: Filter for Revision Needed or Rejected to show comments
+             setActionProposals(myProposals.filter(p => p.status === 'revision_needed' || p.status === 'rejected'));
           }
         } catch (error) {
           console.error('Error fetching events:', error);
-        } finally {
-          setIsEventsLoading(false);
         }
-      } else if (!isLoading && !user) {
-         setIsEventsLoading(false);
       }
     };
 
     fetchEvents();
   }, [user, isLoading]);
 
-  // Filter events by tab
   const filteredEvents = useMemo(() => {
     if (activeTab === 'all') return organizerEvents;
     return organizerEvents.filter(event => event.status === activeTab);
   }, [organizerEvents, activeTab]);
 
-  // Calculate stats
   const stats = useMemo(() => {
     const totalEvents = organizerEvents.length;
     const totalParticipants = organizerEvents.reduce((sum, event) => sum + event.registeredCount, 0);
@@ -96,11 +80,7 @@ export default function OrganizerDashboard() {
   }, [organizerEvents]);
 
   const handleClaimMyCSD = async () => {
-    if (!selectedEventForClaim) return;
-    if (!laporanFile) {
-      toast.error('Please upload the Laporan Kejayaan file');
-      return;
-    }
+    if (!selectedEventForClaim || !laporanFile) return;
 
     setIsClaiming(true);
     try {
@@ -118,67 +98,40 @@ export default function OrganizerDashboard() {
       setShowClaimModal(false);
       setLaporanFile(null);
     } catch (error: any) {
-      console.error('Error claiming MyCSD:', JSON.stringify(error, null, 2));
+      console.error('Error claiming MyCSD:', error);
       toast.error(error.message || 'Failed to submit MyCSD claim');
     } finally {
       setIsClaiming(false);
     }
   };
 
-  // --- NEW: Status Logic ---
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'published':
-        return <Globe className="w-4 h-4" />;
-      case 'completed':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'pending_approval':
-        return <Clock className="w-4 h-4" />;
-      case 'draft':
-        return <FileText className="w-4 h-4" />;
-      case 'rejected':
-        return <XCircle className="w-4 h-4" />;
-      case 'cancelled':
-        return <Ban className="w-4 h-4" />;
-      case 'revision_needed':
-        return <AlertCircle className="w-4 h-4" />;
-      default:
-        return <AlertCircle className="w-4 h-4" />;
+      case 'published': return <Globe className="w-4 h-4" />;
+      case 'completed': return <CheckCircle className="w-4 h-4" />;
+      case 'pending_approval': return <Clock className="w-4 h-4" />;
+      case 'draft': return <FileText className="w-4 h-4" />;
+      case 'rejected': return <XCircle className="w-4 h-4" />;
+      case 'cancelled': return <Ban className="w-4 h-4" />;
+      case 'revision_needed': return <AlertCircle className="w-4 h-4" />;
+      default: return <AlertCircle className="w-4 h-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'published':
-        return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800 border border-blue-200';
-      case 'pending_approval':
-        return 'bg-amber-100 text-amber-800 border border-amber-200';
-      case 'draft':
-        return 'bg-slate-100 text-slate-700 border border-slate-200';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 border border-red-200';
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-500 border border-gray-200 line-through';
-      case 'revision_needed':
-        return 'bg-orange-100 text-orange-800 border border-orange-200';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'published': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+      case 'completed': return 'bg-blue-100 text-blue-800 border border-blue-200';
+      case 'pending_approval': return 'bg-amber-100 text-amber-800 border border-amber-200';
+      case 'draft': return 'bg-slate-100 text-slate-700 border border-slate-200';
+      case 'rejected': return 'bg-red-100 text-red-800 border border-red-200';
+      case 'cancelled': return 'bg-gray-100 text-gray-500 border border-gray-200 line-through';
+      case 'revision_needed': return 'bg-orange-100 text-orange-800 border border-orange-200';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
+  if (isLoading) return null;
   if (!user) return null;
 
   return (
@@ -216,6 +169,53 @@ export default function OrganizerDashboard() {
               </Link>
             </div>
           </div>
+
+          {/* Proposals Needing Attention Section */}
+          {actionProposals.length > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-8">
+              <h2 className="text-lg font-semibold text-orange-800 mb-4 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                Proposals Needing Attention
+              </h2>
+              <div className="grid gap-4">
+                {actionProposals.map(proposal => (
+                  <div key={proposal.id} className="bg-white p-4 rounded-md shadow-sm border-l-4 border-orange-400">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div>
+                        <h3 className="font-medium text-gray-900 text-lg">{proposal.eventTitle}</h3>
+                        <p className="text-sm text-gray-500">
+                          Status: <span className={proposal.status === 'revision_needed' ? 'font-semibold text-orange-600' : 'font-semibold text-red-600'}>
+                            {proposal.status === 'revision_needed' ? 'Revision Needed' : 'Rejected'}
+                          </span>
+                          {' • '}
+                          {format(new Date(proposal.updatedAt), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
+                      
+                      {/* THIS IS THE BUTTON THAT LINKS TO THE REVISION PAGE */}
+                      {proposal.status === 'revision_needed' && (
+                        <Link 
+                          href={`/organizer/proposals/${proposal.id}/edit`}
+                          className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors font-medium text-sm border border-orange-200"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Resubmit Proposal
+                        </Link>
+                      )}
+                    </div>
+                    
+                    {/* Display Admin Notes */}
+                    {proposal.adminNotes && (
+                      <div className="bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
+                        <span className="font-semibold text-gray-900">Admin Feedback: </span>
+                        {proposal.adminNotes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Approved Proposals Section */}
           {approvedProposals.length > 0 && (
@@ -404,7 +404,7 @@ export default function OrganizerDashboard() {
                               <Eye className="w-4 h-4" />
                             </Link>
                             
-                            {/* Allow edit only if not completed/cancelled for sanity */}
+                            {/* Allow edit only if not completed/cancelled */}
                             {event.status !== 'completed' && event.status !== 'cancelled' && (
                                <Link
                                href={`/organizer/events/${event.id}/edit`}

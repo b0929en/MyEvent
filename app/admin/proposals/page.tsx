@@ -77,7 +77,8 @@ export default function ProposalsPage() {
       else if (reviewAction === 'reject') newStatus = 'rejected';
       else if (reviewAction === 'revision') newStatus = 'revision_needed';
 
-      await updateProposalStatus(selectedProposal.id, newStatus);
+      // FIXED: Passed adminNotes to the service
+      await updateProposalStatus(selectedProposal.id, newStatus, adminNotes);
       
       toast.success(`Proposal ${reviewAction}d successfully!`);
       
