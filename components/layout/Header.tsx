@@ -26,23 +26,23 @@ export default function Header() {
           <Link href="/" className="flex items-center">
             <span className="text-2xl font-bold">
               <span className="text-orange-500">My</span>
-              <span className="text-purple-900">EVENT</span>
+              <span className="text-purple-900">Event</span>
             </span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link 
-              href="/events" 
+            <Link
+              href="/events"
               className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
             >
               <Calendar className="w-4 h-4" />
               Events
             </Link>
-            
+
             {isAuthenticated && user?.role === 'student' && (
-              <Link 
-                href="/mycsd" 
+              <Link
+                href="/mycsd"
                 className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
               >
                 <Award className="w-4 h-4" />
@@ -51,8 +51,8 @@ export default function Header() {
             )}
 
             {isAuthenticated && user?.role === 'organizer' && (
-              <Link 
-                href="/organizer/dashboard" 
+              <Link
+                href="/organizer/dashboard"
                 className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
               >
                 Dashboard
@@ -60,8 +60,8 @@ export default function Header() {
             )}
 
             {isAuthenticated && user?.role === 'admin' && (
-              <Link 
-                href="/admin/dashboard" 
+              <Link
+                href="/admin/dashboard"
                 className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
               >
                 Admin Panel
@@ -70,8 +70,8 @@ export default function Header() {
 
             {isAuthenticated ? (
               <>
-                <Link 
-                  href="/notifications" 
+                <Link
+                  href="/notifications"
                   className="relative flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
                 >
                   <Bell className="w-4 h-4" />
@@ -79,14 +79,14 @@ export default function Header() {
                   {/* Unread badge - backend will provide count */}
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 </Link>
-                <Link 
-                  href="/profile" 
+                <Link
+                  href="/profile"
                   className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
                 >
                   <User className="w-4 h-4" />
                   Profile
                 </Link>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="flex items-center gap-1 text-red-600 hover:text-red-700 font-medium transition-colors"
                 >
@@ -95,8 +95,8 @@ export default function Header() {
                 </button>
               </>
             ) : (
-              <Link 
-                href="/login" 
+              <Link
+                href="/login"
                 className="bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
               >
                 Login
@@ -121,18 +121,18 @@ export default function Header() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 py-4">
             <nav className="flex flex-col space-y-3">
-              <Link 
-                href="/events" 
+              <Link
+                href="/events"
                 className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Calendar className="w-4 h-4" />
                 Events
               </Link>
-              
+
               {isAuthenticated && user?.role === 'student' && (
-                <Link 
-                  href="/mycsd" 
+                <Link
+                  href="/mycsd"
                   className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -142,8 +142,8 @@ export default function Header() {
               )}
 
               {isAuthenticated && user?.role === 'organizer' && (
-                <Link 
-                  href="/organizer/dashboard" 
+                <Link
+                  href="/organizer/dashboard"
                   className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -152,8 +152,8 @@ export default function Header() {
               )}
 
               {isAuthenticated && user?.role === 'admin' && (
-                <Link 
-                  href="/admin/dashboard" 
+                <Link
+                  href="/admin/dashboard"
                   className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -163,8 +163,8 @@ export default function Header() {
 
               {isAuthenticated ? (
                 <>
-                  <Link 
-                    href="/notifications" 
+                  <Link
+                    href="/notifications"
                     className="relative flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -172,15 +172,15 @@ export default function Header() {
                     Notifications
                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
                   </Link>
-                  <Link 
-                    href="/profile" 
+                  <Link
+                    href="/profile"
                     className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <User className="w-4 h-4" />
                     Profile
                   </Link>
-                  <button 
+                  <button
                     onClick={() => {
                       handleLogout();
                       setMobileMenuOpen(false);
@@ -192,8 +192,8 @@ export default function Header() {
                   </button>
                 </>
               ) : (
-                <Link 
-                  href="/login" 
+                <Link
+                  href="/login"
                   className="bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all text-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
