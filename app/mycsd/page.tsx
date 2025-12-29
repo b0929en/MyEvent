@@ -23,12 +23,12 @@ export default function MyCSDPage() {
   const [summary, setSummary] = useState({
     totalPoints: 0,
     totalEvents: 0,
-    pointsByCategory: { 
-      'REKA CIPTA DAN INOVASI': 0, 
-      'KEUSAHAWAN': 0, 
-      'KEBUDAYAAN': 0, 
-      'SUKAN/REKREASI/SOSIALISASI': 0, 
-      'KEPIMPINAN': 0 
+    pointsByCategory: {
+      'REKA CIPTA DAN INOVASI': 0,
+      'KEUSAHAWAN': 0,
+      'KEBUDAYAAN': 0,
+      'SUKAN/REKREASI/SOSIALISASI': 0,
+      'KEPIMPINAN': 0
     } as Record<string, number>,
     pointsByLevel: { antarabangsa: 0, negeri_universiti: 0, kampus: 0 } as Record<string, number>,
     eventsThisMonth: 0,
@@ -87,19 +87,16 @@ export default function MyCSDPage() {
     teras: record.category.toUpperCase(),
     namaProjek: record.eventName,
     persatuan: record.organizationName,
-    
-    // --- CHANGE THIS LINE ---
-    // Use .toLowerCase() to handle 'Participant', 'participant', 'PARTICIPANT' safely
-    jawatan: (record.role || '').toLowerCase() === 'participant' 
-      ? 'Peserta' 
-      : (record.role || '').toLowerCase() === 'committee' 
-        ? 'AJK' 
-        : 'Penganjur', 
-    // ------------------------
 
-    peringkat: record.level === 'antarabangsa' ? 'Antarabangsa' : 
-               record.level === 'negeri_universiti' ? 'Universiti' : 
-               'P.Pengajian / Desasiswa / Persatuan / Kelab',
+    jawatan: record.position || (
+      (record.role || '').toLowerCase() === 'committee' ? 'AJK' :
+        (record.role || '').toLowerCase() === 'organizer' ? 'Penganjur' :
+          'Peserta'
+    ),
+
+    peringkat: (record.level || '').toLowerCase().includes('antarabangsa') ? 'Antarabangsa' :
+      (record.level || '').toLowerCase().includes('negeri') || (record.level || '').toLowerCase().includes('universiti') ? 'Universiti' :
+        'P.Pengajian / Desasiswa / Persatuan / Kelab',
     mata: record.points,
     mycsd: record.status === 'approved' ? 'YA' : 'Pending',
     date: record.submittedAt.split('T')[0],
@@ -153,7 +150,7 @@ export default function MyCSDPage() {
   // Automatically reset to page 1 when filters or search changes
   const eventPageRef = React.useRef(eventPage);
   const posPageRef = React.useRef(posPage);
-  
+
   React.useEffect(() => {
     eventPageRef.current = 1;
     setEventPage(1);
@@ -468,8 +465,8 @@ export default function MyCSDPage() {
                 <button
                   onClick={() => setActiveTab('events')}
                   className={`${activeTab === 'events'
-                      ? 'border-purple-900 text-purple-900'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                 >
                   Event Participation
@@ -477,8 +474,8 @@ export default function MyCSDPage() {
                 <button
                   onClick={() => setActiveTab('positions')}
                   className={`${activeTab === 'positions'
-                      ? 'border-purple-900 text-purple-900'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                 >
                   Club/Society Position

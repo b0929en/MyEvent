@@ -40,10 +40,10 @@ export default function AdminEventsPage() {
   }, []);
 
   const filteredEvents = useMemo(() => {
-    const relevantEvents = events.filter(e => 
+    const relevantEvents = events.filter(e =>
       ['pending_approval', 'approved', 'rejected'].includes(e.status)
     );
-    
+
     if (statusFilter === 'all') return relevantEvents;
     return relevantEvents.filter(e => e.status === statusFilter);
   }, [statusFilter, events]);
@@ -56,10 +56,15 @@ export default function AdminEventsPage() {
     };
   }, [events]);
 
+
+
+  // ... (previous useEffects)
+
   const handleReview = (event: Event, action: 'approve' | 'reject') => {
     setSelectedEvent(event);
     setReviewAction(action);
     setAdminNotes('');
+
     setShowReviewModal(true);
   };
 
@@ -67,19 +72,19 @@ export default function AdminEventsPage() {
     if (!selectedEvent) return;
 
     try {
+
+
       // Map 'approve'/'reject' to EventStatus
-      // If approved, status becomes 'published' (or 'approved' if that's the flow)
-      // If rejected, status becomes 'rejected'
       const newStatus = reviewAction === 'approve' ? 'published' : 'rejected';
-      
+
       await updateEventStatus(selectedEvent.id, newStatus);
-      
+
       toast.success(`Event ${reviewAction}d successfully!`);
-      
+
       // Refresh events
       const updatedEvents = await getEvents();
       setEvents(updatedEvents);
-      
+
       setShowReviewModal(false);
       setSelectedEvent(null);
       setAdminNotes('');
@@ -181,11 +186,10 @@ export default function AdminEventsPage() {
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    statusFilter === status
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   {status === 'all' ? 'All' : status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                 </button>
@@ -270,7 +274,7 @@ export default function AdminEventsPage() {
                       <Eye className="w-4 h-4" />
                       View Details
                     </Link>
-                    
+
                     {event.status === 'pending_approval' && (
                       <>
                         <button
@@ -362,11 +366,10 @@ export default function AdminEventsPage() {
               <button
                 onClick={submitReview}
                 disabled={reviewAction === 'reject' && !adminNotes.trim()}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  reviewAction === 'approve'
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${reviewAction === 'approve'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 Confirm {reviewAction === 'approve' ? 'Approval' : 'Rejection'}
               </button>

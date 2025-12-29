@@ -74,7 +74,7 @@ export async function getUserById(id: string) {
 }
 
 export async function getAllUsers() {
-    const { data, error } = await supabase
+  const { data, error } = await supabase
     .from('users')
     .select(`
       *,
@@ -88,4 +88,32 @@ export async function getAllUsers() {
   }
 
   return data.map(mapUser);
+}
+
+export async function getStudentByMatric(matricNumber: string) {
+  const { data, error } = await supabase
+    .from('students')
+    .select(`
+      matric_num,
+      users (
+        user_id,
+        user_name,
+        user_email
+      )
+    `)
+    .eq('matric_num', matricNumber)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const userUser = Array.isArray(data.users) ? data.users[0] : data.users;
+
+  return {
+    matricNumber: data.matric_num,
+    name: userUser?.user_name,
+    email: userUser?.user_email,
+    userId: userUser?.user_id
+  };
 }

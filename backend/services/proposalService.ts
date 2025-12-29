@@ -22,6 +22,7 @@ export interface Proposal {
   adminNotes?: string;
   submittedAt: string;
   updatedAt: string;
+  committeeMembers?: any[];
 }
 
 // Helper to safely parse document paths
@@ -62,7 +63,7 @@ export async function getAllProposals() {
 
   return data.map((item: DBEventRequest) => {
     const event = Array.isArray(item.events) ? item.events[0] : item.events;
-    
+
     return {
       id: item.event_request_id,
       organizerId: item.org_id,
@@ -79,6 +80,7 @@ export async function getAllProposals() {
       adminNotes: item.admin_notes || '',
       submittedAt: item.submitted_at,
       updatedAt: item.submitted_at,
+      committeeMembers: item.committee_members || [],
     };
   });
 }
@@ -98,15 +100,15 @@ export async function updateProposalStatus(id: string, status: string, adminNote
         .select(`user_id, events ( event_id, event_name )`)
         .eq('event_request_id', id)
         .single();
-      
+
       if (request) {
         const event = Array.isArray(request.events) ? request.events[0] : request.events;
         await createNotification({
           userId: request.user_id,
-          type: 'event', 
+          type: 'event',
           title: status === 'approved' ? `Event Published: ${event?.event_name}` : `Proposal Update: ${event?.event_name}`,
-          message: status === 'approved' 
-            ? `Your proposal has been approved.` 
+          message: status === 'approved'
+            ? `Your proposal has been approved.`
             : (status === 'revision_needed' ? `Revision requested: ${adminNotes}` : `Rejected: ${adminNotes}`),
           link: status === 'approved' ? `/events/${event?.event_id}` : '/organizer/dashboard'
         });
@@ -133,7 +135,8 @@ export async function createProposal(proposalData: ProposalCreateInput) {
       org_id: orgAdmin.org_id,
       user_id: proposalData.organizerId,
       event_request_file: documentsJSON, // Store JSON string
-      status: 'pending'
+      status: 'pending',
+      committee_members: proposalData.committeeMembers || []
     })
     .select()
     .single();
@@ -149,7 +152,8 @@ export async function createProposal(proposalData: ProposalCreateInput) {
       event_venue: proposalData.proposedVenue,
       category: proposalData.category,
       capacity: proposalData.estimatedParticipants,
-      event_request_id: request.event_request_id
+      event_request_id: request.event_request_id,
+      committee_members: proposalData.committeeMembers || []
     });
 
   if (eventError) {
@@ -161,7 +165,7 @@ export async function createProposal(proposalData: ProposalCreateInput) {
 
 export async function updateProposal(id: string, proposalData: ProposalUpdateInput) {
   const requestUpdates: Record<string, unknown> = { status: 'pending' };
-  
+
   if (proposalData.documents) {
     requestUpdates.event_request_file = JSON.stringify(proposalData.documents);
   }
@@ -174,7 +178,7 @@ export async function updateProposal(id: string, proposalData: ProposalUpdateInp
   if (reqError) throw reqError;
 
   const { data: eventData } = await supabase.from('events').select('event_id').eq('event_request_id', id).single();
-  
+
   if (eventData) {
     await supabase
       .from('events')
@@ -204,7 +208,7 @@ export async function getProposalById(id: string) {
   if (error) return null;
 
   const event = Array.isArray(data.events) ? data.events[0] : data.events;
-  
+
   return {
     id: data.event_request_id,
     organizerId: data.org_id,
@@ -216,10 +220,11 @@ export async function getProposalById(id: string) {
     proposedDate: event?.event_date,
     proposedVenue: event?.event_venue,
     // FIXED: Use parser
-    documents: parseDocuments(data.event_request_file), 
+    documents: parseDocuments(data.event_request_file),
     status: data.status,
     adminNotes: data.admin_notes || '',
     submittedAt: data.submitted_at,
     updatedAt: data.submitted_at,
+    committeeMembers: data.committee_members || []
   };
 }

@@ -45,6 +45,7 @@ export interface DBEventRequest {
   admin_notes?: string | null;
   organizations?: DBOrganization;
   events?: DBEvent | DBEvent[];
+  committee_members?: any;
 }
 
 export interface DBMyCSDRequest {
@@ -93,6 +94,7 @@ export interface DBEvent {
   mycsd_points: number | null;
   agenda: string[] | null;
   is_mycsd_claimed: boolean;
+  committee_members?: any;
   event_requests?: DBEventRequest | DBEventRequest[];
   mycsd_requests?: DBMyCSDRequest[];
 }
@@ -132,7 +134,7 @@ export interface DBMyCSDLog {
   matric_no: string;
   record_id: string;
   score: number | null;
-  position: string | null;
+  position: MyCSDPosition | null;
   mycsd_records?: DBMyCSDRecord;
   students?: {
     matric_num: string;
@@ -215,13 +217,31 @@ export type Organization = {
 export type ProposalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'revision_needed' | 'published' | 'completed' | 'cancelled';
 export type EventStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
 export type EventCategory = 'sport' | 'academic' | 'cultural' | 'social' | 'competition' | 'talk' | 'workshop' | 'other';
-export type MyCSDCategory = 
+export type MyCSDCategory =
   | 'REKA CIPTA DAN INOVASI'
   | 'KEUSAHAWAN'
   | 'KEBUDAYAAN'
   | 'SUKAN/REKREASI/SOSIALISASI'
   | 'KEPIMPINAN';
-export type MyCSDLevel = 'antarabangsa' | 'negeri_universiti' | 'kampus';
+export type MyCSDLevel =
+  | 'P.Pengajian / Desasiswa / Persatuan / Kelab'
+  | 'Negeri / Universiti'
+  | 'Kebangsaan / Antara University'
+  | 'Antarabangsa';
+
+export type MyCSDRole =
+  | 'pengikut'
+  | 'peserta'
+  | 'ajk_kecil'
+  | 'ajk_tertinggi'
+  | 'pengarah';
+
+export type MyCSDPosition =
+  | 'Pengikut'
+  | 'Peserta'
+  | 'AJK Kecil'
+  | 'AJK Tertinggi'
+  | 'Pengarah';
 
 export type EventProposal = {
   id: string;
@@ -245,6 +265,7 @@ export type EventProposal = {
   reviewedAt?: string;
   submittedAt: string;
   updatedAt: string;
+  committeeMembers?: CommitteeMember[];
 };
 
 export type Event = {
@@ -276,6 +297,7 @@ export type Event = {
   agenda?: string[];
   is_mycsd_claimed?: boolean;
   adminNotes?: string;
+  committeeMembers?: CommitteeMember[];
   createdAt: string;
   updatedAt: string;
 };
@@ -305,8 +327,8 @@ export type CommitteeMember = {
   name: string;
   matricNumber: string;
   position: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
 };
 
 // ============================================================================
@@ -357,6 +379,7 @@ export type MyCSDRecord = {
   submittedAt: string;
   approvedAt?: string;
   approvedBy?: string;
+  position?: MyCSDPosition;
 };
 
 export type MyCSDSummary = {
@@ -430,9 +453,9 @@ export type AttendanceRecord = {
 // Notification Types
 // ============================================================================
 
-export type NotificationType = 
-  | 'registration_confirmed' 
-  | 'event_reminder' 
+export type NotificationType =
+  | 'registration_confirmed'
+  | 'event_reminder'
   | 'event_cancelled'
   | 'application_approved'
   | 'application_rejected'
@@ -539,12 +562,14 @@ export type ProposalCreateInput = {
     riskAssessment?: string;
     supportingDocuments?: string;
   };
+  committeeMembers?: CommitteeMember[];
 };
 
 export type ProposalUpdateInput = Partial<Omit<ProposalCreateInput, 'documents'>> & {
   status?: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
   adminNotes?: string;
   documents?: DocumentsInput | Record<string, string>;
+  committeeMembers?: CommitteeMember[];
 };
 
 export type EventUpdateInput = Partial<{

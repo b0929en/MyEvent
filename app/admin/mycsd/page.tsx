@@ -28,6 +28,7 @@ interface MyCSDRequest {
   proofDocument: string;
   participantCount: number;
   committeeCount: number;
+  committeeMembers?: any[];
   submittedAt: string;
   updatedAt: string;
 }
@@ -42,6 +43,7 @@ export default function AdminMyCSDPage() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [adminNotes, setAdminNotes] = useState('');
+  const [committeeRoles, setCommitteeRoles] = useState<Record<string, string>>({});
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
@@ -80,6 +82,16 @@ export default function AdminMyCSDPage() {
     setSelectedSubmission(submission);
     setReviewAction(action);
     setAdminNotes('');
+
+    // Initialize committee roles from submission data if available
+    const initialRoles: Record<string, string> = {};
+    if (submission.committeeMembers) {
+      submission.committeeMembers.forEach((member: any) => {
+        initialRoles[member.matricNumber] = member.position || 'ajk_kecil';
+      });
+    }
+    setCommitteeRoles(initialRoles);
+
     setShowReviewModal(true);
   };
 
@@ -89,16 +101,16 @@ export default function AdminMyCSDPage() {
     try {
       if (reviewAction === 'approve') {
         // approving triggers point calculation and log creation
-        await approveMyCSDRequest(selectedSubmission.id);
+        await approveMyCSDRequest(selectedSubmission.id, committeeRoles);
       } else {
         // rejecting only updates the status
         await updateMyCSDRequestStatus(selectedSubmission.id, 'rejected');
       }
-      
+
       toast.success(`Request ${reviewAction}d successfully!`);
-      
+
       fetchSubmissions();
-      
+
       setShowReviewModal(false);
       setSelectedSubmission(null);
       setAdminNotes('');
@@ -202,11 +214,10 @@ export default function AdminMyCSDPage() {
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    statusFilter === status
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
@@ -255,12 +266,12 @@ export default function AdminMyCSDPage() {
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{submission.eventName}</div>
                           <div className="text-xs text-gray-500">
-                             Org: {submission.organizerName}
+                            Org: {submission.organizerName}
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900 capitalize">{submission.category}</div>
-                          <div className="text-xs text-gray-500 capitalize">{submission.level}</div>
+                          <div className="text-xs text-gray-500">{submission.level}</div>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -353,15 +364,15 @@ export default function AdminMyCSDPage() {
                 <span className="text-sm text-gray-600">Level:</span>
                 <span className="text-sm font-medium text-gray-900 capitalize">{selectedSubmission.level}</span>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 border-t border-b py-2 my-2">
                 <div className="text-center">
-                   <p className="text-xs text-gray-500">Participants</p>
-                   <p className="text-lg font-bold text-gray-900">{selectedSubmission.participantCount}</p>
+                  <p className="text-xs text-gray-500">Participants</p>
+                  <p className="text-lg font-bold text-gray-900">{selectedSubmission.participantCount}</p>
                 </div>
                 <div className="text-center border-l">
-                   <p className="text-xs text-gray-500">Committee</p>
-                   <p className="text-lg font-bold text-gray-900">{selectedSubmission.committeeCount}</p>
+                  <p className="text-xs text-gray-500">Committee</p>
+                  <p className="text-lg font-bold text-gray-900">{selectedSubmission.committeeCount}</p>
                 </div>
               </div>
 
@@ -370,6 +381,41 @@ export default function AdminMyCSDPage() {
                 <span className="text-lg font-bold text-purple-600">{selectedSubmission.points}</span>
               </div>
             </div>
+
+            {selectedSubmission.committeeMembers && selectedSubmission.committeeMembers.length > 0 && (
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Committee Roles & Points</h3>
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                  {selectedSubmission.committeeMembers.map((member: any) => (
+                    <div key={member.matricNumber} className="flex items-center gap-2 text-sm border-b pb-2 last:border-0 last:pb-0">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{member.name}</p>
+                        <p className="text-xs text-gray-500">{member.matricNumber}</p>
+                        <p className="text-xs text-purple-600 mt-0.5">
+                          <span className="font-semibold text-gray-600">Org Position:</span> {member.position || 'Not Specified'}
+                        </p>
+                      </div>
+                      <div className="w-1/2">
+                        <label className="block text-xs text-gray-500 mb-1">MyCSD Role (Points)</label>
+                        <select
+                          value={committeeRoles[member.matricNumber] || 'ajk_kecil'}
+                          onChange={(e) => setCommitteeRoles(prev => ({
+                            ...prev,
+                            [member.matricNumber]: e.target.value
+                          }))}
+                          disabled={reviewAction === 'reject'}
+                          className="w-full text-xs border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                        >
+                          <option value="pengarah">Pengarah / Director</option>
+                          <option value="ajk_tertinggi">AJK Tertinggi / High Committee</option>
+                          <option value="ajk_kecil">AJK Kecil / Committee</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -393,8 +439,8 @@ export default function AdminMyCSDPage() {
                 <div className="flex items-start gap-2">
                   <Users className="w-5 h-5 text-green-600 mt-0.5" />
                   <p className="text-sm text-green-900">
-                    You are about to award <strong>{selectedSubmission.points} points</strong> to <strong>{selectedSubmission.participantCount} participants</strong>. 
-                    <br/>
+                    You are about to award <strong>{selectedSubmission.points} points</strong> to <strong>{selectedSubmission.participantCount} participants</strong>.
+                    <br />
                     <span className="text-xs text-green-700 mt-1 block">Total points distributed: {selectedSubmission.points * selectedSubmission.participantCount}</span>
                   </p>
                 </div>
@@ -405,11 +451,10 @@ export default function AdminMyCSDPage() {
               <button
                 onClick={submitReview}
                 disabled={reviewAction === 'reject' && !adminNotes.trim()}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  reviewAction === 'approve'
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${reviewAction === 'approve'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 Confirm {reviewAction === 'approve' ? 'Approval' : 'Rejection'}
               </button>

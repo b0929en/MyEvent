@@ -43,7 +43,7 @@ export default function EventsPage() {
 
     if (searchQuery) {
       const search = searchQuery.toLowerCase();
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         event.title.toLowerCase().includes(search) ||
         event.description.toLowerCase().includes(search) ||
         event.organizerName.toLowerCase().includes(search)
@@ -51,7 +51,7 @@ export default function EventsPage() {
     }
 
     if (selectedCategories.length > 0) {
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         selectedCategories.includes(event.category)
       );
     }
@@ -61,13 +61,13 @@ export default function EventsPage() {
     }
 
     if (selectedMyCSDCategories.length > 0) {
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         event.mycsdCategory && selectedMyCSDCategories.includes(event.mycsdCategory)
       );
     }
 
     if (selectedMyCSDLevels.length > 0) {
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         event.mycsdLevel && selectedMyCSDLevels.includes(event.mycsdLevel)
       );
     }
@@ -89,8 +89,8 @@ export default function EventsPage() {
 
   // Category filter handlers
   const toggleCategory = (category: EventCategory) => {
-    setSelectedCategories(prev => 
-      prev.includes(category) 
+    setSelectedCategories(prev =>
+      prev.includes(category)
         ? prev.filter(c => c !== category)
         : [...prev, category]
     );
@@ -166,7 +166,7 @@ export default function EventsPage() {
   // Generate pagination numbers
   const getPaginationNumbers = () => {
     const pages: (number | string)[] = [];
-    
+
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -180,7 +180,7 @@ export default function EventsPage() {
         pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
       }
     }
-    
+
     return pages;
   };
 
@@ -217,17 +217,17 @@ export default function EventsPage() {
                 <h3 className="font-semibold text-gray-900 mb-3">EVENT CATEGORY</h3>
                 <div className="space-y-2">
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
-                      className="mr-2 cursor-pointer" 
+                    <input
+                      type="checkbox"
+                      className="mr-2 cursor-pointer"
                       checked={selectedCategories.includes('sport')}
                       onChange={() => toggleCategory('sport')}
                     />
                     <span className="text-gray-700">Sport <span className="text-gray-400">({categoryCounts['sport'] || 0})</span></span>
                   </label>
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="mr-2 cursor-pointer"
                       checked={selectedCategories.includes('talk')}
                       onChange={() => toggleCategory('talk')}
@@ -235,8 +235,8 @@ export default function EventsPage() {
                     <span className="text-gray-700">Talks <span className="text-gray-400">({categoryCounts['talk'] || 0})</span></span>
                   </label>
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="mr-2 cursor-pointer"
                       checked={selectedCategories.includes('competition')}
                       onChange={() => toggleCategory('competition')}
@@ -244,8 +244,8 @@ export default function EventsPage() {
                     <span className="text-gray-700">Competition <span className="text-gray-400">({categoryCounts['competition'] || 0})</span></span>
                   </label>
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="mr-2 cursor-pointer"
                       checked={selectedCategories.includes('workshop')}
                       onChange={() => toggleCategory('workshop')}
@@ -260,8 +260,8 @@ export default function EventsPage() {
                 <h3 className="font-semibold text-gray-900 mb-3">MYCSD AVAILABILITY</h3>
                 <div className="space-y-2">
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="mr-2 cursor-pointer"
                       checked={hasMyCSD === true}
                       onChange={() => toggleMyCSDAvailability(true)}
@@ -269,8 +269,8 @@ export default function EventsPage() {
                     <span className="text-gray-700">Yes</span>
                   </label>
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="mr-2 cursor-pointer"
                       checked={hasMyCSD === false}
                       onChange={() => toggleMyCSDAvailability(false)}
@@ -286,8 +286,8 @@ export default function EventsPage() {
                 <div className="space-y-2">
                   {(['REKA CIPTA DAN INOVASI', 'KEUSAHAWAN', 'KEBUDAYAAN', 'SUKAN/REKREASI/SOSIALISASI', 'KEPIMPINAN'] as MyCSDCategory[]).map((category) => (
                     <label key={category} className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         className="mr-2 cursor-pointer"
                         checked={selectedMyCSDCategories.includes(category)}
                         onChange={() => toggleMyCSDCategory(category)}
@@ -303,31 +303,40 @@ export default function EventsPage() {
                 <h3 className="font-semibold text-gray-900 mb-3">MYCSD LEVEL</h3>
                 <div className="space-y-2">
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="mr-2 cursor-pointer"
-                      checked={selectedMyCSDLevels.includes('antarabangsa')}
-                      onChange={() => toggleMyCSDLevel('antarabangsa')}
+                      checked={selectedMyCSDLevels.includes('Antarabangsa')}
+                      onChange={() => toggleMyCSDLevel('Antarabangsa')}
                     />
-                    <span className="text-gray-700">Antarabangsa <span className="text-gray-400">({mycsdLevelCounts['antarabangsa'] || 0})</span></span>
+                    <span className="text-gray-700">Antarabangsa <span className="text-gray-400">({mycsdLevelCounts['Antarabangsa'] || 0})</span></span>
                   </label>
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="mr-2 cursor-pointer"
-                      checked={selectedMyCSDLevels.includes('negeri_universiti')}
-                      onChange={() => toggleMyCSDLevel('negeri_universiti')}
+                      checked={selectedMyCSDLevels.includes('Kebangsaan / Antara University')}
+                      onChange={() => toggleMyCSDLevel('Kebangsaan / Antara University')}
                     />
-                    <span className="text-gray-700">Negeri / Universiti <span className="text-gray-400">({mycsdLevelCounts['negeri_universiti'] || 0})</span></span>
+                    <span className="text-gray-700">Kebangsaan / Antara Universiti <span className="text-gray-400">({mycsdLevelCounts['Kebangsaan / Antara University'] || 0})</span></span>
                   </label>
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="mr-2 cursor-pointer"
-                      checked={selectedMyCSDLevels.includes('kampus')}
-                      onChange={() => toggleMyCSDLevel('kampus')}
+                      checked={selectedMyCSDLevels.includes('Negeri / Universiti')}
+                      onChange={() => toggleMyCSDLevel('Negeri / Universiti')}
                     />
-                    <span className="text-gray-700">Kampus <span className="text-gray-400">({mycsdLevelCounts['kampus'] || 0})</span></span>
+                    <span className="text-gray-700">Negeri / Universiti <span className="text-gray-400">({mycsdLevelCounts['Negeri / Universiti'] || 0})</span></span>
+                  </label>
+                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
+                    <input
+                      type="checkbox"
+                      className="mr-2 cursor-pointer"
+                      checked={selectedMyCSDLevels.includes('P.Pengajian / Desasiswa / Persatuan / Kelab')}
+                      onChange={() => toggleMyCSDLevel('P.Pengajian / Desasiswa / Persatuan / Kelab')}
+                    />
+                    <span className="text-gray-700">Kampus (P.Pengajian...) <span className="text-gray-400">({mycsdLevelCounts['P.Pengajian / Desasiswa / Persatuan / Kelab'] || 0})</span></span>
                   </label>
                 </div>
               </div>
@@ -348,7 +357,7 @@ export default function EventsPage() {
                     <p className="text-sm text-gray-600">
                       Showing {totalResults > 0 ? startIndex + 1 : 0}-{Math.min(endIndex, totalResults)} of <span className="font-semibold">{totalResults}</span> results
                     </p>
-                    
+
                     {/* Clear filters button */}
                     {(selectedCategories.length > 0 || hasMyCSD !== undefined || selectedMyCSDCategories.length > 0 || selectedMyCSDLevels.length > 0) && (
                       <button
@@ -370,7 +379,7 @@ export default function EventsPage() {
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         {eventsToDisplay.map((event) => (
-                          <EventCard 
+                          <EventCard
                             key={event.id}
                             id={event.id}
                             title={event.title}
@@ -385,24 +394,23 @@ export default function EventsPage() {
                       {/* Pagination */}
                       {totalPages > 1 && (
                         <div className="flex justify-center items-center gap-2 mt-8">
-                          <button 
+                          <button
                             onClick={goToPrevPage}
                             disabled={currentPage === 1}
                             className="px-3 py-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             ← Previous
                           </button>
-                          
+
                           {getPaginationNumbers().map((page, index) => (
                             typeof page === 'number' ? (
                               <button
                                 key={index}
                                 onClick={() => goToPage(page)}
-                                className={`px-3 py-1 rounded transition-colors ${
-                                  currentPage === page
-                                    ? 'bg-gray-900 text-white'
-                                    : 'text-gray-700 hover:bg-gray-100'
-                                }`}
+                                className={`px-3 py-1 rounded transition-colors ${currentPage === page
+                                  ? 'bg-gray-900 text-white'
+                                  : 'text-gray-700 hover:bg-gray-100'
+                                  }`}
                               >
                                 {page}
                               </button>
@@ -412,8 +420,8 @@ export default function EventsPage() {
                               </span>
                             )
                           ))}
-                          
-                          <button 
+
+                          <button
                             onClick={goToNextPage}
                             disabled={currentPage === totalPages}
                             className="px-3 py-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"

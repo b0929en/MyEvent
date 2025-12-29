@@ -19,6 +19,7 @@ DROP TABLE IF EXISTS organizations CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 DROP TYPE IF EXISTS mycsd_type_enum CASCADE;
+DROP TYPE IF EXISTS mycsd_position_enum CASCADE;
 DROP TYPE IF EXISTS mycsd_status_enum CASCADE;
 DROP TYPE IF EXISTS payment_status_enum CASCADE;
 DROP TYPE IF EXISTS attendance_status_enum CASCADE;
@@ -27,11 +28,12 @@ DROP TYPE IF EXISTS user_role_enum CASCADE;
 
 -- Enums
 CREATE TYPE user_role_enum AS ENUM ('student', 'organization_admin', 'admin');
-CREATE TYPE event_status_enum AS ENUM ('draft', 'pending', 'approved', 'rejected', 'published', 'completed', 'cancelled');
+CREATE TYPE event_status_enum AS ENUM ('draft', 'pending', 'approved', 'rejected', 'revision_needed', 'published', 'completed', 'cancelled');
 CREATE TYPE attendance_status_enum AS ENUM ('present', 'absent', 'excused');
 CREATE TYPE payment_status_enum AS ENUM ('pending', 'paid', 'failed', 'refunded');
 CREATE TYPE mycsd_status_enum AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE mycsd_type_enum AS ENUM ('event', 'organization');
+CREATE TYPE mycsd_position_enum AS ENUM ('Pengikut', 'Peserta', 'AJK Kecil', 'AJK Tertinggi', 'Pengarah');
 
 -- 1. USER (Base Entity)
 CREATE TABLE users (
@@ -80,6 +82,8 @@ CREATE TABLE event_requests (
     org_id UUID REFERENCES organizations(org_id),
     user_id UUID REFERENCES users(user_id),
     status event_status_enum DEFAULT 'pending',
+    admin_notes TEXT,
+    committee_members JSONB DEFAULT '[]'::jsonb,
     submitted_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -105,6 +109,7 @@ CREATE TABLE events (
     mycsd_level TEXT,
     mycsd_points INT,
     agenda TEXT[],
+    committee_members JSONB DEFAULT '[]'::jsonb,
     is_mycsd_claimed BOOLEAN DEFAULT false
 );
 
@@ -168,7 +173,7 @@ CREATE TABLE mycsd_logs (
     matric_no TEXT REFERENCES students(matric_num),
     record_id UUID REFERENCES mycsd_records(record_id),
     score INT,
-    position TEXT,
+    position mycsd_position_enum,
     PRIMARY KEY (matric_no, record_id)
 );
 
@@ -295,3 +300,27 @@ CREATE TRIGGER update_event_count_trigger
 AFTER INSERT OR DELETE ON registrations
 FOR EACH ROW
 EXECUTE FUNCTION update_event_registered_count();
+
+-- Create a function to automatically mark events as completed
+CREATE OR REPLACE FUNCTION mark_events_completed()
+RETURNS void AS $$
+BEGIN
+  -- Update events that have passed their end date/time
+  -- We compare against the current time in Asia/Kuala_Lumpur timezone to ensure accurate completion
+  
+  UPDATE event_requests er
+  SET status = 'completed'
+  FROM events e
+  WHERE er.event_request_id = e.event_request_id
+    AND er.status IN ('published', 'approved') 
+    AND (
+      (e.end_date < (current_timestamp AT TIME ZONE 'Asia/Kuala_Lumpur')::date)
+      OR
+      (
+        e.end_date = (current_timestamp AT TIME ZONE 'Asia/Kuala_Lumpur')::date
+        AND
+        e.end_time < (current_timestamp AT TIME ZONE 'Asia/Kuala_Lumpur')::time
+      )
+    );
+END;
+$$ LANGUAGE plpgsql;
