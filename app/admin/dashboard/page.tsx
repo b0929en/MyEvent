@@ -9,18 +9,16 @@ import { useRequireRole } from '@/contexts/AuthContext';
 import { getEvents } from '@/backend/services/eventService';
 import { getUsers } from '@/backend/services/userService';
 import { getAllRegistrations } from '@/backend/services/registrationService';
-import { getAllProposals } from '@/backend/services/proposalService';
+import { getAllProposals, Proposal } from '@/backend/services/proposalService';
 import { getAllMyCSDRequests } from '@/backend/services/mycsdService';
-import { getAllSystemNotifications } from '@/backend/services/notificationService';
-import { Event, User, Registration } from '@/types';
+import { getAllSystemNotifications, Notification } from '@/backend/services/notificationService';
+import { Event, User, Registration, MyCSDRequest, ActivityItem } from '@/types';
 import { 
   Users, 
   Calendar, 
   FileText, 
   TrendingUp,
-  Clock,
-  CheckCircle,
-  type LucideIcon
+  CheckCircle
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -28,10 +26,9 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
-  const [proposals, setProposals] = useState<any[]>([]);
-  const [mycsdRequests, setMycsdRequests] = useState<any[]>([]);
-  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [mycsdRequests, setMycsdRequests] = useState<MyCSDRequest[]>([]);
+  const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,8 +49,6 @@ export default function AdminDashboard() {
         if (fetchedNotifications) setRecentNotifications(fetchedNotifications);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-      } finally {
-        setIsLoadingData(false);
       }
     };
     fetchData();
@@ -84,7 +79,7 @@ export default function AdminDashboard() {
 
   // Recent activity (derived from data)
   const recentActivity = useMemo(() => {
-    const activity: any[] = [];
+    const activity: ActivityItem[] = [];
     
     // 1. Add ALL proposals to the pool (Proposal Submitted)
     proposals.forEach(p => {
@@ -294,7 +289,7 @@ export default function AdminDashboard() {
                     <p className="text-gray-500 text-center py-8">No recent activity</p>
                   ) : (
                     recentActivity.map((activity) => {
-                      const Icon = activity.icon;
+
                       const colorClasses = {
                         blue: 'bg-blue-100 text-blue-600',
                         green: 'bg-green-100 text-green-600',
@@ -305,7 +300,7 @@ export default function AdminDashboard() {
                       return (
                         <div key={activity.id} className="flex items-start gap-4 pb-4 border-b border-gray-100 last:border-0">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${colorClasses[activity.color as keyof typeof colorClasses]}`}>
-                            <Icon className="w-5 h-5" />
+                            {activity.icon && <activity.icon className="w-5 h-5" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-900">{activity.title}</p>
@@ -316,35 +311,6 @@ export default function AdminDashboard() {
                       );
                     })
                   )}
-                </div>
-              </div>
-
-              {/* System Overview */}
-              <div className="bg-white rounded-lg shadow-md p-6 mt-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">System Overview</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Total Registrations</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalRegistrations}</p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Active Organizers</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {usersList.filter(u => u.role === 'organizer').length}
-                    </p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Completed Events</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {events.filter(e => e.status === 'completed').length}
-                    </p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Average Attendance</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {stats.totalRegistrations > 0 ? Math.round((events.reduce((sum, e) => sum + e.registeredCount, 0) / stats.totalRegistrations) * 100) : 0}%
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>

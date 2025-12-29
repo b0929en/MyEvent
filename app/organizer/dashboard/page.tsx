@@ -46,7 +46,7 @@ export default function OrganizerDashboard() {
           }
           const allProposals = await getAllProposals();
           if (allProposals) {
-             const myProposals = allProposals.filter((p: Proposal) => p.organizerId === user.organizationId);
+             const myProposals: Proposal[] = allProposals.filter((p: Proposal) => p.organizerId === user.organizationId);
              
              // Filter Approved
              setApprovedProposals(myProposals.filter(p => p.status === 'approved'));
@@ -97,9 +97,10 @@ export default function OrganizerDashboard() {
       toast.success('Laporan submitted successfully! Points will be distributed upon admin approval.');
       setShowClaimModal(false);
       setLaporanFile(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error claiming MyCSD:', error);
-      toast.error(error.message || 'Failed to submit MyCSD claim');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit MyCSD claim';
+      toast.error(errorMessage);
     } finally {
       setIsClaiming(false);
     }
@@ -515,7 +516,7 @@ export default function OrganizerDashboard() {
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800 flex items-start gap-2">
             <Award className="w-4 h-4 mt-0.5 shrink-0" />
             <p>
-              This action will automatically award <strong>{selectedEventForClaim?.mycsdPoints} points</strong> to all participants marked as "Present". This cannot be undone.
+              This action will automatically award <strong>{selectedEventForClaim?.mycsdPoints} points</strong> to all participants marked as &quot;Present&quot;. This cannot be undone.
             </p>
           </div>
 

@@ -13,7 +13,7 @@ import { useRequireRole } from '@/contexts/AuthContext';
 import { getEventById, updateEvent } from '@/backend/services/eventService';
 import { uploadEventBanner } from '@/backend/services/storageService';
 import { toast } from 'sonner';
-import { Upload, Plus, X, Save, Loader2, ArrowLeft } from 'lucide-react';
+import { Upload, Plus, X, Save, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 // Schema Validation
@@ -82,7 +82,7 @@ export default function EditEventPage() {
         // Populate Form
         setEventTitle(event.title);
         setValue('description', event.description);
-        setValue('category', event.category as any);
+        setValue('category', event.category);
         setValue('startDate', event.startDate);
         setValue('endDate', event.endDate);
         setValue('startTime', event.startTime);
@@ -178,7 +178,7 @@ export default function EditEventPage() {
         event_venue: data.venue,
         category: data.category,
         capacity: data.capacity,
-        banner_image: bannerUrl,
+        banner_image: bannerUrl || undefined,
         objectives: validObjectives,
         links: validLinks,
         has_mycsd: data.hasMyCSD,
@@ -242,7 +242,7 @@ export default function EditEventPage() {
           </div>
 
           {/* Event Banner (Editable) */}
-          <div className="w-full h-[300px] md:h-[400px] relative mb-8 rounded-xl overflow-hidden bg-white shadow-md group border border-gray-200">
+          <div className="w-full h-75 md:h-100 relative mb-8 rounded-xl overflow-hidden bg-white shadow-md group border border-gray-200">
             {bannerPreview ? (
               <Image
                 src={bannerPreview}
@@ -511,7 +511,7 @@ export default function EditEventPage() {
                         className={inputClass}
                       />
                     </div>
-                    <div className="flex-[2] space-y-1">
+                    <div className="flex-2 space-y-1">
                       <label className="text-xs font-semibold text-gray-500 uppercase">URL</label>
                       <input
                         type="url"

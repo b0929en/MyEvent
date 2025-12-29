@@ -24,7 +24,6 @@ export default function AdminEventsPage() {
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [adminNotes, setAdminNotes] = useState('');
   const [events, setEvents] = useState<Event[]>([]);
-  const [isEventsLoading, setIsEventsLoading] = useState(true);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -35,8 +34,6 @@ export default function AdminEventsPage() {
         }
       } catch (error) {
         console.error('Error fetching events:', error);
-      } finally {
-        setIsEventsLoading(false);
       }
     };
     fetchEvents();

@@ -184,7 +184,12 @@ export default function AdminUsersPage() {
 
           {/* Users Table */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {filteredUsers.length > 0 ? (
+            {isLoadingData ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading users...</p>
+              </div>
+            ) : filteredUsers.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">

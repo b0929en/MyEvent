@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Image from 'next/image';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
+import { EventCategory } from '@/types';
 import { getPointsForLevel } from '@/backend/utils';
 import { ArrowLeft, Upload, Plus, X, Search, Lock } from 'lucide-react';
 import Link from 'next/link';
@@ -102,7 +103,7 @@ export default function CreateEventPage() {
       // Prefill form
       setValue('title', proposal.eventTitle);
       setValue('description', proposal.eventDescription);
-      setValue('category', proposal.category as any);
+      setValue('category', proposal.category as EventCategory);
       setValue('venue', proposal.proposedVenue);
       setValue('capacity', proposal.estimatedParticipants);
       setValue('startDate', proposal.proposedDate);
@@ -378,12 +379,13 @@ export default function CreateEventPage() {
                   >
                     {bannerPreview ? (
                       <div className="relative h-48 w-full">
-                        <img 
+                        <Image 
                           src={bannerPreview} 
                           alt="Banner preview" 
-                          className="w-full h-full object-cover rounded-lg"
+                          fill
+                          className="object-cover rounded-lg"
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity z-10">
                           <p className="text-white font-medium">Click to change</p>
                         </div>
                       </div>

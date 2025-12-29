@@ -148,7 +148,7 @@ export default function EventDetailsPage() {
           </div>
 
           {/* Event Banner */}
-          <div className="w-full h-[300px] md:h-[400px] relative mb-8 rounded-lg overflow-hidden bg-gray-100">
+          <div className="w-full h-75 md:h-100 relative mb-8 rounded-lg overflow-hidden bg-gray-100">
             {event.bannerImage ? (
               <Image
                 src={event.bannerImage}

@@ -1,24 +1,24 @@
 import { supabase } from '../supabase/supabase';
-import { ProposalStatus } from '@/types';
+import { DBEventRequest, ProposalCreateInput, ProposalUpdateInput } from '@/types';
 import { createNotification } from './notificationService';
 
 export interface Proposal {
   id: string;
-  organizerId: string;
+  organizerId: string | null;
   organizerName: string;
   eventTitle: string;
   eventDescription: string;
   category: string;
   estimatedParticipants: number;
-  proposedDate: string;
-  proposedVenue: string;
+  proposedDate: string | null | undefined;
+  proposedVenue: string | null | undefined;
   documents: {
     eventProposal: string;
     budgetPlan?: string;
     riskAssessment?: string;
     supportingDocuments?: string;
-  };
-  status: ProposalStatus;
+  } | Record<string, string | undefined>;
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'revision_needed' | 'published' | 'completed' | 'cancelled';
   adminNotes?: string;
   submittedAt: string;
   updatedAt: string;
@@ -38,7 +38,7 @@ const parseDocuments = (fileString: string | null) => {
       riskAssessment: docs.riskAssessment || '',
       supportingDocuments: docs.supportingDocuments || ''
     };
-  } catch (e) {
+  } catch {
     // Fallback: It's a legacy single string (Old format)
     return {
       eventProposal: fileString,
@@ -60,7 +60,7 @@ export async function getAllProposals() {
     return [];
   }
 
-  return data.map((item: any) => {
+  return data.map((item: DBEventRequest) => {
     const event = Array.isArray(item.events) ? item.events[0] : item.events;
     
     return {
@@ -84,7 +84,7 @@ export async function getAllProposals() {
 }
 
 export async function updateProposalStatus(id: string, status: string, adminNotes?: string) {
-  const updates: any = { status };
+  const updates: Record<string, unknown> = { status };
   if (adminNotes !== undefined) updates.admin_notes = adminNotes;
 
   const { error } = await supabase.from('event_requests').update(updates).eq('event_request_id', id);
@@ -115,7 +115,7 @@ export async function updateProposalStatus(id: string, status: string, adminNote
   }
 }
 
-export async function createProposal(proposalData: any) {
+export async function createProposal(proposalData: ProposalCreateInput) {
   const { data: orgAdmin, error: orgError } = await supabase
     .from('organization_admins')
     .select('org_id')
@@ -159,8 +159,8 @@ export async function createProposal(proposalData: any) {
   return request;
 }
 
-export async function updateProposal(id: string, proposalData: any) {
-  const requestUpdates: any = { status: 'pending' };
+export async function updateProposal(id: string, proposalData: ProposalUpdateInput) {
+  const requestUpdates: Record<string, unknown> = { status: 'pending' };
   
   if (proposalData.documents) {
     requestUpdates.event_request_file = JSON.stringify(proposalData.documents);

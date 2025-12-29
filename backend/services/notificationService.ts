@@ -1,14 +1,15 @@
 import { supabase } from '../supabase/supabase';
+import { DBNotification } from '@/types';
 
 export type NotificationType = 'event' | 'registration' | 'mycsd' | 'admin' | 'proposal';
 
 export interface Notification {
   id: string;
-  userId: string;
-  type: NotificationType;
+  userId: string | null;
+  type: NotificationType | string;
   title: string;
   message: string;
-  link?: string;
+  link?: string | null;
   isRead: boolean;
   createdAt: string;
   userName?: string; // Added for Admin Dashboard display
@@ -26,7 +27,7 @@ export async function getUserNotifications(userId: string) {
     return [];
   }
 
-  return data.map((n: any) => ({
+  return data.map((n: DBNotification) => ({
     id: n.notification_id,
     userId: n.user_id,
     type: n.type,
@@ -103,7 +104,7 @@ export async function getAllSystemNotifications() {
     return [];
   }
 
-  return data.map((n: any) => ({
+  return data.map((n: DBNotification & { users?: { user_name: string } }) => ({
     id: n.notification_id,
     userId: n.user_id,
     userName: n.users?.user_name || 'Unknown User',
@@ -111,6 +112,7 @@ export async function getAllSystemNotifications() {
     title: n.title,
     message: n.message,
     link: n.link,
+    isRead: n.is_read,
     createdAt: n.created_at,
   }));
 }

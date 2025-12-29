@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { getProposalById, updateProposal } from '@/backend/services/proposalService';
 import { uploadDocument } from '@/backend/services/storageService';
 import { toast } from 'sonner';
+import { DocumentsInput } from '@/types';
 
 const proposalSchema = z.object({
   eventTitle: z.string().min(5, 'Title must be at least 5 characters'),
@@ -83,7 +84,7 @@ export default function EditProposalPage() {
         // Prefill Form
         setValue('eventTitle', proposal.eventTitle);
         setValue('eventDescription', proposal.eventDescription);
-        setValue('category', proposal.category as any);
+        setValue('category', proposal.category as ProposalFormData['category']);
         setValue('estimatedParticipants', proposal.estimatedParticipants);
         setValue('proposedDate', proposal.proposedDate);
         setValue('proposedVenue', proposal.proposedVenue);
@@ -115,7 +116,7 @@ export default function EditProposalPage() {
 
   const onSubmit = async (data: ProposalFormData) => {
     try {
-      const updatedDocuments: any = { ...existingPaths };
+      const updatedDocuments: DocumentsInput = { ...existingPaths };
 
       // Upload new files if they exist
       const uploadPromises = (Object.keys(newFiles) as DocKeys[]).map(async (key) => {
@@ -142,9 +143,10 @@ export default function EditProposalPage() {
 
       toast.success('Proposal revised and resubmitted successfully!');
       router.push('/organizer/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Update error:', error);
-      toast.error('Failed to resubmit: ' + error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Failed to resubmit: ' + errorMessage);
     }
   };
 

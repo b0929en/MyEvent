@@ -2,7 +2,7 @@
 import { supabase } from '../supabase/supabase';
 
 export async function uploadEventBanner(file: File, path: string) {
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from('event-banners')
     .upload(path, file, {
       cacheControl: '3600',
@@ -21,7 +21,7 @@ export async function uploadEventBanner(file: File, path: string) {
 }
 
 export async function uploadDocument(file: File, path: string) {
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from('documents')
     .upload(path, file, {
       cacheControl: '3600',

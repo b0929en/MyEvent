@@ -3,6 +3,168 @@
  * These define the data contracts between frontend and backend
  */
 
+import React from 'react';
+
+// ============================================================================
+// Database Row Types (Supabase)
+// ============================================================================
+
+export interface DBUser {
+  user_id: string;
+  user_email: string;
+  user_password: string | null;
+  user_name: string;
+  created_at: string;
+  last_login: string | null;
+  user_role: 'student' | 'organization_admin' | 'admin';
+  students?: {
+    matric_num: string;
+  } | null;
+  organization_admins?: {
+    org_id: string;
+    user_position: string | null;
+  } | null;
+}
+
+export interface DBOrganization {
+  org_id: string;
+  org_name: string;
+  org_description: string | null;
+  org_contact_email: string | null;
+  org_social_link: string | null;
+  org_logo: string | null;
+}
+
+export interface DBEventRequest {
+  event_request_id: string;
+  event_request_file: string | null;
+  org_id: string | null;
+  user_id: string | null;
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
+  submitted_at: string;
+  admin_notes?: string | null;
+  organizations?: DBOrganization;
+  events?: DBEvent | DBEvent[];
+}
+
+export interface DBMyCSDRequest {
+  mr_id: string;
+  user_id: string | null;
+  event_id: string | null;
+  lk_document: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  event_mycsd?: DBEventMyCSD[];
+}
+
+export interface DBMyCSDRecord {
+  record_id: string;
+  mycsd_score: number | null;
+  mycsd_type: 'event' | 'organization';
+  event_mycsd?: DBEventMyCSD[];
+}
+
+export interface DBEventMyCSD {
+  record_id: string;
+  mycsd_category: string | null;
+  event_level: string | null;
+  mr_id: string | null;
+  mycsd_records?: DBMyCSDRecord;
+}
+
+export interface DBEvent {
+  event_id: string;
+  event_name: string;
+  event_date: string;
+  event_description: string | null;
+  event_venue: string | null;
+  event_request_id: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  end_date: string | null;
+  capacity: number;
+  banner_image: string | null;
+  category: string | null;
+  registered_count: number;
+  objectives: string[] | null;
+  links: unknown | null;
+  has_mycsd: boolean;
+  mycsd_category: string | null;
+  mycsd_level: string | null;
+  mycsd_points: number | null;
+  agenda: string[] | null;
+  is_mycsd_claimed: boolean;
+  event_requests?: DBEventRequest | DBEventRequest[];
+  mycsd_requests?: DBMyCSDRequest[];
+}
+
+export interface DBRegistration {
+  event_id: string;
+  user_id: string;
+  attendance: 'present' | 'absent' | 'excused' | null;
+  event_status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled' | null;
+  registration_date: string;
+  users?: {
+    user_id: string;
+    user_name: string;
+    user_email: string;
+    students?: {
+      matric_num: string;
+    } | null;
+  };
+  events?: {
+    event_id: string;
+    event_name: string;
+  };
+}
+
+export interface DBNotification {
+  notification_id: string;
+  user_id: string | null;
+  title: string;
+  message: string;
+  type: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface DBMyCSDLog {
+  matric_no: string;
+  record_id: string;
+  score: number | null;
+  position: string | null;
+  mycsd_records?: DBMyCSDRecord;
+  students?: {
+    matric_num: string;
+    user_id: string;
+  };
+}
+
+export interface DBMyCSDRequestWithDetails extends DBMyCSDRequest {
+  events?: {
+    event_id: string;
+    event_name: string;
+    event_date: string;
+    mycsd_level?: string | null;
+    mycsd_category?: string | null;
+    event_requests?: {
+      organizations?: {
+        org_name: string;
+      };
+    };
+  };
+  users?: {
+    user_id: string;
+    user_name: string;
+    user_email: string;
+    students?: {
+      matric_num: string;
+    };
+  };
+  registrations?: DBRegistration[];
+  created_at?: string;
+}
+
 // ============================================================================
 // User & Authentication Types
 // ============================================================================
@@ -50,7 +212,7 @@ export type Organization = {
 // Event Types
 // ============================================================================
 
-export type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'revision_needed';
+export type ProposalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'revision_needed' | 'published' | 'completed' | 'cancelled';
 export type EventStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
 export type EventCategory = 'sport' | 'academic' | 'cultural' | 'social' | 'competition' | 'talk' | 'workshop' | 'other';
 export type MyCSDCategory = 
@@ -357,4 +519,111 @@ export type MyCSDFormData = {
   semester: string;
   proofDocument?: File;
   remarks?: string;
+};
+
+// ============================================================================
+// Update/Input Types for Services
+// ============================================================================
+
+export type ProposalCreateInput = {
+  organizerId: string;
+  eventTitle: string;
+  eventDescription: string;
+  category: EventCategory;
+  estimatedParticipants: number;
+  proposedDate: string;
+  proposedVenue: string;
+  documents: Record<string, string> | {
+    eventProposal: string;
+    budgetPlan?: string;
+    riskAssessment?: string;
+    supportingDocuments?: string;
+  };
+};
+
+export type ProposalUpdateInput = Partial<Omit<ProposalCreateInput, 'documents'>> & {
+  status?: 'draft' | 'pending' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
+  adminNotes?: string;
+  documents?: DocumentsInput | Record<string, string>;
+};
+
+export type EventUpdateInput = Partial<{
+  title: string;
+  description: string;
+  category: EventCategory;
+  bannerImage: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  venue: string;
+  capacity: number;
+  status: EventStatus;
+  hasMyCSD: boolean;
+  mycsdCategory: MyCSDCategory;
+  mycsdLevel: MyCSDLevel;
+  mycsdPoints: number;
+  objectives: string[];
+  links: EventLink[];
+  agenda: string[];
+  // Database field names for compatibility
+  event_name: string;
+  event_description: string;
+  event_date: string;
+  event_venue: string;
+  start_time: string;
+  end_time: string;
+  end_date: string;
+  banner_image: string;
+  has_mycsd: boolean;
+  mycsd_category: string;
+  mycsd_level: string;
+  mycsd_points: number;
+}>;
+
+export type DocumentsInput = {
+  eventProposal?: string | null;
+  budgetPlan?: string | null;
+  riskAssessment?: string | null;
+  supportingDocuments?: string | null;
+};
+
+// ============================================================================
+// Additional Component Types
+// ============================================================================
+
+export type ActivityItem = {
+  id: string;
+  type: 'proposal' | 'mycsd' | 'notification' | 'proposal_submitted' | 'event_approved';
+  title: string;
+  user?: string;
+  status?: string;
+  time: string;
+  displayTime: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  color?: string;
+  timestamp?: string;
+};
+
+export type MyCSDRequest = {
+  id: string;
+  eventId: string;
+  eventName: string;
+  eventDate?: string;
+  userId: string;
+  userName: string;
+  matricNumber?: string;
+  category?: MyCSDCategory;
+  level?: MyCSDLevel;
+  points?: number;
+  status: MyCSDStatus;
+  document?: string;
+  submittedCount?: number;
+  approvedCount?: number;
+};
+
+export type ApiError = {
+  message: string;
+  code?: string;
+  details?: unknown;
 };

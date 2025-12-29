@@ -148,9 +148,10 @@ export default function SubmitProposalPage() {
       
       toast.success('Proposal submitted successfully! Awaiting admin approval.');
       router.push('/organizer/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting proposal:', error);
-      toast.error(`Failed to submit proposal: ${error.message || 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to submit proposal: ${errorMessage}`);
     }
   };
 
