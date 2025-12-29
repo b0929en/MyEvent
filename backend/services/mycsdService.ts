@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/supabase';
-import { MyCSDRecord, ClubPosition, DBMyCSDRequestWithDetails, MyCSDCategory, MyCSDLevel, ParticipantRole } from '@/types';
+import { MyCSDRecord, ClubPosition } from '@/types';
 
 // Helper to calculate points based on level string
 export function getPointsForLevel(level?: string): number {
@@ -136,23 +136,13 @@ export async function approveMyCSDRequest(requestId: string) {
     .eq('attendance', 'present');
 
   if (regError) throw regError;
-
-  type RegistrationWithUser = {
-    user_id: string;
-    attendance: string;
-    users: {
-      students: {
-        matric_num: string;
-      } | null;
-    } | null;
-  };
   
   // 4. Distribute Points (Insert into mycsd_logs)
   if (registrations && registrations.length > 0) {
-    const logsToInsert = (registrations as unknown as RegistrationWithUser[])
-      .filter((reg) => reg.users?.students?.matric_num)
-      .map((reg) => ({
-        matric_no: reg.users!.students!.matric_num,
+    const logsToInsert = registrations
+      .filter((reg: any) => reg.users?.students?.matric_num)
+      .map((reg: any) => ({
+        matric_no: reg.users.students.matric_num,
         record_id: record.record_id,
         score: points,
         position: 'Participant'
@@ -167,7 +157,7 @@ export async function approveMyCSDRequest(requestId: string) {
     }
 
     // 5. Send Notifications
-    const notifications = (registrations as unknown as RegistrationWithUser[]).map((reg) => ({
+    const notifications = registrations.map((reg: any) => ({
       user_id: reg.user_id,
       type: 'mycsd',
       title: 'MyCSD Points Awarded',
@@ -225,7 +215,7 @@ export async function getAllMyCSDRequests() {
   }
 
   // Use Promise.all to fetch counts for all requests in parallel
-  const requestsWithCounts = await Promise.all(data.map(async (req: DBMyCSDRequestWithDetails) => {
+  const requestsWithCounts = await Promise.all(data.map(async (req: any) => {
     const event = req.events;
     // For pending requests, event_mycsd is empty. We must fallback to the event table data.
     const eventMycsd = req.event_mycsd?.[0]; 
@@ -254,19 +244,18 @@ export async function getAllMyCSDRequests() {
 
     return {
       id: req.mr_id,
-      userId: req.user_id || '',
+      userId: req.user_id,
       userName: req.users?.user_name || 'Unknown User',
       userEmail: req.users?.user_email || '',
-      eventId: req.event_id || '',
+      eventId: req.event_id,
       eventName: event?.event_name || 'Unknown Event',
-      eventDate: event?.event_date,
       organizerName: event?.event_requests?.organizations?.org_name || 'Unknown Org',
-      category: displayCategory as MyCSDCategory,
-      level: displayLevel as MyCSDLevel,
+      category: displayCategory,
+      level: displayLevel,
       points: displayPoints, 
       role: 'participant', 
       status: req.status,
-      proofDocument: req.lk_document || undefined,
+      proofDocument: req.lk_document,
       participantCount: participantCount || 0,
       committeeCount: committeeCount,
       submittedAt: req.created_at || new Date().toISOString(), // Use DB created_at if available? fallback to now
@@ -326,8 +315,8 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
     return [];
   }
 
-  return data.map((log) => {
-    const eventMycsd = log.mycsd_records?.event_mycsd?.[0];
+  return data.map((log: any) => {
+    const eventMycsd = log.mycsd_records?.event_mycsd;
     const event = eventMycsd?.mycsd_requests?.events;
     const organization = event?.event_requests?.organizations;
 
@@ -337,12 +326,12 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       eventId: event?.event_id || '', 
       eventName: event?.event_name || 'Unknown Event', 
       organizationName: organization?.org_name || 'Unknown Organization', 
-      category: (eventMycsd?.mycsd_category || 'REKA CIPTA DAN INOVASI') as MyCSDCategory,
-      level: (eventMycsd?.event_level || 'kampus') as MyCSDLevel,
-      role: (log.position || 'participant') as ParticipantRole,
-      points: log.score || 0,
+      category: eventMycsd?.mycsd_category || 'REKA CIPTA DAN INOVASI',
+      level: eventMycsd?.event_level || 'kampus',
+      role: log.position,
+      points: log.score,
       semester: '2024/2025-1',
-      status: 'approved' as const,
+      status: 'approved',
       submittedAt: new Date().toISOString(),
     };
   });

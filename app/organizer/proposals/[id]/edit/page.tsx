@@ -252,20 +252,20 @@ export default function EditProposalPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Event Title</label>
-                  <input type="text" {...register('eventTitle')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                  <input type="text" {...register('eventTitle')} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
                   {errors.eventTitle && <p className="text-red-500 text-xs mt-1">{errors.eventTitle.message}</p>}
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea {...register('eventDescription')} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                  <textarea {...register('eventDescription')} rows={4} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
                   {errors.eventDescription && <p className="text-red-500 text-xs mt-1">{errors.eventDescription.message}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select {...register('category')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none">
+                    <select {...register('category')} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none">
                       <option value="sport">Sport</option>
                       <option value="academic">Academic</option>
                       <option value="cultural">Cultural</option>
@@ -278,18 +278,18 @@ export default function EditProposalPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Participants</label>
-                    <input type="number" {...register('estimatedParticipants', { valueAsNumber: true })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                    <input type="number" {...register('estimatedParticipants', { valueAsNumber: true })} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Proposed Date</label>
-                    <input type="date" {...register('proposedDate')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                    <input type="date" {...register('proposedDate')} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
                    </div>
                    <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Proposed Venue</label>
-                    <input type="text" {...register('proposedVenue')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                    <input type="text" {...register('proposedVenue')} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
                    </div>
                 </div>
               </div>
