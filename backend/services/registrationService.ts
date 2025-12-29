@@ -1,7 +1,7 @@
 import { supabase } from '../supabase/supabase';
-import { Registration, RegistrationStatus } from '@/types';
+import { Registration, RegistrationStatus, DBRegistration } from '@/types';
 
-const mapRegistration = (dbReg: any): Registration => {
+const mapRegistration = (dbReg: DBRegistration): Registration => {
   return {
     id: `${dbReg.event_id}-${dbReg.user_id}`,
     eventId: dbReg.event_id,

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useRequireRole } from '@/contexts/AuthContext';
@@ -16,7 +16,6 @@ export default function CheckInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAutoCheckedIn, setHasAutoCheckedIn] = useState(false);
   const [checkInSuccess, setCheckInSuccess] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -26,7 +25,7 @@ export default function CheckInPage() {
     }
   }, [searchParams]);
 
-  const performCheckIn = async (id: string) => {
+  const performCheckIn = useCallback(async (id: string) => {
     if (!id.trim() || !user) return;
 
     setIsSubmitting(true);
@@ -43,7 +42,7 @@ export default function CheckInPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [user]);
 
   // Auto check-in if eventId is in URL
   useEffect(() => {
@@ -52,7 +51,7 @@ export default function CheckInPage() {
       setHasAutoCheckedIn(true);
       performCheckIn(urlEventId);
     }
-  }, [user, searchParams, hasAutoCheckedIn, isSubmitting, checkInSuccess]);
+  }, [user, searchParams, hasAutoCheckedIn, isSubmitting, checkInSuccess, performCheckIn]);
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,7 +147,7 @@ export default function CheckInPage() {
           <div className="mt-6 text-center text-sm text-gray-500">
             <p>
               <strong>Note for Testing:</strong> Since this is a web app, you cannot scan the QR code directly. 
-              Copy the Event ID from the Organizer's QR code modal and paste it here.
+              Copy the Event ID from the Organizer&apos;s QR code modal and paste it here.
             </p>
           </div>
         </div>

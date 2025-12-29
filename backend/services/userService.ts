@@ -1,7 +1,7 @@
 import { supabase } from '../supabase/supabase';
-import { User, UserRole } from '@/types';
+import { User, UserRole, DBUser } from '@/types';
 
-const mapUser = (dbUser: any): User => {
+const mapUser = (dbUser: DBUser): User => {
   let role: UserRole = 'student';
   if (dbUser.user_role === 'organization_admin') role = 'organizer';
   if (dbUser.user_role === 'admin') role = 'admin';

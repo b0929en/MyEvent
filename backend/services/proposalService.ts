@@ -1,41 +1,58 @@
 import { supabase } from '../supabase/supabase';
-import { ProposalStatus } from '@/types';
+import { DBEventRequest, ProposalCreateInput, ProposalUpdateInput } from '@/types';
 import { createNotification } from './notificationService';
 
 export interface Proposal {
   id: string;
-  organizerId: string;
+  organizerId: string | null;
   organizerName: string;
   eventTitle: string;
   eventDescription: string;
   category: string;
   estimatedParticipants: number;
-  proposedDate: string;
-  proposedVenue: string;
+  proposedDate: string | null | undefined;
+  proposedVenue: string | null | undefined;
   documents: {
     eventProposal: string;
-  };
-  status: ProposalStatus;
+    budgetPlan?: string;
+    riskAssessment?: string;
+    supportingDocuments?: string;
+  } | Record<string, string | undefined>;
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'revision_needed' | 'published' | 'completed' | 'cancelled';
+  adminNotes?: string;
   submittedAt: string;
   updatedAt: string;
 }
+
+// Helper to safely parse document paths
+const parseDocuments = (fileString: string | null) => {
+  if (!fileString) {
+    return { eventProposal: '' };
+  }
+  try {
+    // Try parsing as JSON (New format with multiple files)
+    const docs = JSON.parse(fileString);
+    return {
+      eventProposal: docs.eventProposal || '',
+      budgetPlan: docs.budgetPlan || '',
+      riskAssessment: docs.riskAssessment || '',
+      supportingDocuments: docs.supportingDocuments || ''
+    };
+  } catch {
+    // Fallback: It's a legacy single string (Old format)
+    return {
+      eventProposal: fileString,
+    };
+  }
+};
 
 export async function getAllProposals() {
   const { data, error } = await supabase
     .from('event_requests')
     .select(`
       *,
-      organizations (
-        org_name
-      ),
-      events (
-        event_name,
-        event_description,
-        category,
-        capacity,
-        event_date,
-        event_venue
-      )
+      organizations ( org_name ),
+      events ( event_name, event_description, category, capacity, event_date, event_venue )
     `);
 
   if (error) {
@@ -43,7 +60,7 @@ export async function getAllProposals() {
     return [];
   }
 
-  return data.map((item: any) => {
+  return data.map((item: DBEventRequest) => {
     const event = Array.isArray(item.events) ? item.events[0] : item.events;
     
     return {
@@ -56,82 +73,66 @@ export async function getAllProposals() {
       estimatedParticipants: event?.capacity || 0,
       proposedDate: event?.event_date,
       proposedVenue: event?.event_venue,
-      documents: {
-        eventProposal: item.event_request_file || '',
-      },
+      // FIXED: Use parser here
+      documents: parseDocuments(item.event_request_file),
       status: item.status,
+      adminNotes: item.admin_notes || '',
       submittedAt: item.submitted_at,
       updatedAt: item.submitted_at,
     };
   });
 }
 
-export async function updateProposalStatus(id: string, status: string) {
-  const { error } = await supabase
-    .from('event_requests')
-    .update({ status })
-    .eq('event_request_id', id);
+export async function updateProposalStatus(id: string, status: string, adminNotes?: string) {
+  const updates: Record<string, unknown> = { status };
+  if (adminNotes !== undefined) updates.admin_notes = adminNotes;
 
+  const { error } = await supabase.from('event_requests').update(updates).eq('event_request_id', id);
   if (error) throw error;
 
-  // NEW: Send Notification if approved
-  // This ensures the Admin Dashboard "Recent Activity" picks it up
-  if (status === 'approved') {
+  // Notification Logic
+  if (status === 'approved' || status === 'revision_needed' || status === 'rejected') {
     try {
-      // Fetch details needed for notification
-      const { data: request, error: fetchError } = await supabase
+      const { data: request } = await supabase
         .from('event_requests')
-        .select(`
-          user_id,
-          events (
-            event_id,
-            event_name
-          )
-        `)
+        .select(`user_id, events ( event_id, event_name )`)
         .eq('event_request_id', id)
         .single();
-
-      if (fetchError || !request) {
-        console.error('Error fetching request details for notification:', fetchError);
-        return;
+      
+      if (request) {
+        const event = Array.isArray(request.events) ? request.events[0] : request.events;
+        await createNotification({
+          userId: request.user_id,
+          type: 'event', 
+          title: status === 'approved' ? `Event Published: ${event?.event_name}` : `Proposal Update: ${event?.event_name}`,
+          message: status === 'approved' 
+            ? `Your proposal has been approved.` 
+            : (status === 'revision_needed' ? `Revision requested: ${adminNotes}` : `Rejected: ${adminNotes}`),
+          link: status === 'approved' ? `/events/${event?.event_id}` : '/organizer/dashboard'
+        });
       }
-
-      const event = Array.isArray(request.events) ? request.events[0] : request.events;
-
-      await createNotification({
-        userId: request.user_id,
-        type: 'event', 
-        title: `Event Published: ${event?.event_name || 'Untitled Event'}`,
-        message: `Your proposal for "${event?.event_name}" has been approved and published.`,
-        link: `/events/${event?.event_id}`
-      });
-
-    } catch (notifyError) {
-      console.error('Failed to send approval notification:', notifyError);
-    }
+    } catch (e) { console.error('Notify error', e); }
   }
 }
 
-export async function createProposal(proposalData: any) {
-  // 1. Get Org ID for the user
+export async function createProposal(proposalData: ProposalCreateInput) {
   const { data: orgAdmin, error: orgError } = await supabase
     .from('organization_admins')
     .select('org_id')
     .eq('user_id', proposalData.organizerId)
     .single();
 
-  if (orgError || !orgAdmin) {
-    console.error('Organization Admin check failed:', orgError);
-    throw new Error('User is not an organization admin');
-  }
+  if (orgError || !orgAdmin) throw new Error('User is not an organization admin');
 
-  // 2. Create Event Request
+  // FIXED: Serialize documents object to string
+  const documentsJSON = JSON.stringify(proposalData.documents);
+
   const { data: request, error: reqError } = await supabase
     .from('event_requests')
     .insert({
       org_id: orgAdmin.org_id,
       user_id: proposalData.organizerId,
-      event_request_file: proposalData.documents.eventProposal,
+      event_request_file: documentsJSON, // Store JSON string
       status: 'pending'
     })
     .select()
@@ -139,7 +140,6 @@ export async function createProposal(proposalData: any) {
 
   if (reqError) throw reqError;
 
-  // 3. Create Event linked to Request
   const { error: eventError } = await supabase
     .from('events')
     .insert({
@@ -153,12 +153,41 @@ export async function createProposal(proposalData: any) {
     });
 
   if (eventError) {
-    // Rollback request if event creation fails
     await supabase.from('event_requests').delete().eq('event_request_id', request.event_request_id);
     throw eventError;
   }
-
   return request;
+}
+
+export async function updateProposal(id: string, proposalData: ProposalUpdateInput) {
+  const requestUpdates: Record<string, unknown> = { status: 'pending' };
+  
+  if (proposalData.documents) {
+    requestUpdates.event_request_file = JSON.stringify(proposalData.documents);
+  }
+
+  const { error: reqError } = await supabase
+    .from('event_requests')
+    .update(requestUpdates)
+    .eq('event_request_id', id);
+
+  if (reqError) throw reqError;
+
+  const { data: eventData } = await supabase.from('events').select('event_id').eq('event_request_id', id).single();
+  
+  if (eventData) {
+    await supabase
+      .from('events')
+      .update({
+        event_name: proposalData.eventTitle,
+        event_description: proposalData.eventDescription,
+        event_date: proposalData.proposedDate,
+        event_venue: proposalData.proposedVenue,
+        category: proposalData.category,
+        capacity: proposalData.estimatedParticipants,
+      })
+      .eq('event_id', eventData.event_id);
+  }
 }
 
 export async function getProposalById(id: string) {
@@ -166,25 +195,13 @@ export async function getProposalById(id: string) {
     .from('event_requests')
     .select(`
       *,
-      organizations (
-        org_name
-      ),
-      events (
-        event_name,
-        event_description,
-        category,
-        capacity,
-        event_date,
-        event_venue
-      )
+      organizations ( org_name ),
+      events ( event_name, event_description, category, capacity, event_date, event_venue )
     `)
     .eq('event_request_id', id)
     .single();
 
-  if (error) {
-    console.error('Error fetching proposal:', error);
-    return null;
-  }
+  if (error) return null;
 
   const event = Array.isArray(data.events) ? data.events[0] : data.events;
   
@@ -198,10 +215,10 @@ export async function getProposalById(id: string) {
     estimatedParticipants: event?.capacity || 0,
     proposedDate: event?.event_date,
     proposedVenue: event?.event_venue,
-    documents: {
-      eventProposal: data.event_request_file || '',
-    },
-    status: data.status === 'published' ? 'approved' : data.status,
+    // FIXED: Use parser
+    documents: parseDocuments(data.event_request_file), 
+    status: data.status,
+    adminNotes: data.admin_notes || '',
     submittedAt: data.submitted_at,
     updatedAt: data.submitted_at,
   };

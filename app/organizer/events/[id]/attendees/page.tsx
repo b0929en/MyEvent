@@ -355,8 +355,14 @@ export default function AttendeesPage() {
 
           {/* Attendees Table */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              {filteredAttendees.length > 0 ? (
+            {isLoadingData ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading attendees...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                {filteredAttendees.length > 0 ? (
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
@@ -442,7 +448,8 @@ export default function AttendeesPage() {
                   </p>
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

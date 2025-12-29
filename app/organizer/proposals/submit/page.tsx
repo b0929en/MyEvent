@@ -9,10 +9,10 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { EventCategory } from '@/types';
-import { ArrowLeft, Upload, FileText, AlertCircle } from 'lucide-react';
+import { ArrowLeft, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { createProposal } from '@/backend/services/proposalService';
+import { uploadDocument } from '@/backend/services/storageService';
 import { toast } from 'sonner';
 
 const proposalSchema = z.object({
@@ -26,11 +26,11 @@ const proposalSchema = z.object({
 
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
+// Define the keys for our documents
+type DocKey = 'eventProposal' | 'budgetPlan' | 'riskAssessment' | 'supportingDocuments';
+
 type DocumentsState = {
-  eventProposal: File | null;
-  budgetPlan: File | null;
-  riskAssessment: File | null;
-  supportingDocuments: File | null;
+  [key in DocKey]: File | null;
 };
 
 const FileUploadField = ({ 
@@ -41,10 +41,10 @@ const FileUploadField = ({
   onFileChange
 }: { 
   label: string; 
-  field: keyof DocumentsState;
+  field: DocKey;
   description: string;
   documents: DocumentsState;
-  onFileChange: (field: keyof DocumentsState, file: File | null) => void;
+  onFileChange: (field: DocKey, file: File | null) => void;
 }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -97,7 +97,7 @@ export default function SubmitProposalPage() {
     resolver: zodResolver(proposalSchema),
   });
 
-  const handleFileChange = (field: keyof DocumentsState, file: File | null) => {
+  const handleFileChange = (field: DocKey, file: File | null) => {
     setDocuments(prev => ({ ...prev, [field]: file }));
   };
 
@@ -107,53 +107,58 @@ export default function SubmitProposalPage() {
       return;
     }
 
-    // Validate all documents are uploaded
-    const missingDocs = Object.entries(documents)
-      .filter(([_, file]) => !file)
-      .map(([key]) => key);
-
-    if (missingDocs.length > 0) {
+    // Validate required documents (supportingDocuments is optional in some flows, but let's assume required here based on your previous code)
+    if (!documents.eventProposal || !documents.budgetPlan || !documents.riskAssessment || !documents.supportingDocuments) {
       toast.error('Please upload all required documents');
       return;
     }
 
     try {
+      toast.info('Uploading documents...');
+      
+      // Upload all files in parallel
+      const uploadPromises = (Object.keys(documents) as DocKey[]).map(async (key) => {
+        const file = documents[key];
+        if (!file) throw new Error(`Missing file: ${key}`);
+        
+        const path = `proposals/${user.id}/${Date.now()}-${key}-${file.name}`;
+        const url = await uploadDocument(file, path);
+        return { key, url };
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+      
+      // Convert array back to object
+      const documentsUrls = uploadedFiles.reduce((acc, curr) => {
+        acc[curr.key] = curr.url;
+        return acc;
+      }, {} as Record<string, string>);
+
       const proposalData = {
         ...data,
         organizerId: user?.id,
         organizerName: user?.name,
-        documents: {
-          eventProposal: documents.eventProposal!.name,
-          budgetPlan: documents.budgetPlan!.name,
-          riskAssessment: documents.riskAssessment!.name,
-          supportingDocuments: documents.supportingDocuments!.name,
-        },
+        documents: documentsUrls, // Send URLs, not filenames
         status: 'pending',
         submittedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      console.log('Proposal data to submit:', proposalData);
-      console.log('Files to upload:', documents);
-      
       await createProposal(proposalData);
       
       toast.success('Proposal submitted successfully! Awaiting admin approval.');
-      router.push('/organizer/dashboard'); // Redirect to dashboard instead of proposals list for now
-    } catch (error: any) {
+      router.push('/organizer/dashboard');
+    } catch (error: unknown) {
       console.error('Error submitting proposal:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      toast.error(`Failed to submit proposal: ${error.message || 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to submit proposal: ${errorMessage}`);
     }
   };
 
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+        <Loader2 className="w-12 h-12 text-purple-600 animate-spin" />
       </div>
     );
   }
@@ -363,9 +368,10 @@ export default function SubmitProposalPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-2 bg-linear-to-r from-purple-600 to-purple-700 text-white rounded-lg font-medium hover:from-purple-700 hover:to-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-6 py-2 bg-linear-to-r from-purple-600 to-purple-700 text-white rounded-lg font-medium hover:from-purple-700 hover:to-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isSubmitting ? 'Uploading...' : 'Submit Proposal'}
               </button>
             </div>
           </form>

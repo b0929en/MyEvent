@@ -77,7 +77,8 @@ export default function ProposalsPage() {
       else if (reviewAction === 'reject') newStatus = 'rejected';
       else if (reviewAction === 'revision') newStatus = 'revision_needed';
 
-      await updateProposalStatus(selectedProposal.id, newStatus);
+      // FIXED: Passed adminNotes to the service
+      await updateProposalStatus(selectedProposal.id, newStatus, adminNotes);
       
       toast.success(`Proposal ${reviewAction}d successfully!`);
       
@@ -121,6 +122,34 @@ export default function ProposalsPage() {
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
             <AlertCircle className="w-3 h-3" />
             Revision Needed
+          </span>
+        );
+      case 'draft':
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            <FileText className="w-3 h-3" />
+            Draft
+          </span>
+        );
+      case 'published':
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <CheckCircle className="w-3 h-3" />
+            Published
+          </span>
+        );
+      case 'completed':
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+            <CheckCircle className="w-3 h-3" />
+            Completed
+          </span>
+        );
+      case 'cancelled':
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            <XCircle className="w-3 h-3" />
+            Cancelled
           </span>
         );
     }
@@ -208,7 +237,12 @@ export default function ProposalsPage() {
 
           {/* Proposals List */}
           <div className="space-y-4">
-            {filteredProposals.length > 0 ? (
+            {isLoadingData ? (
+              <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading proposals...</p>
+              </div>
+            ) : filteredProposals.length > 0 ? (
               filteredProposals.map((proposal) => (
                 <div key={proposal.id} className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -229,7 +263,7 @@ export default function ProposalsPage() {
                           <strong>Participants:</strong> {proposal.estimatedParticipants}
                         </span>
                         <span>
-                          <strong>Proposed Date:</strong> {format(new Date(proposal.proposedDate), 'MMM dd, yyyy')}
+                          <strong>Proposed Date:</strong> {proposal.proposedDate ? format(new Date(proposal.proposedDate), 'MMM dd, yyyy') : 'N/A'}
                         </span>
                         <span>
                           <strong>Venue:</strong> {proposal.proposedVenue}

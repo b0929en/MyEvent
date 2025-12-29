@@ -7,7 +7,6 @@ import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
 import { getAllMyCSDRequests, updateMyCSDRequestStatus, approveMyCSDRequest } from '@/backend/services/mycsdService';
-import { format } from 'date-fns';
 import { ArrowLeft, TrendingUp, CheckCircle, XCircle, AlertCircle, Eye, Users } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
@@ -217,7 +216,12 @@ export default function AdminMyCSDPage() {
 
           {/* Submissions List */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {filteredSubmissions.length > 0 ? (
+            {isLoadingData ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading submissions...</p>
+              </div>
+            ) : filteredSubmissions.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">

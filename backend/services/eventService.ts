@@ -1,24 +1,22 @@
 import { supabase } from '../supabase/supabase';
-import { Event, EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
+import { Event, EventCategory, MyCSDCategory, MyCSDLevel, DBEvent, DBMyCSDRequest, EventUpdateInput, EventLink, EventStatus } from '@/types';
 import { getPointsForLevel } from '../utils';
 import { createNotification } from './notificationService';
 
-const mapEvent = (dbEvent: any): Event => {
+const mapEvent = (dbEvent: DBEvent): Event => {
   // Extract MyCSD info if available
-  const mycsdRequest = dbEvent.mycsd_requests?.find((req: any) => req.status === 'approved') || dbEvent.mycsd_requests?.[0];
+  const mycsdRequest = dbEvent.mycsd_requests?.find((req: DBMyCSDRequest) => req.status === 'approved') || dbEvent.mycsd_requests?.[0];
   const eventMycsd = mycsdRequest?.event_mycsd?.[0]; 
   const mycsdRecord = eventMycsd?.mycsd_records;
   const resolvedLevel = dbEvent.mycsd_level || eventMycsd?.event_level;
-  const resolvedPoints = mycsdRecord?.mycsd_score ?? getPointsForLevel(resolvedLevel);
+  const resolvedPoints = mycsdRecord?.mycsd_score ?? getPointsForLevel(resolvedLevel || undefined);
 
   // Use the proposal's submission time as the event creation time
   // Fallback to current time only if data is missing
-  const createdDate = dbEvent.event_requests?.submitted_at || new Date().toISOString();
-  
-  // Handle potential array for event_requests in map (safety check)
   const eventRequest = Array.isArray(dbEvent.event_requests) 
     ? dbEvent.event_requests[0] 
     : dbEvent.event_requests;
+  const createdDate = eventRequest?.submitted_at || new Date().toISOString();
 
   return {
     id: dbEvent.event_id,
@@ -31,7 +29,7 @@ const mapEvent = (dbEvent: any): Event => {
     endTime: dbEvent.end_time || '23:59',
     capacity: dbEvent.capacity || 0,
     registeredCount: dbEvent.registered_count || 0,
-    bannerImage: dbEvent.banner_image,
+    bannerImage: dbEvent.banner_image || undefined,
     category: (dbEvent.category as EventCategory) || 'other',
     organizerId: eventRequest?.org_id || '',
     organizerName: eventRequest?.organizations?.org_name || 'Unknown Organizer',
@@ -43,11 +41,11 @@ const mapEvent = (dbEvent: any): Event => {
     mycsdPoints: resolvedPoints,
     
     objectives: dbEvent.objectives || [],
-    links: dbEvent.links || [],
+    links: (dbEvent.links as EventLink[]) || [],
     agenda: dbEvent.agenda || [],
     is_mycsd_claimed: dbEvent.is_mycsd_claimed || false,
 
-    status: eventRequest?.status || 'published',
+    status: (eventRequest?.status === 'pending' ? 'pending_approval' : eventRequest?.status) as EventStatus || 'published',
     registrationDeadline: dbEvent.event_date,
     createdAt: createdDate,
     updatedAt: createdDate,
@@ -182,7 +180,7 @@ export async function updateEventStatus(eventId: string, status: string) {
 
 export const getFilteredEvents = getEvents;
 
-export async function updateEventByRequestId(requestId: string, updates: any) {
+export async function updateEventByRequestId(requestId: string, updates: EventUpdateInput) {
   const { error } = await supabase
     .from('events')
     .update(updates)
@@ -192,7 +190,7 @@ export async function updateEventByRequestId(requestId: string, updates: any) {
 }
 
 // NEW FUNCTION: Update event by ID
-export async function updateEvent(eventId: string, updates: any) {
+export async function updateEvent(eventId: string, updates: EventUpdateInput) {
   const { error } = await supabase
     .from('events')
     .update(updates)

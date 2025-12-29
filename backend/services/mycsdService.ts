@@ -1,6 +1,5 @@
 import { supabase } from '../supabase/supabase';
 import { MyCSDRecord, ClubPosition } from '@/types';
-import { createNotification } from './notificationService';
 
 // Helper to calculate points based on level string
 export function getPointsForLevel(level?: string): number {
@@ -338,7 +337,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
   });
 }
 
-export async function getUserClubPositions(userId: string): Promise<ClubPosition[]> {
+export async function getUserClubPositions(): Promise<ClubPosition[]> {
     return [];
 }
 
