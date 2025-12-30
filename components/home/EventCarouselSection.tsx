@@ -55,7 +55,7 @@ export default function EventCarouselSection({
   }, [emblaApi]);
 
   return (
-    <section className={`py-20 ${bgColorClass} overflow-hidden`}>
+    <section className={`py-20 ${bgColorClass} overflow-hidden min-h-[calc(100vh-4rem)] flex flex-col justify-center`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -80,7 +80,7 @@ export default function EventCarouselSection({
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <div className="overflow-hidden" ref={emblaRef}>
+          <div className="overflow-hidden py-3 px-4" ref={emblaRef}>
             <div className="flex -ml-6 touch-pan-y">
               {events.map((event, index) => (
                 <div className="flex-[0_0_100%] sm:flex-[0_0_50%] lg:flex-[0_0_25%] pl-6 min-w-0" key={index}>

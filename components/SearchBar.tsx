@@ -1,10 +1,10 @@
-'use client';
-
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 
 interface SearchBarProps {
   value?: string;
   onChange?: (value: string) => void;
+  onSearch?: (value: string) => void;
   placeholder?: string;
   className?: string;
 }
@@ -12,18 +12,31 @@ interface SearchBarProps {
 export default function SearchBar({
   value,
   onChange,
+  onSearch,
   placeholder = 'Search...',
   className = ''
 }: SearchBarProps) {
+  const [internalValue, setInternalValue] = useState(value || '');
+
+  useEffect(() => {
+    if (value !== undefined) {
+      setInternalValue(value);
+    }
+  }, [value]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInternalValue(newValue);
     if (onChange) {
-      onChange(e.target.value);
+      onChange(newValue);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle search submission if needed
+    if (onSearch) {
+      onSearch(internalValue);
+    }
   };
 
   return (
@@ -31,7 +44,7 @@ export default function SearchBar({
       <div className="relative">
         <input
           type="text"
-          value={value}
+          value={internalValue}
           onChange={handleChange}
           placeholder={placeholder}
           className="w-full px-5 py-3 pr-12 border-1 border-gray-300 rounded-full focus:outline-none focus:border-orange-400 text-gray-700 placeholder:text-gray-400 placeholder:font-light transition-all duration-300"

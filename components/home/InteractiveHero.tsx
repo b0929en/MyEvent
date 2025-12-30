@@ -5,18 +5,28 @@ import SearchBar from '@/components/SearchBar';
 import Link from 'next/link';
 import { Users, GraduationCap, Music, Lightbulb, Heart, Trophy } from 'lucide-react';
 
+import { useRouter } from 'next/navigation';
+
 const categories = [
   { name: 'Academic', icon: GraduationCap, value: 'academic' },
   { name: 'Cultural', icon: Music, value: 'cultural' },
   { name: 'Workshop', icon: Lightbulb, value: 'workshop' },
   { name: 'Social', icon: Heart, value: 'social' },
-  { name: 'Sports', icon: Trophy, value: 'sports' },
-  { name: 'Volunteering', icon: Users, value: 'volunteering' }
+  { name: 'Sport', icon: Trophy, value: 'sport' },
+  { name: 'Competition', icon: Users, value: 'competition' }
 ];
 
 export default function InteractiveHero() {
+  const router = useRouter();
+
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      router.push(`/events?search=${encodeURIComponent(query.trim())}`);
+    }
+  };
+
   return (
-    <section className="relative overflow-hidden bg-white text-gray-900 min-h-[600px] flex flex-col justify-center py-20 h-screen">
+    <section className="relative overflow-hidden bg-white text-gray-900 flex flex-col justify-center py-20 min-h-[calc(100vh-4rem)]">
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="text-center">
@@ -47,6 +57,7 @@ export default function InteractiveHero() {
           >
             <div className="scale-110">
               <SearchBar
+                onSearch={handleSearch}
                 placeholder="Search events..."
                 className="max-w-md mx-auto rounded-full"
               />
@@ -62,7 +73,7 @@ export default function InteractiveHero() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="mt-20"
         >
-          <h3 className="text-center text-gray-700 font-semibold mb-8 text-xl uppercase tracking-wider">
+          <h3 className="text-center text-gray-700 font-semibold mb-10 text-xl uppercase tracking-wider">
             Trending Categories
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-8">
@@ -75,8 +86,8 @@ export default function InteractiveHero() {
                   className="flex flex-col items-center group cursor-pointer"
                 >
                   <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className="w-24 h-24 rounded-2xl bg-white shadow-lg border border-gray-100 flex items-center justify-center mb-4 group-hover:border-[#F58220] group-hover:shadow-orange-100 transition-all duration-300"
+                    whileHover={{ scale: 1.05, rotate: 3 }}
+                    className="w-24 h-24 rounded-2xl bg-white shadow-lg border-2 border-gray-100 flex items-center justify-center mb-4 group-hover:border-[#F58220] group-hover:shadow-orange-100 transition-all duration-300"
                   >
                     <Icon className="w-10 h-10 text-gray-400 group-hover:text-[#F58220] transition-colors" />
                   </motion.div>

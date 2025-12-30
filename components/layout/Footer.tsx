@@ -2,20 +2,31 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="bg-purple-950 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+    <footer className="relative bg-purple-950 text-white overflow-hidden">
+      {/* Background Image & Overlay */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div
+          className="absolute inset-0 bg-[url('/usm-card-background.webp')] bg-cover bg-center opacity-50"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute inset-0 bg-black/60"
+          aria-hidden="true"
+        />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-6">
           {/* Quick Links */}
           <div>
             <h3 className="text-orange-500 font-semibold mb-4 border-l-4 border-orange-500 pl-2">
               Quick Links
             </h3>
             <ul className="space-y-2">
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 1</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 2</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 3</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 4</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 5</Link></li>
+              <li><Link href="/" className="text-gray-300 hover:text-white transition-colors duration-300">Home</Link></li>
+              <li><Link href="/events" className="text-gray-300 hover:text-white transition-colors duration-300">Events</Link></li>
+              <li><Link href="/mycsd" className="text-gray-300 hover:text-white transition-colors duration-300">MyCSD</Link></li>
+              <li><Link href="/profile" className="text-gray-300 hover:text-white transition-colors duration-300">Profile</Link></li>
             </ul>
           </div>
 
@@ -25,11 +36,9 @@ export default function Footer() {
               Support
             </h3>
             <ul className="space-y-2">
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 1</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 2</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 3</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 4</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white">Link 5</Link></li>
+              <li><Link href="#" className="text-gray-300 hover:text-white transition-colors duration-300">Report Problem</Link></li>
+              <li><Link href="#" className="text-gray-300 hover:text-white transition-colors duration-300">Event Guides</Link></li>
+              <li><Link href="#" className="text-gray-300 hover:text-white transition-colors duration-300">FAQ</Link></li>
             </ul>
           </div>
 
@@ -67,9 +76,9 @@ export default function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="mt-12 pt-8 border-t border-purple-900 text-center">
+        <div className="mt-12 py-6 border-t border-white/30 text-center">
           <p className="text-gray-400 text-sm">
-            All Rights Reserved | Universiti Sains Malaysia © 2025
+            All Rights Reserved | MyEvent@USM © 2025
           </p>
         </div>
       </div>

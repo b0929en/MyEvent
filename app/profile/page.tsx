@@ -8,15 +8,10 @@ import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import {
   Mail,
-  Phone,
   Building2,
-  Calendar,
   Award,
-  MapPin,
-  CheckCircle,
-  Clock,
-  XCircle,
-  AlertCircle
+  User,
+  IdCard
 } from 'lucide-react';
 import { getUserRegistrations } from '@/backend/services/registrationService';
 import { getEventById } from '@/backend/services/eventService';
@@ -136,70 +131,73 @@ export default function ProfilePage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      <main className="grow">
+      <main className="grow pb-16">
         {/* Breadcrumb & Header Container */}
-        <div className="bg-gray-50 border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <Breadcrumb
-              items={[
-                { label: 'Home', href: '/' },
-                { label: 'Profile' }
-              ]}
-            />
-            <div className="mt-4">
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-                <span className="text-purple-900">My</span> <span className="text-orange-500">Profile</span>
-              </h1>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <Breadcrumb
+            items={[
+              { label: 'Home', href: '/' },
+              { label: 'Profile' }
+            ]}
+          />
+          <div className="mt-4">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+              <span className="text-purple-900">My</span> <span className="text-orange-500">Profile</span>
+            </h1>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
           {/* 1. User Brief Information */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-              {/* Avatar */}
-              <div className="w-24 h-24 bg-linear-to-br from-purple-600 to-orange-500 rounded-full flex items-center justify-center text-white text-4xl font-bold border-4 border-white shadow-md">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              User Information
+            </h3>
 
-              {/* Info */}
-              <div className="flex-1 text-center md:text-left">
-                <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                <p className="text-gray-600 capitalize font-medium mb-1">{user.role}</p>
-                {user.matricNumber && (
-                  <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mb-4">
-                    {user.matricNumber}
-                  </div>
-                )}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                {/* Avatar */}
+                <div className="w-24 h-24 bg-linear-to-br from-purple-600 to-orange-500 rounded-full flex items-center justify-center text-white text-4xl font-bold border-4 border-white shadow-md">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-                  <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
-                    <Mail className="w-4 h-4" />
-                    <span className="text-sm">{user.email}</span>
+                {/* Info */}
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex md:flex-row items-center gap-4 mb-3 justify-center md:justify-start">
+                    <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 capitalize w-fit">
+                      {user.role}
+                    </span>
                   </div>
-                  {user.phone && (
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
                     <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
-                      <Phone className="w-4 h-4" />
-                      <span className="text-sm">{user.phone}</span>
+                      <Mail className="w-4 h-4" />
+                      <span className="text-sm">{user.email}</span>
                     </div>
-                  )}
-                  {user.faculty && (
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
-                      <Building2 className="w-4 h-4" />
-                      <span className="text-sm">{user.faculty}</span>
-                    </div>
-                  )}
+                    {user.matricNumber && (
+                      <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
+                        <IdCard className="w-4 h-4" />
+                        <span className="text-sm">{user.matricNumber}</span>
+                      </div>
+                    )}
+                    {user.faculty && (
+                      <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
+                        <Building2 className="w-4 h-4" />
+                        <span className="text-sm">{user.faculty}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
+
           {/* 2. Registered Events (Table) */}
           <div className="space-y-4">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-purple-600" />
               Registered Events
             </h3>
 
@@ -261,7 +259,6 @@ export default function ProfilePage() {
           {/* 3. Past Events (Table) */}
           <div className="space-y-4">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-gray-600" />
               Past Events
             </h3>
 

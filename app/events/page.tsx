@@ -10,7 +10,21 @@ import { getEvents } from '@/backend/services/eventService';
 import { Event, EventCategory, MyCSDCategory, MyCSDLevel } from '@/types';
 import { format } from 'date-fns';
 
-export default function EventsPage() {
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+
+// Wrapper component to handle Suspense for useSearchParams
+export default function EventsPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <EventsPage />
+    </Suspense>
+  );
+}
+
+function EventsPage() {
+  const searchParams = useSearchParams();
+  const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>([]);
@@ -19,6 +33,25 @@ export default function EventsPage() {
   const [selectedMyCSDLevels, setSelectedMyCSDLevels] = useState<MyCSDLevel[]>([]);
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize from URL params
+  useEffect(() => {
+    const search = searchParams.get('search');
+    const category = searchParams.get('category');
+
+    if (search) {
+      setSearchQuery(search);
+      setInputValue(search);
+    }
+
+    if (category) {
+      const categoryValue = category as EventCategory;
+      // Simple validation to ensure it's a valid category could be added here
+      if (['sport', 'academic', 'cultural', 'social', 'competition', 'talk', 'workshop', 'other'].includes(categoryValue)) {
+        setSelectedCategories([categoryValue]);
+      }
+    }
+  }, [searchParams]);
 
   const itemsPerPage = 12;
 
@@ -62,7 +95,7 @@ export default function EventsPage() {
 
     if (selectedMyCSDCategories.length > 0) {
       filtered = filtered.filter(event =>
-        event.mycsdCategory && selectedMyCSDCategories.includes(event.mycsdCategory)
+        event.mycsdCategory && selectedMyCSDCategories.some(c => c.toLowerCase() === event.mycsdCategory?.toLowerCase())
       );
     }
 
@@ -133,7 +166,16 @@ export default function EventsPage() {
     const counts: Record<string, number> = {};
     allEvents.forEach(event => {
       if (event.mycsdCategory) {
-        counts[event.mycsdCategory] = (counts[event.mycsdCategory] || 0) + 1;
+        // Find which known category it matches (case-insensitive)
+        const mycsdCats: MyCSDCategory[] = ['Debat dan Pidato', 'Khidmat Masyarakat', 'Kebudayaan', 'Kepimpinan', 'Keusahawanan', 'Reka Cipta dan Inovasi', 'Sukan/Rekreasi/Sosialisasi'];
+        const matchedCategory = mycsdCats.find(c => c.toLowerCase() === event.mycsdCategory?.toLowerCase());
+
+        if (matchedCategory) {
+          counts[matchedCategory] = (counts[matchedCategory] || 0) + 1;
+        } else {
+          // Fallback for unknown categories if needed, or ignore
+          // counts[event.mycsdCategory] = (counts[event.mycsdCategory] || 0) + 1;
+        }
       }
     });
     return counts;
@@ -200,8 +242,9 @@ export default function EventsPage() {
 
           {/* Search Bar */}
           <SearchBar
-            value={searchQuery}
-            onChange={(value) => {
+            value={inputValue}
+            onChange={setInputValue}
+            onSearch={(value) => {
               setSearchQuery(value);
               handleFilterChange();
             }}
@@ -214,50 +257,27 @@ export default function EventsPage() {
             <aside className="w-64 shrink-0 hidden lg:block">
               {/* EVENT CATEGORY */}
               <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-                <h3 className="font-semibold text-gray-900 mb-3">EVENT CATEGORY</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">Event Category</h3>
                 <div className="space-y-2">
-                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input
-                      type="checkbox"
-                      className="mr-2 cursor-pointer"
-                      checked={selectedCategories.includes('sport')}
-                      onChange={() => toggleCategory('sport')}
-                    />
-                    <span className="text-gray-700">Sport <span className="text-gray-400">({categoryCounts['sport'] || 0})</span></span>
-                  </label>
-                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input
-                      type="checkbox"
-                      className="mr-2 cursor-pointer"
-                      checked={selectedCategories.includes('talk')}
-                      onChange={() => toggleCategory('talk')}
-                    />
-                    <span className="text-gray-700">Talks <span className="text-gray-400">({categoryCounts['talk'] || 0})</span></span>
-                  </label>
-                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input
-                      type="checkbox"
-                      className="mr-2 cursor-pointer"
-                      checked={selectedCategories.includes('competition')}
-                      onChange={() => toggleCategory('competition')}
-                    />
-                    <span className="text-gray-700">Competition <span className="text-gray-400">({categoryCounts['competition'] || 0})</span></span>
-                  </label>
-                  <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input
-                      type="checkbox"
-                      className="mr-2 cursor-pointer"
-                      checked={selectedCategories.includes('workshop')}
-                      onChange={() => toggleCategory('workshop')}
-                    />
-                    <span className="text-gray-700">Workshop <span className="text-gray-400">({categoryCounts['workshop'] || 0})</span></span>
-                  </label>
+                  {(['sport', 'academic', 'cultural', 'social', 'competition', 'talk', 'workshop', 'other'] as EventCategory[]).map((category) => (
+                    <label key={category} className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
+                      <input
+                        type="checkbox"
+                        className="mr-2 cursor-pointer"
+                        checked={selectedCategories.includes(category)}
+                        onChange={() => toggleCategory(category)}
+                      />
+                      <span className="text-gray-700 capitalize">
+                        {category} <span className="text-gray-400">({categoryCounts[category] || 0})</span>
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
               {/* MYCSD AVAILABILITY */}
               <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-                <h3 className="font-semibold text-gray-900 mb-3">MYCSD AVAILABILITY</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">MyCSD Availability</h3>
                 <div className="space-y-2">
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
                     <input
@@ -282,9 +302,9 @@ export default function EventsPage() {
 
               {/* MYCSD CATEGORY */}
               <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-                <h3 className="font-semibold text-gray-900 mb-3">MYCSD CATEGORY</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">MyCSD Category</h3>
                 <div className="space-y-2">
-                  {(['REKA CIPTA DAN INOVASI', 'KEUSAHAWAN', 'KEBUDAYAAN', 'SUKAN/REKREASI/SOSIALISASI', 'KEPIMPINAN'] as MyCSDCategory[]).map((category) => (
+                  {(['Debat dan Pidato', 'Khidmat Masyarakat', 'Kebudayaan', 'Kepimpinan', 'Keusahawanan', 'Reka Cipta dan Inovasi', 'Sukan/Rekreasi/Sosialisasi'] as MyCSDCategory[]).map((category) => (
                     <label key={category} className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
                       <input
                         type="checkbox"
@@ -300,7 +320,7 @@ export default function EventsPage() {
 
               {/* MYCSD LEVEL */}
               <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-                <h3 className="font-semibold text-gray-900 mb-3">MYCSD LEVEL</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">MyCSD Level</h3>
                 <div className="space-y-2">
                   <label className="flex items-center text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
                     <input
@@ -359,9 +379,11 @@ export default function EventsPage() {
                     </p>
 
                     {/* Clear filters button */}
-                    {(selectedCategories.length > 0 || hasMyCSD !== undefined || selectedMyCSDCategories.length > 0 || selectedMyCSDLevels.length > 0) && (
+                    {(inputValue || selectedCategories.length > 0 || hasMyCSD !== undefined || selectedMyCSDCategories.length > 0 || selectedMyCSDLevels.length > 0) && (
                       <button
                         onClick={() => {
+                          setInputValue('');
+                          setSearchQuery('');
                           setSelectedCategories([]);
                           setHasMyCSD(undefined);
                           setSelectedMyCSDCategories([]);
@@ -436,6 +458,7 @@ export default function EventsPage() {
                       <p className="text-gray-500 text-lg">No events found matching your criteria.</p>
                       <button
                         onClick={() => {
+                          setInputValue('');
                           setSearchQuery('');
                           setSelectedCategories([]);
                           setHasMyCSD(undefined);

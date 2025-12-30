@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { User, LogOut, Calendar, Award, Menu, X, Bell } from 'lucide-react';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { useState } from 'react';
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -18,8 +19,15 @@ export default function Header() {
     router.push('/login');
   };
 
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(path);
+  };
+
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -31,21 +39,26 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-10">
+            <Link
+              href="/"
+              className={`flex items-center gap-1 transition-colors ${isActive('/') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
+            >
+              Home
+            </Link>
+
             <Link
               href="/events"
-              className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
+              className={`flex items-center gap-1 transition-colors ${isActive('/events') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
             >
-              <Calendar className="w-4 h-4" />
               Events
             </Link>
 
             {isAuthenticated && user?.role === 'student' && (
               <Link
                 href="/mycsd"
-                className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
+                className={`flex items-center gap-1 transition-colors ${isActive('/mycsd') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
               >
-                <Award className="w-4 h-4" />
                 MyCSD
               </Link>
             )}
@@ -53,7 +66,7 @@ export default function Header() {
             {isAuthenticated && user?.role === 'organizer' && (
               <Link
                 href="/organizer/dashboard"
-                className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
+                className={`flex items-center gap-1 transition-colors ${isActive('/organizer/dashboard') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
               >
                 Dashboard
               </Link>
@@ -62,7 +75,7 @@ export default function Header() {
             {isAuthenticated && user?.role === 'admin' && (
               <Link
                 href="/admin/dashboard"
-                className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
+                className={`flex items-center gap-1 transition-colors ${isActive('/admin/dashboard') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
               >
                 Admin Panel
               </Link>
@@ -72,32 +85,29 @@ export default function Header() {
               <>
                 <Link
                   href="/notifications"
-                  className="relative flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
+                  className={`relative flex items-center gap-1 transition-colors ${isActive('/notifications') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
                 >
-                  <Bell className="w-4 h-4" />
                   Notifications
                   {/* Unread badge - backend will provide count */}
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 </Link>
                 <Link
                   href="/profile"
-                  className="flex items-center gap-1 text-gray-700 hover:text-orange-500 font-medium transition-colors"
+                  className={`flex items-center gap-1 transition-colors ${isActive('/profile') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
                 >
-                  <User className="w-4 h-4" />
                   Profile
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-1 text-red-600 hover:text-red-700 font-medium transition-colors"
+                  className="flex items-center gap-1 text-red-600 hover:text-red-700 transition-colors"
                 >
-                  <LogOut className="w-4 h-4" />
                   Logout
                 </button>
               </>
             ) : (
               <Link
                 href="/login"
-                className="bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
+                className="bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full hover:from-purple-700 hover:to-purple-800 transition-all"
               >
                 Login
               </Link>

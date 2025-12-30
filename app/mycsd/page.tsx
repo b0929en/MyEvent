@@ -12,6 +12,39 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getUserMyCSDRecords, getUserClubPositions, calculateMyCSDSummary } from '@/backend/services/mycsdService';
 import { MyCSDRecord, ClubPosition } from '@/types';
 
+const AnimatedCounter = ({ value, duration = 2000 }: { value: number; duration?: number }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTime: number | null = null;
+    let animationFrameId: number;
+
+    const animate = (currentTime: number) => {
+      if (!startTime) startTime = currentTime;
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+
+      setCount(Math.floor(ease * value));
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(animate);
+      }
+    };
+
+    if (value > 0) {
+      animationFrameId = requestAnimationFrame(animate);
+    } else {
+      setCount(0);
+    }
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [value, duration]);
+
+  return <>{count}</>;
+};
+
 export default function MyCSDPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -298,22 +331,19 @@ export default function MyCSDPage() {
       <main className="grow">
 
         {/* Breadcrumb & Header Container */}
-        <div className="bg-gray-50 border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <Breadcrumb
-              items={[
-                { label: 'Home', href: '/' },
-                { label: 'MyCSD Summary' }
-              ]}
-            />
-            <div className="mt-4">
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-                <span className="text-purple-900">MyCSD</span> <span className="text-orange-500">Summary</span>
-              </h1>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <Breadcrumb
+            items={[
+              { label: 'Home', href: '/' },
+              { label: 'MyCSD Summary' }
+            ]}
+          />
+          <div className="mt-4">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+              <span className="text-purple-900">MyCSD</span> <span className="text-orange-500">Summary</span>
+            </h1>
           </div>
         </div>
-
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
 
@@ -328,7 +358,7 @@ export default function MyCSDPage() {
               <div className="relative z-10 flex justify-between items-start">
                 <div>
                   <h4 className="text-purple-100 font-semibold text-xs uppercase tracking-wider">Total MyCSD Points</h4>
-                  <span className="text-4xl font-bold text-white mt-2 block">{totalPoints}</span>
+                  <span className="text-4xl font-bold text-white mt-2 block"><AnimatedCounter value={totalPoints} /></span>
                 </div>
                 <div className="p-3 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">
                   <Award className="h-6 w-6 text-white" />
@@ -344,7 +374,7 @@ export default function MyCSDPage() {
               <div className="relative z-10 flex justify-between items-start">
                 <div>
                   <h4 className="text-orange-100 font-semibold text-xs uppercase tracking-wider">Total Events Joined</h4>
-                  <span className="text-4xl font-bold text-white mt-2 block">{totalEvents}</span>
+                  <span className="text-4xl font-bold text-white mt-2 block"><AnimatedCounter value={totalEvents} /></span>
                 </div>
                 <div className="p-3 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">
                   <Calendar className="h-6 w-6 text-white" />
@@ -362,7 +392,7 @@ export default function MyCSDPage() {
                 <h4 className="text-purple-100 font-semibold text-sm uppercase">Events This Month</h4>
               </div>
               <div className="relative z-10 mt-2">
-                <span className="text-3xl font-bold text-white">{eventsThisMonth}</span>
+                <span className="text-3xl font-bold text-white"><AnimatedCounter value={eventsThisMonth} /></span>
               </div>
             </div>
 
@@ -376,18 +406,17 @@ export default function MyCSDPage() {
                 <h4 className="text-orange-100 font-semibold text-sm uppercase">Points This Month</h4>
               </div>
               <div className="relative z-10 mt-2">
-                <span className="text-3xl font-bold text-white">{pointsThisMonth}</span>
+                <span className="text-3xl font-bold text-white"><AnimatedCounter value={pointsThisMonth} /></span>
               </div>
             </div>
           </div>
 
-
           {/* Section 2: Visualization & Detailed Summary Table */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            <div className="lg:col-span-1 bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col items-center">
+            <div className="lg:col-span-1 bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col items-center">
               <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wide mb-6">Points Distribution</h3>
-              <div className="w-full h-100">
+              <div className="w-full h-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -412,7 +441,7 @@ export default function MyCSDPage() {
             </div>
 
             <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+              <div className="bg-gray-50 px-6 p-4 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Category Breakdown</h3>
               </div>
               <div className="overflow-x-auto">
@@ -458,7 +487,7 @@ export default function MyCSDPage() {
           </div>
 
           {/* Records Section */}
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 mb-8">
             {/* Simple Tabs */}
             <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-8" aria-label="Tabs">
@@ -562,90 +591,92 @@ export default function MyCSDPage() {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div>
                 {activeTab === 'events' ? (
                   <>
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                          <th
-                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-purple-900 hover:bg-gray-100"
-                            onClick={() => handleSort('sem')}
-                          >
-                            <div className="flex items-center">
-                              Sem
-                              {sortConfig.key === 'sem' ? (
-                                sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
-                              ) : (
-                                <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />
-                              )}
-                            </div>
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Club/Assoc</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
-                          <th
-                            className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-purple-900 hover:bg-gray-100"
-                            onClick={() => handleSort('mata')}
-                          >
-                            <div className="flex items-center justify-center">
-                              Points
-                              {sortConfig.key === 'mata' ? (
-                                sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
-                              ) : (
-                                <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />
-                              )}
-                            </div>
-                          </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {paginatedEvents.map((row, index) => (
-                          <tr key={index} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{(eventPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.sem}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800" style={{
-                                backgroundColor: `${COLORS_MAP[row.teras]}20` || '#f3f4f6',
-                                color: COLORS_MAP[row.teras] || '#374151'
-                              }}>
-                                {row.teras}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-900 font-medium max-w-xs truncate" title={row.namaProjek}>{row.namaProjek}</td>
-                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={row.persatuan}>{row.persatuan}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPositionBadgeColor(row.jawatan)}`}>
-                                {row.jawatan}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getLevelBadgeColor(row.peringkat)}`}>
-                                {row.peringkat}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-bold text-orange-600">{row.mata}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                {row.mycsd}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                        {paginatedEvents.length === 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                           <tr>
-                            <td colSpan={9} className="px-6 py-8 text-center text-gray-500 text-sm">
-                              No events found matching your search.
-                            </td>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                            <th
+                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-purple-900 hover:bg-gray-100"
+                              onClick={() => handleSort('sem')}
+                            >
+                              <div className="flex items-center">
+                                Sem
+                                {sortConfig.key === 'sem' ? (
+                                  sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
+                                ) : (
+                                  <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />
+                                )}
+                              </div>
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Club/Assoc</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+                            <th
+                              className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-purple-900 hover:bg-gray-100"
+                              onClick={() => handleSort('mata')}
+                            >
+                              <div className="flex items-center justify-center">
+                                Points
+                                {sortConfig.key === 'mata' ? (
+                                  sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
+                                ) : (
+                                  <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />
+                                )}
+                              </div>
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {paginatedEvents.map((row, index) => (
+                            <tr key={index} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{(eventPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.sem}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800" style={{
+                                  backgroundColor: `${COLORS_MAP[row.teras]}20` || '#f3f4f6',
+                                  color: COLORS_MAP[row.teras] || '#374151'
+                                }}>
+                                  {row.teras}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900 font-medium max-w-xs truncate" title={row.namaProjek}>{row.namaProjek}</td>
+                              <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={row.persatuan}>{row.persatuan}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPositionBadgeColor(row.jawatan)}`}>
+                                  {row.jawatan}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getLevelBadgeColor(row.peringkat)}`}>
+                                  {row.peringkat}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-bold text-orange-600">{row.mata}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                  {row.mycsd}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {paginatedEvents.length === 0 && (
+                            <tr>
+                              <td colSpan={9} className="px-6 py-8 text-center text-gray-500 text-sm">
+                                No events found matching your search.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                     {/* Pagination Controls */}
                     <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
@@ -693,63 +724,65 @@ export default function MyCSDPage() {
 
                 ) : (
                   <>
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                          <th
-                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-purple-900 hover:bg-gray-100"
-                            onClick={() => handlePosSort('semRegistered')}
-                          >
-                            <div className="flex items-center">
-                              Semester Registered
-                              {posSortConfig.key === 'semRegistered' ? (
-                                posSortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
-                              ) : (
-                                <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />
-                              )}
-                            </div>
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Club / Association</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                          <th
-                            className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-purple-900 hover:bg-gray-100"
-                            onClick={() => handlePosSort('mata')}
-                          >
-                            <div className="flex items-center justify-center">
-                              Points
-                              {posSortConfig.key === 'mata' ? (
-                                posSortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
-                              ) : (
-                                <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />
-                              )}
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {paginatedPositions.map((row, index) => (
-                          <tr key={index} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{(posPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.semRegistered}</td>
-                            <td className="px-6 py-4 text-sm text-gray-900 font-medium">{row.persatuan}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                {row.position}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-orange-600">{row.mata}</td>
-                          </tr>
-                        ))}
-                        {paginatedPositions.length === 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                           <tr>
-                            <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
-                              No position records found matching your search.
-                            </td>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                            <th
+                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-purple-900 hover:bg-gray-100"
+                              onClick={() => handlePosSort('semRegistered')}
+                            >
+                              <div className="flex items-center">
+                                Sem
+                                {posSortConfig.key === 'semRegistered' ? (
+                                  posSortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
+                                ) : (
+                                  <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />
+                                )}
+                              </div>
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Club / Association</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                            <th
+                              className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-purple-900 hover:bg-gray-100"
+                              onClick={() => handlePosSort('mata')}
+                            >
+                              <div className="flex items-center justify-center">
+                                Points
+                                {posSortConfig.key === 'mata' ? (
+                                  posSortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
+                                ) : (
+                                  <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />
+                                )}
+                              </div>
+                            </th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {paginatedPositions.map((row, index) => (
+                            <tr key={index} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{(posPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.semRegistered}</td>
+                              <td className="px-6 py-4 text-sm text-gray-900 font-medium">{row.persatuan}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                  {row.position}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-orange-600">{row.mata}</td>
+                            </tr>
+                          ))}
+                          {paginatedPositions.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
+                                No position records found matching your search.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                     {/* Pagination Controls for Positions */}
                     <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">

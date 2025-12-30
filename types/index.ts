@@ -220,11 +220,14 @@ export type ProposalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 're
 export type EventStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'published' | 'completed' | 'cancelled';
 export type EventCategory = 'sport' | 'academic' | 'cultural' | 'social' | 'competition' | 'talk' | 'workshop' | 'other';
 export type MyCSDCategory =
-  | 'REKA CIPTA DAN INOVASI'
-  | 'KEUSAHAWAN'
-  | 'KEBUDAYAAN'
-  | 'SUKAN/REKREASI/SOSIALISASI'
-  | 'KEPIMPINAN';
+  | 'Debat dan Pidato'
+  | 'Khidmat Masyarakat'
+  | 'Kebudayaan'
+  | 'Kepimpinan'
+  | 'Keusahawanan'
+  | 'Reka Cipta dan Inovasi'
+  | 'Sukan/Rekreasi/Sosialisasi';
+
 export type MyCSDLevel =
   | 'P.Pengajian / Desasiswa / Persatuan / Kelab'
   | 'Negeri / Universiti'
