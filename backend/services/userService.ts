@@ -48,7 +48,9 @@ export async function getUserByEmail(email: string) {
     .single();
 
   if (error) {
-    console.error('Error fetching user:', error);
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching user:', error);
+    }
     return null;
   }
 
@@ -67,7 +69,9 @@ export async function getUserById(id: string) {
     .single();
 
   if (error) {
-    console.error('Error fetching user:', error);
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching user:', error);
+    }
     return null;
   }
 

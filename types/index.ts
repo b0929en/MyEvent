@@ -55,6 +55,8 @@ export interface DBMyCSDRequest {
   event_id: string | null;
   lk_document: string | null;
   status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string | null;
+  submitted_at?: string;
   event_mycsd?: DBEventMyCSD[];
 }
 
@@ -301,6 +303,8 @@ export type Event = {
   objectives?: string[];
   agenda?: string[];
   is_mycsd_claimed?: boolean;
+  mycsdStatus?: 'pending' | 'approved' | 'rejected' | 'none';
+  mycsdRejectionReason?: string;
   adminNotes?: string;
   committeeMembers?: CommitteeMember[];
   createdAt: string;
@@ -380,7 +384,8 @@ export type MyCSDRecord = {
   role: ParticipantRole;
   points: number;
   semester: string;
-  status: MyCSDStatus;
+  status: 'approved' | 'pending_approval' | 'rejected' | 'waiting_for_report';
+  rejectionReason?: string;
   proofDocument?: string;
   remarks?: string;
   submittedAt: string;

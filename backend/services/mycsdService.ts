@@ -61,7 +61,7 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
       *,
       event_requests (
         user_id
-      )
+        )
     `)
     .eq('event_id', eventId)
     .single();
@@ -81,41 +81,40 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
   // 2. Check if a request already exists
   const { data: existingRequest } = await supabase
     .from('mycsd_requests')
-    .select('mr_id')
+    .select('*')
     .eq('event_id', eventId)
     .single();
 
   if (existingRequest) {
-    // Update existing request
-    const { error } = await supabase
-      .from('mycsd_requests')
-      .update({
-        lk_document: documentUrl,
-        status: 'pending'
-      })
-      .eq('mr_id', existingRequest.mr_id);
-
-    if (error) throw error;
-  } else {
-    // Handle potential array response for event_requests
-    const eventRequest = Array.isArray(event.event_requests)
-      ? event.event_requests[0]
-      : event.event_requests;
-
-    const userId = eventRequest?.user_id;
-
-    // Create new request
-    const { error } = await supabase
-      .from('mycsd_requests')
-      .insert({
-        event_id: eventId,
-        user_id: userId,
-        lk_document: documentUrl,
-        status: 'pending'
-      });
-
-    if (error) throw error;
+    // STRICT RULE: No resubmission allows if rejected or pending.
+    // If it's already approved, no need to submit again anyway.
+    if (existingRequest.status === 'rejected') {
+      throw new Error('This Laporan Kejayaan has been rejected. Resubmission is not allowed.');
+    }
+    if (existingRequest.status === 'pending' || existingRequest.status === 'approved') {
+      throw new Error('Laporan Kejayaan has already been submitted for this event.');
+    }
   }
+
+  // Handle potential array response for event_requests
+  const eventRequest = Array.isArray(event.event_requests)
+    ? event.event_requests[0]
+    : event.event_requests;
+
+  const userId = eventRequest?.user_id;
+
+  // Create new request
+  const { error } = await supabase
+    .from('mycsd_requests')
+    .insert({
+      event_id: eventId,
+      user_id: userId,
+      lk_document: documentUrl,
+      status: 'pending',
+      submitted_at: new Date().toISOString()
+    });
+
+  if (error) throw error;
 }
 
 export async function approveMyCSDRequest(requestId: string, committeeRoles?: Record<string, string>) {
@@ -228,9 +227,8 @@ export async function approveMyCSDRequest(requestId: string, committeeRoles?: Re
   if (event.committee_members && Array.isArray(event.committee_members)) {
     const committeeLogs = event.committee_members.map((member: any) => {
       const trimmedMatric = String(member.matricNumber).trim();
-      // Get role from admin selection or fallback to generic 'ajk_kecil' if not specified (should be specified)
-      // Use the trimmed matric to lookup in committeeRoles
-      const assignedRole = committeeRoles?.[trimmedMatric] || 'ajk_kecil';
+      // Get role from admin selection or fallback to original position, then default to 'ajk_kecil'
+      const assignedRole = committeeRoles?.[trimmedMatric] || member.position || 'ajk_kecil';
       const points = calculateMyCSDPoints(eventLevel, assignedRole);
 
       let displayPosition = 'Peserta';
@@ -267,6 +265,22 @@ export async function approveMyCSDRequest(requestId: string, committeeRoles?: Re
     .from('events')
     .update({ is_mycsd_claimed: true, mycsd_points: participantPoints })
     .eq('event_id', event.event_id);
+}
+
+export async function rejectMyCSDRequest(requestId: string, reason: string) {
+  if (!reason || reason.trim() === '') {
+    throw new Error('Rejection reason is compulsory.');
+  }
+
+  const { error } = await supabase
+    .from('mycsd_requests')
+    .update({
+      status: 'rejected',
+      rejection_reason: reason
+    })
+    .eq('mr_id', requestId);
+
+  if (error) throw error;
 }
 
 export async function getAllMyCSDRequests() {
@@ -367,6 +381,7 @@ export async function updateMyCSDRequestStatus(requestId: string, status: string
 }
 
 export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]> {
+  // 1. Get Student Matric Number
   const { data: studentData, error: studentError } = await supabase
     .from('students')
     .select('matric_num')
@@ -374,57 +389,241 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
     .single();
 
   if (studentError || !studentData) return [];
-
   const matricNum = studentData.matric_num;
 
-  const { data, error } = await supabase
-    .from('mycsd_logs')
+  // 2. Get All Events Attended by the Student (Present)
+  // We fetch registrations where attendance = 'present'
+  const { data: registrations, error: regError } = await supabase
+    .from('registrations')
     .select(`
-      *,
-      mycsd_records (
-        *,
-        event_mycsd (
-          *,
-          mycsd_requests (
-            events (
-              event_id,
-              event_name,
-              event_requests (
-                organizations (
-                  org_name
-                )
-              )
-            )
+      event_id,
+      events (
+        event_id,
+        event_name,
+        mycsd_level,
+        mycsd_category,
+        mycsd_points,
+        event_requests (
+          organizations (
+            org_name
+          )
+        ),
+        mycsd_requests (
+          mr_id,
+          status,
+          rejection_reason,
+          submitted_at,
+          event_mycsd (
+            event_level,
+            mycsd_category,
+             mycsd_records (
+               record_id,
+               mycsd_score
+             )
           )
         )
       )
     `)
-    .eq('matric_no', matricNum);
+    .eq('user_id', userId)
+    .eq('attendance', 'present');
 
-  if (error) {
-    console.error('Error fetching mycsd logs:', error);
+  if (regError) {
+    console.error('Error fetching registrations:', regError);
     return [];
   }
 
-  return data.map((log: any) => {
-    const eventMycsd = log.mycsd_records?.event_mycsd;
-    const event = eventMycsd?.mycsd_requests?.events;
+  // 2.2 Get MyCSD Logs (Correct Approved Position & Score)
+  const { data: csdLogs, error: logError } = await supabase
+    .from('mycsd_logs')
+    .select('record_id, score, position, mycsd_records(event_mycsd(mr_id, mycsd_requests(event_id)))')
+    .eq('matric_no', matricNum);
+
+  const logsMap = new Map();
+  if (csdLogs) {
+    csdLogs.forEach((log: any) => {
+      // We need to map logs back to event_id. 
+      // Path: log -> record -> event_mycsd -> request -> event_id
+      // This is deep. 
+      // Alternative: The log has record_id. In step 3, we can try to match record_id if available.
+      // But record_id is only available if we fetch it via event->mycsd_request->...
+      // Let's store by record_id for easy lookup later
+      logsMap.set(log.record_id, log);
+    });
+  }
+
+  // 2.5 Get Events where Student is a Committee Member
+  // We need to query events where the committee_members JSONB column contains an object with this matric number.
+  // Note: Using `contains` for JSONB. Structure is [{ matricNumber: "..." }, ...]
+  // We need to be careful with the structure. The committee_members is an array of objects.
+
+  const { data: committeeEvents, error: committeeError } = await supabase
+    .from('events')
+    .select(`
+      event_id,
+      event_name,
+      mycsd_level,
+      mycsd_category,
+      mycsd_points,
+      committee_members,
+      event_requests (
+        organizations (
+          org_name
+        )
+      ),
+      mycsd_requests (
+        mr_id,
+        status,
+        rejection_reason,
+        submitted_at,
+        event_mycsd (
+          event_level,
+          mycsd_category,
+           mycsd_records (
+             record_id,
+             mycsd_score
+           )
+        )
+      )
+    `)
+    // Ideally we use .contains, but Supabase JS filter for JSON array containing object matches on subset of keys.
+    // Let's try to fetch relevant ones or just client side filter if volume is low, but better to filter DB side.
+    // However, since we don't have a normalized committee table, we might have to fetch recent events or similar.
+    // For now, let's try a text search on the JSON column as a workaround or fetch all and filter if dataset is small.
+    // Better approach: Since we can't easily do deep array filter in standard REST easily without proper index or RPC,
+    // we'll try to rely on a "contains" filter if the structure is consistent, 
+    // OR we just fetch all events (bad). 
+    // actually, let's assume we can filter by `committee_members` not being null, and then filter in JS for this user.
+    // It's not efficient for production at scale but works for MVP.
+    // A better approach would be to have a separate table for committee members.
+    .not('committee_members', 'is', null);
+
+  // Filter committee events for this student
+  const myCommitteeEvents = (committeeEvents || []).filter((evt: any) => {
+    const members = evt.committee_members;
+    if (Array.isArray(members)) {
+      return members.some((m: any) => String(m.matricNumber).trim() === matricNum.trim());
+    }
+    return false;
+  }).map((evt: any) => {
+    // Shape it similar to registration event structure to reuse mapping logic
+    return { events: evt };
+  });
+
+  // Merge (deduplicate based on event_id)
+  const allRecords = [...registrations, ...myCommitteeEvents];
+  const uniqueRecordsMap = new Map();
+
+  allRecords.forEach((item: any) => {
+    if (item.events && !uniqueRecordsMap.has(item.events.event_id)) {
+      uniqueRecordsMap.set(item.events.event_id, item);
+    }
+  });
+
+  const uniqueRegistrations = Array.from(uniqueRecordsMap.values());
+
+  // 3. Map to MyCSDRecord format
+  return uniqueRegistrations.map((reg: any) => {
+    const event = reg.events;
+    // Sort mycsd_requests by submitted_at desc
+    const requests = event.mycsd_requests || [];
+    requests.sort((a: any, b: any) => new Date(b.submitted_at || 0).getTime() - new Date(a.submitted_at || 0).getTime());
+
+    // We take the approved one or the latest one
+    const mycsdRequest = requests.find((r: any) => r.status === 'approved') || requests[0];
+    const eventMycsd = mycsdRequest?.event_mycsd?.[0];
     const organization = event?.event_requests?.organizations;
 
+    // Determine Status
+    let status: 'waiting_for_report' | 'pending_approval' | 'approved' | 'rejected' = 'waiting_for_report'; // Default: waiting for organizer
+    let rejectionReason = '';
+
+    if (mycsdRequest) {
+      if (mycsdRequest.status === 'approved') {
+        status = 'approved';
+      } else if (mycsdRequest.status === 'rejected') {
+        status = 'rejected';
+        rejectionReason = mycsdRequest.rejection_reason;
+      } else {
+        status = 'pending_approval'; // Submitted by organizer, waiting for admin
+      }
+    }
+
+    // Determine Points
+    let points = 0;
+    if (status === 'approved') {
+      // Only show points if approved
+      const record = eventMycsd?.mycsd_records;
+      points = record?.mycsd_score || event.mycsd_points || 0;
+    } else {
+      // Show estimated points in the record so users can see what they WILL get.
+      // The summary calculation ensures these are not added to the total.
+      const displayLevel = eventMycsd?.event_level || event.mycsd_level || 'kampus';
+      points = getPointsForLevel(displayLevel);
+    }
+
+    // Determine Role & Position
+    let role: 'participant' | 'committee' | 'organizer' = 'participant';
+    let position = 'Peserta';
+
+    // Check if user is in committee list
+    const committeeList = event.committee_members;
+    if (Array.isArray(committeeList)) {
+      const committeeMember = committeeList.find((m: any) => String(m.matricNumber).trim() === matricNum.trim());
+      if (committeeMember) {
+        role = 'committee';
+        // Map backend position code to display text
+        const posCode = committeeMember.position || 'ajk_kecil';
+        if (posCode === 'pengarah') position = 'Pengarah';
+        else if (posCode === 'ajk_tertinggi') position = 'AJK Tertinggi';
+        else if (posCode === 'ajk_kecil') position = 'AJK Kecil';
+        else if (posCode === 'pengikut') position = 'Pengikut';
+        else position = posCode.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+        // Recalculate estimated points based on role if not approved yet
+        if (status !== 'approved') {
+          const displayLevel = eventMycsd?.event_level || event.mycsd_level || 'kampus';
+          points = calculateMyCSDPoints(displayLevel, posCode);
+        }
+      }
+    }
+
+    // OVERRIDE: If Approved, use the OFFICIAL position and score from mycsd_logs
+    if (status === 'approved') {
+      // We need the record_id. 
+      // record -> eventMycsd -> mycsd_records
+      const recordId = eventMycsd?.mycsd_records?.record_id;
+      if (recordId && logsMap.has(recordId)) {
+        const log = logsMap.get(recordId);
+        points = log.score;
+        position = log.position || position;
+        // If position suggests committee, ensure role is committee
+        if (['Pengarah', 'AJK Tertinggi', 'AJK Kecil', 'Pengikut'].some(p => position.includes(p))) {
+          role = 'committee';
+        }
+      }
+    }
+
+    // Force "-" if not approved, per user request
+    if (status !== 'approved') {
+      points = '-' as any;
+      position = '-';
+    }
+
     return {
-      id: log.record_id,
+      id: event.event_id, // Use Event ID as unique key if record_id doesn't exist yet
       userId: userId,
-      eventId: event?.event_id || '',
-      eventName: event?.event_name || 'Unknown Event',
+      eventId: event.event_id,
+      eventName: event.event_name,
       organizationName: organization?.org_name || 'Unknown Organization',
-      category: eventMycsd?.mycsd_category || 'REKA CIPTA DAN INOVASI',
-      level: eventMycsd?.event_level || 'kampus',
-      role: 'participant', // Generic role for type safety
-      position: log.position, // Specific display string (e.g., 'AJK Tertinggi')
-      points: log.score,
-      semester: '2024/2025-1',
-      status: 'approved',
-      submittedAt: new Date().toISOString(),
+      category: eventMycsd?.mycsd_category || event.mycsd_category || 'REKA CIPTA DAN INOVASI',
+      level: eventMycsd?.event_level || event.mycsd_level || 'kampus',
+      role: role as any,
+      position: position as any,
+      points: points,
+      semester: '2024/2025-1', // Placeholder or calculate based on date
+      status: status,
+      rejectionReason: rejectionReason,
+      submittedAt: mycsdRequest?.submitted_at || new Date().toISOString(),
     };
   });
 }

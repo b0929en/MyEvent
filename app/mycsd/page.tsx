@@ -131,7 +131,8 @@ export default function MyCSDPage() {
       (record.level || '').toLowerCase().includes('negeri') || (record.level || '').toLowerCase().includes('universiti') ? 'Universiti' :
         'P.Pengajian / Desasiswa / Persatuan / Kelab',
     mata: record.points,
-    mycsd: record.status === 'approved' ? 'YA' : 'Pending',
+    mycsd: record.status, // Pass the full status
+    rejectionReason: record.rejectionReason,
     date: record.submittedAt.split('T')[0],
   }));
 
@@ -199,7 +200,12 @@ export default function MyCSDPage() {
   const pieData = useMemo(() => {
     const counts: Record<string, number> = {};
     eventData.forEach(event => {
-      counts[event.teras] = (counts[event.teras] || 0) + event.mata;
+      // Only include approved events in the chart
+      if (event.mycsd === 'approved') {
+        // Safe cast to number in case it's a string, though logic ensures it shouldn't be '-' if approved
+        const p = Number(event.mata) || 0;
+        counts[event.teras] = (counts[event.teras] || 0) + p;
+      }
     });
     return Object.keys(counts).map(key => ({
       name: key,
@@ -216,15 +222,19 @@ export default function MyCSDPage() {
     });
 
     eventData.forEach(event => {
-      if (!grouped[event.teras]) {
-        grouped[event.teras] = { count: 0, pointsLocal: 0, pointsIntl: 0 };
-      }
-      grouped[event.teras].count += 1;
+      // Only include approved events in the summary table
+      if (event.mycsd === 'approved') {
+        if (!grouped[event.teras]) {
+          grouped[event.teras] = { count: 0, pointsLocal: 0, pointsIntl: 0 };
+        }
+        grouped[event.teras].count += 1;
 
-      if (event.peringkat === 'Antarabangsa') {
-        grouped[event.teras].pointsIntl += event.mata;
-      } else {
-        grouped[event.teras].pointsLocal += event.mata;
+        const p = Number(event.mata) || 0;
+        if (event.peringkat === 'Antarabangsa') {
+          grouped[event.teras].pointsIntl += p;
+        } else {
+          grouped[event.teras].pointsLocal += p;
+        }
       }
     });
 
@@ -661,9 +671,36 @@ export default function MyCSDPage() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-bold text-orange-600">{row.mata}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                  {row.mycsd}
-                                </span>
+                                {/* Status Badges */}
+                                {row.mycsd === 'approved' && (
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Approved
+                                  </span>
+                                )}
+                                {row.mycsd === 'pending_approval' && (
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    Pending Approval
+                                  </span>
+                                )}
+                                {row.mycsd === 'rejected' && (
+                                  <div className="relative group inline-block">
+                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 cursor-help border-b-2 border-red-300 border-dashed">
+                                      Rejected
+                                    </span>
+                                    {row.rejectionReason && (
+                                      <div className="absolute right-0 bottom-full mb-2 w-64 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                                        <p className="font-bold text-red-200 mb-1">Rejection Reason:</p>
+                                        {row.rejectionReason}
+                                        <div className="absolute bottom-0 right-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {(row.mycsd === 'waiting_for_report' || !row.mycsd || (row.mycsd !== 'approved' && row.mycsd !== 'rejected' && row.mycsd !== 'pending_approval')) && (
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800" title="Waiting for organizer submission">
+                                    Waiting Report
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           ))}

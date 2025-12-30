@@ -6,7 +6,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { getAllMyCSDRequests, updateMyCSDRequestStatus, approveMyCSDRequest } from '@/backend/services/mycsdService';
+import { getAllMyCSDRequests, updateMyCSDRequestStatus, approveMyCSDRequest, rejectMyCSDRequest } from '@/backend/services/mycsdService';
 import { ArrowLeft, TrendingUp, CheckCircle, XCircle, AlertCircle, Eye, Users } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
@@ -104,7 +104,7 @@ export default function AdminMyCSDPage() {
         await approveMyCSDRequest(selectedSubmission.id, committeeRoles);
       } else {
         // rejecting only updates the status
-        await updateMyCSDRequestStatus(selectedSubmission.id, 'rejected');
+        await rejectMyCSDRequest(selectedSubmission.id, adminNotes);
       }
 
       toast.success(`Request ${reviewAction}d successfully!`);

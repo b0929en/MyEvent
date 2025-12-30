@@ -10,7 +10,7 @@ import { submitMyCSDClaim } from '@/backend/services/mycsdService';
 import { uploadDocument } from '@/backend/services/storageService';
 import { Event } from '@/types';
 import { format } from 'date-fns';
-import { 
+import {
   Plus, Calendar, Users, TrendingUp, Edit, Trash2, Eye,
   CheckCircle, XCircle, Clock, Copy, Award, Upload, Globe,
   FileText, Ban, AlertCircle
@@ -26,8 +26,8 @@ export default function OrganizerDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [approvedProposals, setApprovedProposals] = useState<Proposal[]>([]);
-  const [actionProposals, setActionProposals] = useState<Proposal[]>([]); 
-  
+  const [actionProposals, setActionProposals] = useState<Proposal[]>([]);
+
   // MyCSD Claim State
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedEventForClaim, setSelectedEventForClaim] = useState<Event | null>(null);
@@ -40,19 +40,19 @@ export default function OrganizerDashboard() {
         try {
           const allEvents = await getEvents();
           if (allEvents) {
-            setOrganizerEvents(allEvents.filter(event => 
+            setOrganizerEvents(allEvents.filter(event =>
               event.organizerId === user.organizationId
             ));
           }
           const allProposals = await getAllProposals();
           if (allProposals) {
-             const myProposals: Proposal[] = allProposals.filter((p: Proposal) => p.organizerId === user.organizationId);
-             
-             // Filter Approved
-             setApprovedProposals(myProposals.filter(p => p.status === 'approved'));
-             
-             // NEW: Filter for Revision Needed or Rejected to show comments
-             setActionProposals(myProposals.filter(p => p.status === 'revision_needed' || p.status === 'rejected'));
+            const myProposals: Proposal[] = allProposals.filter((p: Proposal) => p.organizerId === user.organizationId);
+
+            // Filter Approved
+            setApprovedProposals(myProposals.filter(p => p.status === 'approved'));
+
+            // NEW: Filter for Revision Needed or Rejected to show comments
+            setActionProposals(myProposals.filter(p => p.status === 'revision_needed' || p.status === 'rejected'));
           }
         } catch (error) {
           console.error('Error fetching events:', error);
@@ -71,7 +71,7 @@ export default function OrganizerDashboard() {
   const stats = useMemo(() => {
     const totalEvents = organizerEvents.length;
     const totalParticipants = organizerEvents.reduce((sum, event) => sum + event.registeredCount, 0);
-    const upcomingEvents = organizerEvents.filter(event => 
+    const upcomingEvents = organizerEvents.filter(event =>
       new Date(event.startDate) > new Date() && event.status !== 'cancelled'
     ).length;
     const publishedEvents = organizerEvents.filter(event => event.status === 'published').length;
@@ -86,14 +86,14 @@ export default function OrganizerDashboard() {
     try {
       const path = `documents/${selectedEventForClaim.id}/${Date.now()}-${laporanFile.name}`;
       const url = await uploadDocument(laporanFile, path);
-      
+
       await submitMyCSDClaim(
         selectedEventForClaim.id,
         url,
         selectedEventForClaim.mycsdLevel || '',
         selectedEventForClaim.mycsdCategory || ''
       );
-      
+
       toast.success('Laporan submitted successfully! Points will be distributed upon admin approval.');
       setShowClaimModal(false);
       setLaporanFile(null);
@@ -192,10 +192,10 @@ export default function OrganizerDashboard() {
                           {format(new Date(proposal.updatedAt), 'MMM dd, yyyy')}
                         </p>
                       </div>
-                      
+
                       {/* THIS IS THE BUTTON THAT LINKS TO THE REVISION PAGE */}
                       {proposal.status === 'revision_needed' && (
-                        <Link 
+                        <Link
                           href={`/organizer/proposals/${proposal.id}/edit`}
                           className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors font-medium text-sm border border-orange-200"
                         >
@@ -204,7 +204,7 @@ export default function OrganizerDashboard() {
                         </Link>
                       )}
                     </div>
-                    
+
                     {/* Display Admin Notes */}
                     {proposal.adminNotes && (
                       <div className="bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
@@ -320,11 +320,10 @@ export default function OrganizerDashboard() {
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key as TabType)}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === tab.key
-                        ? 'border-purple-600 text-purple-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.key
+                      ? 'border-purple-600 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
                   >
                     {tab.label} ({tab.count})
                   </button>
@@ -404,16 +403,16 @@ export default function OrganizerDashboard() {
                             >
                               <Eye className="w-4 h-4" />
                             </Link>
-                            
+
                             {/* Allow edit only if not completed/cancelled */}
                             {event.status !== 'completed' && event.status !== 'cancelled' && (
-                               <Link
-                               href={`/organizer/events/${event.id}/edit`}
-                               className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded transition-colors"
-                               title="Edit"
-                             >
-                               <Edit className="w-4 h-4" />
-                             </Link>
+                              <Link
+                                href={`/organizer/events/${event.id}/edit`}
+                                className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded transition-colors"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Link>
                             )}
 
                             <Link
@@ -423,21 +422,55 @@ export default function OrganizerDashboard() {
                             >
                               <Users className="w-4 h-4" />
                             </Link>
-                            
-                            {/* MyCSD Claim Button */}
-                            {event.hasMyCSD && 
-                             event.status === 'completed' && 
-                             !event.is_mycsd_claimed && (
-                              <button
-                                onClick={() => {
-                                  setSelectedEventForClaim(event);
-                                  setShowClaimModal(true);
-                                }}
-                                className="text-orange-600 hover:text-orange-900 p-2 hover:bg-orange-50 rounded transition-colors"
-                                title="Submit Laporan & Claim MyCSD"
-                              >
-                                <Award className="w-4 h-4" />
-                              </button>
+
+                            {/* MyCSD Claim Status & Actions */}
+                            {event.hasMyCSD && event.status === 'completed' && (
+                              <>
+                                {/* Case 1: Not Submitted Yet -> Show Button */}
+                                {(event.mycsdStatus === 'none' || !event.mycsdStatus) && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedEventForClaim(event);
+                                      setShowClaimModal(true);
+                                    }}
+                                    className="text-orange-600 hover:text-orange-900 p-2 hover:bg-orange-50 rounded transition-colors"
+                                    title="Submit Laporan & Claim MyCSD"
+                                  >
+                                    <Award className="w-5 h-5" />
+                                  </button>
+                                )}
+
+                                {/* Case 2: Pending Approval */}
+                                {(event.mycsdStatus === 'pending') && (
+                                  <div className="relative group p-2">
+                                    <Clock className="w-5 h-5 text-amber-500 cursor-help" />
+                                    <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
+                                      Claim Pending Approval
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Case 3: Approved */}
+                                {event.mycsdStatus === 'approved' && (
+                                  <div className="relative group p-2">
+                                    <CheckCircle className="w-5 h-5 text-emerald-500 cursor-help" />
+                                    <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
+                                      Claim Approved
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Case 4: Rejected */}
+                                {event.mycsdStatus === 'rejected' && (
+                                  <div className="relative group p-2">
+                                    <AlertCircle className="w-5 h-5 text-red-500 cursor-pointer" />
+                                    <div className="absolute bottom-full right-0 mb-2 w-64 bg-white text-gray-800 text-xs rounded-lg shadow-xl border border-red-200 p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                      <p className="font-bold text-red-600 mb-1">Claim Rejected</p>
+                                      <p className="text-gray-600 leading-snug">{event.mycsdRejectionReason || 'No reason provided.'}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
 
                             <button
@@ -469,8 +502,8 @@ export default function OrganizerDashboard() {
                   <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-lg mb-2">No events found</p>
                   <p className="text-gray-400 text-sm mb-4">
-                    {activeTab === 'all' 
-                      ? 'Create your first event to get started' 
+                    {activeTab === 'all'
+                      ? 'Create your first event to get started'
                       : `No ${activeTab} events yet`}
                   </p>
                   <Link
@@ -499,7 +532,7 @@ export default function OrganizerDashboard() {
           <p className="text-gray-600">
             Upload the Laporan Kejayaan to distribute MyCSD points to all present participants for <strong>{selectedEventForClaim?.title}</strong>.
           </p>
-          
+
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
             <input
               type="file"

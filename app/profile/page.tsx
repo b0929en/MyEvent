@@ -111,7 +111,8 @@ export default function ProfilePage() {
 
     switch (record.status) {
       case 'approved': return { status: 'Approved', color: 'bg-green-100 text-green-800' };
-      case 'pending': return { status: 'Pending', color: 'bg-yellow-100 text-yellow-800' };
+      case 'pending_approval': return { status: 'Pending', color: 'bg-yellow-100 text-yellow-800' };
+      case 'waiting_for_report': return { status: 'Waiting Report', color: 'bg-gray-100 text-gray-500' };
       case 'rejected': return { status: 'Rejected', color: 'bg-red-100 text-red-800' };
       default: return { status: record.status, color: 'bg-gray-100 text-gray-800' };
     }

@@ -5,7 +5,14 @@ import { createNotification } from './notificationService';
 
 const mapEvent = (dbEvent: DBEvent): Event => {
   // Extract MyCSD info if available
-  const mycsdRequest = dbEvent.mycsd_requests?.find((req: DBMyCSDRequest) => req.status === 'approved') || dbEvent.mycsd_requests?.[0];
+  const requests = dbEvent.mycsd_requests || [];
+  // Sort by submitted_at descending (newest first) to ensure we get the latest status
+  // Note: If multiple requests exist (e.g. cancelled/rejected then new one), we want the active one.
+  // Assuming 'approved' takes precedence if for some reason multiple exist, otherwise latest.
+  requests.sort((a, b) => new Date(b.submitted_at || 0).getTime() - new Date(a.submitted_at || 0).getTime());
+
+  const mycsdRequest = requests.find((req: DBMyCSDRequest) => req.status === 'approved') || requests[0];
+
   const eventMycsd = mycsdRequest?.event_mycsd?.[0];
   const mycsdRecord = eventMycsd?.mycsd_records;
   const resolvedLevel = dbEvent.mycsd_level || eventMycsd?.event_level;
@@ -47,6 +54,8 @@ const mapEvent = (dbEvent: DBEvent): Event => {
     committeeMembers: dbEvent.committee_members || [],
 
     status: (eventRequest?.status === 'pending' ? 'pending_approval' : eventRequest?.status) as EventStatus || 'published',
+    mycsdStatus: mycsdRequest?.status || 'none',
+    mycsdRejectionReason: mycsdRequest?.rejection_reason || undefined,
     registrationDeadline: dbEvent.event_date,
     createdAt: createdDate,
     updatedAt: createdDate,
@@ -83,6 +92,8 @@ export async function getEvents(filters?: {
       ),
       mycsd_requests (
         status,
+        rejection_reason,
+        submitted_at,
         event_mycsd (
           mycsd_category,
           event_level,
@@ -126,6 +137,8 @@ export async function getEventById(id: string) {
       ),
       mycsd_requests (
         status,
+        rejection_reason,
+        submitted_at,
         event_mycsd (
           mycsd_category,
           event_level,

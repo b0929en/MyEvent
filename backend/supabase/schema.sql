@@ -142,7 +142,9 @@ CREATE TABLE mycsd_requests (
     user_id UUID REFERENCES users(user_id),
     event_id UUID REFERENCES events(event_id),
     lk_document TEXT,
-    status mycsd_status_enum DEFAULT 'pending'
+    status mycsd_status_enum DEFAULT 'pending',
+    rejection_reason TEXT,
+    submitted_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 11. MYCSD_RECORD (Base Entity)
