@@ -170,6 +170,10 @@ export async function updateProposal(id: string, proposalData: ProposalUpdateInp
     requestUpdates.event_request_file = JSON.stringify(proposalData.documents);
   }
 
+  if (proposalData.committeeMembers) {
+    requestUpdates.committee_members = proposalData.committeeMembers;
+  }
+
   const { error: reqError } = await supabase
     .from('event_requests')
     .update(requestUpdates)
@@ -180,16 +184,22 @@ export async function updateProposal(id: string, proposalData: ProposalUpdateInp
   const { data: eventData } = await supabase.from('events').select('event_id').eq('event_request_id', id).single();
 
   if (eventData) {
+    const eventUpdates: Record<string, unknown> = {
+      event_name: proposalData.eventTitle,
+      event_description: proposalData.eventDescription,
+      event_date: proposalData.proposedDate,
+      event_venue: proposalData.proposedVenue,
+      category: proposalData.category,
+      capacity: proposalData.estimatedParticipants,
+    };
+
+    if (proposalData.committeeMembers) {
+      eventUpdates.committee_members = proposalData.committeeMembers;
+    }
+
     await supabase
       .from('events')
-      .update({
-        event_name: proposalData.eventTitle,
-        event_description: proposalData.eventDescription,
-        event_date: proposalData.proposedDate,
-        event_venue: proposalData.proposedVenue,
-        category: proposalData.category,
-        capacity: proposalData.estimatedParticipants,
-      })
+      .update(eventUpdates)
       .eq('event_id', eventData.event_id);
   }
 }

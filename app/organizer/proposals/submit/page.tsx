@@ -28,6 +28,9 @@ const proposalSchema = z.object({
     matricNumber: z.string().min(1, 'Matric number is required'),
     name: z.string().min(1, 'Name is required'),
     position: z.string().min(1, 'Position is required'),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    faculty: z.string().optional(),
   })).optional(),
 });
 
@@ -121,11 +124,8 @@ export default function SubmitProposalPage() {
       const student = await getStudentByMatric(matric);
       if (student) {
         setValue(`committeeMembers.${index}.name`, student.name || '');
-        // We can also store the email if we add a hidden field or just keep it in state, 
-        // but for now let's just use what we have. 
-        // To make typescript happy with CommitteeMember type we need email/phone on submit.
-        // We'll add them to the form schema as optional or hidden?
-        // Let's assume we proceed with just name/matric/pos in UI and fill others on submit if possible or dummy them.
+        if (student.email) setValue(`committeeMembers.${index}.email`, student.email);
+        if (student.faculty) setValue(`committeeMembers.${index}.faculty`, student.faculty);
         toast.success(`Student found: ${student.name}`);
       } else {
         toast.error('Student not found');
@@ -457,6 +457,10 @@ export default function SubmitProposalPage() {
                         <p className="mt-1 text-xs text-red-600">{errors.committeeMembers[index]?.position?.message}</p>
                       )}
                     </div>
+
+                    {/* Hidden fields to preserve data without showing in UI */}
+                    <input type="hidden" {...register(`committeeMembers.${index}.email`)} />
+                    <input type="hidden" {...register(`committeeMembers.${index}.faculty`)} />
 
                     <div className="md:col-span-1 pt-6 flex justify-center">
                       <button

@@ -18,9 +18,9 @@ INSERT INTO users (user_id, user_email, user_role, user_name, created_at) VALUES
 ('00000000-0000-0000-0000-000000000007', 'debat@student.usm.my', 'organization_admin', 'Debat Admin', '2024-01-01T08:00:00Z');
 
 -- Students
-INSERT INTO students (user_id, matric_num) VALUES
-('00000000-0000-0000-0000-000000000001', '165432'),
-('00000000-0000-0000-0000-000000000002', '165433');
+INSERT INTO students (user_id, matric_num, faculty) VALUES
+('00000000-0000-0000-0000-000000000001', '165432', 'Computer Sciences'),
+('00000000-0000-0000-0000-000000000002', '165433', 'Education');
 
 -- Organization Admins
 INSERT INTO organization_admins (user_id, org_id, user_position) VALUES
@@ -35,7 +35,7 @@ INSERT INTO admins (user_id, admin_role) VALUES
 
 -- Event Requests (Proposals)
 INSERT INTO event_requests (event_request_id, org_id, user_id, status, submitted_at, committee_members) VALUES
-('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', 'published', '2024-12-01T08:00:00Z', '[{"name": "Ahmad Ibrahim", "matricNumber": "165432", "position": "Head of Logistics", "email": "jm@student.usm.my"}]'::jsonb),
+('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', 'published', '2024-12-01T08:00:00Z', '[{"name": "Ahmad Ibrahim", "matricNumber": "165432", "position": "Head of Logistics", "email": "jm@student.usm.my", "faculty": "Computer Sciences"}]'::jsonb),
 ('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'published', '2024-11-15T08:00:00Z', '[]'::jsonb),
 ('50000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'published', '2024-12-10T08:00:00Z', '[]'::jsonb),
 ('50000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000007', 'published', '2024-12-05T08:00:00Z', '[]'::jsonb),
@@ -44,7 +44,7 @@ INSERT INTO event_requests (event_request_id, org_id, user_id, status, submitted
 
 -- Events
 INSERT INTO events (event_id, event_name, event_date, event_description, event_venue, start_time, end_time, end_date, capacity, category, registered_count, event_request_id, committee_members) VALUES
-('20000000-0000-0000-0000-000000000001', 'USM Sports Carnival 2025', '2026-02-15', 'Annual sports carnival featuring various competitive sports including football, basketball, badminton, and track & field events. Join us for a week of athletic excellence!', 'USM Main Campus Sports Complex', '08:00', '18:00', '2026-02-22', 500, 'sport', 342, '50000000-0000-0000-0000-000000000001', '[{"name": "Ahmad Ibrahim", "matricNumber": "165432", "position": "Head of Logistics", "email": "jm@student.usm.my"}]'::jsonb),
+('20000000-0000-0000-0000-000000000001', 'USM Sports Carnival 2025', '2026-02-15', 'Annual sports carnival featuring various competitive sports including football, basketball, badminton, and track & field events. Join us for a week of athletic excellence!', 'USM Main Campus Sports Complex', '08:00', '18:00', '2026-02-22', 500, 'sport', 342, '50000000-0000-0000-0000-000000000001', '[{"name": "Ahmad Ibrahim", "matricNumber": "165432", "position": "Head of Logistics", "email": "jm@student.usm.my", "faculty": "Computer Sciences"}]'::jsonb),
 ('20000000-0000-0000-0000-000000000002', 'HackUSM 2025 - National Hackathon', '2026-03-01', '48-hour national hackathon bringing together the brightest minds to solve real-world problems using technology. Prizes worth RM50,000!', 'School of Computer Sciences, USM', '09:00', '17:00', '2026-03-03', 200, 'competition', 156, '50000000-0000-0000-0000-000000000002', '[]'::jsonb),
 ('20000000-0000-0000-0000-000000000003', 'Introduction to Arduino Workshop', '2026-01-20', 'Beginner-friendly workshop covering Arduino basics, circuit design, and simple robotics projects. All materials provided!', 'Engineering Lab 3, USM', '14:00', '17:00', '2026-01-20', 50, 'workshop', 48, '50000000-0000-0000-0000-000000000003', '[]'::jsonb),
 ('20000000-0000-0000-0000-000000000004', 'National Debate Championship 2025', '2026-04-10', 'Premier debating competition featuring teams from universities across Malaysia. Topics cover current affairs, policy, and philosophy.', 'USM Dewan Tuanku Syed Putra', '09:00', '18:00', '2026-04-12', 300, 'competition', 87, '50000000-0000-0000-0000-000000000004', '[]'::jsonb),
@@ -84,9 +84,9 @@ INSERT INTO event_mycsd (record_id, mycsd_category, event_level, mr_id) VALUES
 
 -- MyCSD Logs
 INSERT INTO mycsd_logs (matric_no, record_id, score, position) VALUES
-('165432', '40000000-0000-0000-0000-000000000001', 2, 'participant'),
-('165432', '40000000-0000-0000-0000-000000000002', 4, 'participant'),
-('165432', '40000000-0000-0000-0000-000000000003', 8, 'participant');
+('165432', '40000000-0000-0000-0000-000000000001', 2, 'Peserta'),
+('165432', '40000000-0000-0000-0000-000000000002', 4, 'Peserta'),
+('165432', '40000000-0000-0000-0000-000000000003', 8, 'Peserta');
 
 -- Mark events with MyCSD and store the computed points (helps UI/queries that read events.mycsd_points)
 UPDATE events SET has_mycsd = true, mycsd_level = 'P.Pengajian / Desasiswa / Persatuan / Kelab', mycsd_points = 2 WHERE event_id = '20000000-0000-0000-0000-000000000003';

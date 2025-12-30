@@ -9,6 +9,7 @@ const mapRegistration = (dbReg: DBRegistration): Registration => {
     userName: dbReg.users?.user_name || 'Unknown',
     userEmail: dbReg.users?.user_email || '',
     matricNumber: dbReg.users?.students?.matric_num,
+    faculty: dbReg.users?.students?.faculty || '',
     status: (dbReg.attendance === 'present' ? 'attended' : 'confirmed') as RegistrationStatus,
     registeredAt: dbReg.registration_date,
     updatedAt: dbReg.registration_date,
@@ -23,14 +24,14 @@ export async function getUserRegistrations(userId: string) {
       users (
         user_name,
         user_email,
-        students (matric_num)
+        students (matric_num, faculty)
       )
     `)
     .eq('user_id', userId);
 
   if (error) {
     console.error('Error fetching registrations with joins:', error);
-    
+
     // Fallback
     const { data: simpleData, error: simpleError } = await supabase
       .from('registrations')
@@ -38,8 +39,8 @@ export async function getUserRegistrations(userId: string) {
       .eq('user_id', userId);
 
     if (simpleError) {
-        console.error('Error fetching registrations simple:', simpleError);
-        throw simpleError;
+      console.error('Error fetching registrations simple:', simpleError);
+      throw simpleError;
     }
     return simpleData.map(mapRegistration);
   }
@@ -55,7 +56,7 @@ export async function getEventRegistrations(eventId: string) {
       users (
         user_name,
         user_email,
-        students (matric_num)
+        students (matric_num, faculty)
       )
     `)
     .eq('event_id', eventId);
@@ -69,14 +70,14 @@ export async function getEventRegistrations(eventId: string) {
 }
 
 export async function getAllRegistrations() {
-    const { data, error } = await supabase
+  const { data, error } = await supabase
     .from('registrations')
     .select(`
       *,
       users (
         user_name,
         user_email,
-        students (matric_num)
+        students (matric_num, faculty)
       )
     `);
 
@@ -92,8 +93,8 @@ export async function createRegistration(registration: Partial<Registration>) {
   const { data, error } = await supabase
     .from('registrations')
     .insert({
-        event_id: registration.eventId,
-        user_id: registration.userId,
+      event_id: registration.eventId,
+      user_id: registration.userId,
     })
     .select()
     .single();

@@ -19,6 +19,7 @@ export interface DBUser {
   user_role: 'student' | 'organization_admin' | 'admin';
   students?: {
     matric_num: string;
+    faculty?: string;
   } | null;
   organization_admins?: {
     org_id: string;
@@ -111,6 +112,7 @@ export interface DBRegistration {
     user_email: string;
     students?: {
       matric_num: string;
+      faculty?: string;
     } | null;
   };
   events?: {
@@ -329,6 +331,7 @@ export type CommitteeMember = {
   position: string;
   email?: string;
   phone?: string;
+  faculty?: string;
 };
 
 // ============================================================================
@@ -345,6 +348,7 @@ export type Registration = {
   userName: string;
   userEmail: string;
   matricNumber?: string;
+  faculty?: string;
   status: RegistrationStatus;
   paymentStatus?: PaymentStatus;
   paymentAmount?: number;

@@ -2,17 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { ArrowLeft, FileText, AlertCircle, Save, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, FileText, AlertCircle, Save, Loader2, Upload, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { getProposalById, updateProposal } from '@/backend/services/proposalService';
 import { uploadDocument } from '@/backend/services/storageService';
+import { getStudentByMatric } from '@/backend/services/userService';
 import { toast } from 'sonner';
 import { DocumentsInput } from '@/types';
 
@@ -23,6 +24,14 @@ const proposalSchema = z.object({
   estimatedParticipants: z.number().min(1, 'Must have at least 1 participant'),
   proposedDate: z.string().min(1, 'Proposed date is required'),
   proposedVenue: z.string().min(3, 'Venue is required'),
+  committeeMembers: z.array(z.object({
+    matricNumber: z.string().min(1, 'Matric number is required'),
+    name: z.string().min(1, 'Name is required'),
+    position: z.string().min(1, 'Position is required'),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    faculty: z.string().optional(),
+  })).optional(),
 });
 
 type ProposalFormData = z.infer<typeof proposalSchema>;
@@ -34,11 +43,11 @@ export default function EditProposalPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isLoading: authLoading } = useRequireRole(['organizer'], '/');
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [adminNotes, setAdminNotes] = useState('');
   const [status, setStatus] = useState('');
-  
+
   // State for files: New files selected by user
   const [newFiles, setNewFiles] = useState<{ [key in DocKeys]: File | null }>({
     eventProposal: null,
@@ -56,13 +65,43 @@ export default function EditProposalPage() {
   });
 
   const {
+    control,
     register,
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting }
   } = useForm<ProposalFormData>({
     resolver: zodResolver(proposalSchema),
+    defaultValues: {
+      committeeMembers: []
+    }
   });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "committeeMembers"
+  });
+
+  const handleMatricBlur = async (index: number, matric: string) => {
+    if (!matric) return;
+    try {
+      const student = await getStudentByMatric(matric);
+      if (student) {
+        setValue(`committeeMembers.${index}.name`, student.name || '');
+        if (student.email) setValue(`committeeMembers.${index}.email`, student.email);
+        if (student.faculty) setValue(`committeeMembers.${index}.faculty`, student.faculty);
+
+        console.log('Student data fetched:', student); // Adding log to debug
+        toast.success(`Student found: ${student.name}`);
+      } else {
+        toast.error('Student not found');
+        setValue(`committeeMembers.${index}.name`, '');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Error fetching student');
+    }
+  };
 
   useEffect(() => {
     const fetchProposal = async () => {
@@ -89,9 +128,15 @@ export default function EditProposalPage() {
         setValue('proposedDate', proposal.proposedDate);
         setValue('proposedVenue', proposal.proposedVenue);
 
+        if (proposal.committeeMembers && proposal.committeeMembers.length > 0) {
+          setValue('committeeMembers', proposal.committeeMembers);
+        } else {
+          setValue('committeeMembers', []);
+        }
+
         setAdminNotes(proposal.adminNotes || '');
         setStatus(proposal.status);
-        
+
         // Load existing paths
         setExistingPaths({
           eventProposal: proposal.documents.eventProposal || null,
@@ -132,8 +177,8 @@ export default function EditProposalPage() {
 
       // Verify we have all required docs (either existing or new)
       if (!updatedDocuments.eventProposal || !updatedDocuments.budgetPlan || !updatedDocuments.riskAssessment) {
-         toast.error("Please ensure all required documents are uploaded.");
-         return;
+        toast.error("Please ensure all required documents are uploaded.");
+        return;
       }
 
       await updateProposal(params.id as string, {
@@ -174,25 +219,25 @@ export default function EditProposalPage() {
           <div>
             <p className="font-medium text-gray-900">{label} {required && <span className="text-red-500">*</span>}</p>
             {existingPaths[docKey] && !newFiles[docKey] && (
-               <a href={existingPaths[docKey]!} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline break-all block mt-1">
-                 Current: {getFileName(existingPaths[docKey])}
-               </a>
+              <a href={existingPaths[docKey]!} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline break-all block mt-1">
+                Current: {getFileName(existingPaths[docKey])}
+              </a>
             )}
             {newFiles[docKey] && (
-               <p className="text-xs text-green-600 mt-1 font-semibold">New: {newFiles[docKey]?.name}</p>
+              <p className="text-xs text-green-600 mt-1 font-semibold">New: {newFiles[docKey]?.name}</p>
             )}
           </div>
         </div>
-        
+
         <div className="relative">
-          <input 
-            type="file" 
+          <input
+            type="file"
             accept=".pdf"
             onChange={(e) => handleFileChange(docKey, e.target.files?.[0] || null)}
             className="hidden"
             id={`file-${docKey}`}
           />
-          <label 
+          <label
             htmlFor={`file-${docKey}`}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer shadow-sm"
           >
@@ -255,7 +300,7 @@ export default function EditProposalPage() {
                   <input type="text" {...register('eventTitle')} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
                   {errors.eventTitle && <p className="text-red-500 text-xs mt-1">{errors.eventTitle.message}</p>}
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <textarea {...register('eventDescription')} rows={4} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
@@ -283,14 +328,14 @@ export default function EditProposalPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Proposed Date</label>
                     <input type="date" {...register('proposedDate')} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
-                   </div>
-                   <div>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Proposed Venue</label>
                     <input type="text" {...register('proposedVenue')} className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
-                   </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -299,10 +344,96 @@ export default function EditProposalPage() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Required Documents</h2>
               <div className="space-y-3">
-                 <FileUploadRow label="1. Event Proposal" docKey="eventProposal" />
-                 <FileUploadRow label="2. Budget Plan" docKey="budgetPlan" />
-                 <FileUploadRow label="3. Risk Assessment" docKey="riskAssessment" />
-                 <FileUploadRow label="4. Supporting Documents" docKey="supportingDocuments" required={false} />
+                <FileUploadRow label="1. Event Proposal" docKey="eventProposal" />
+                <FileUploadRow label="2. Budget Plan" docKey="budgetPlan" />
+                <FileUploadRow label="3. Risk Assessment" docKey="riskAssessment" />
+                <FileUploadRow label="4. Supporting Documents" docKey="supportingDocuments" required={false} />
+              </div>
+            </div>
+
+            {/* Committee Members */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Committee Members</h2>
+                <button
+                  type="button"
+                  onClick={() => append({ matricNumber: '', name: '', position: '' })}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Member
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start p-4 border border-gray-200 rounded-lg bg-gray-50/50">
+                    <div className="md:col-span-3">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Matric Number
+                      </label>
+                      <input
+                        {...register(`committeeMembers.${index}.matricNumber`)}
+                        onBlur={(e) => handleMatricBlur(index, e.target.value)}
+                        placeholder="123456"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                      {errors.committeeMembers?.[index]?.matricNumber && (
+                        <p className="mt-1 text-xs text-red-600">{errors.committeeMembers[index]?.matricNumber?.message}</p>
+                      )}
+                    </div>
+
+                    <div className="md:col-span-4">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Name
+                      </label>
+                      <input
+                        {...register(`committeeMembers.${index}.name`)}
+                        placeholder="Student Name"
+                        readOnly
+                        className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed"
+                      />
+                      {errors.committeeMembers?.[index]?.name && (
+                        <p className="mt-1 text-xs text-red-600">{errors.committeeMembers[index]?.name?.message}</p>
+                      )}
+                    </div>
+
+                    <div className="md:col-span-4">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Position
+                      </label>
+                      <input
+                        {...register(`committeeMembers.${index}.position`)}
+                        placeholder="e.g. Logistics Head"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                      {errors.committeeMembers?.[index]?.position && (
+                        <p className="mt-1 text-xs text-red-600">{errors.committeeMembers[index]?.position?.message}</p>
+                      )}
+                    </div>
+
+                    {/* Hidden fields to preserve data without showing in UI */}
+                    <input type="hidden" {...register(`committeeMembers.${index}.email`)} />
+                    <input type="hidden" {...register(`committeeMembers.${index}.faculty`)} />
+
+                    <div className="md:col-span-1 pt-6 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {fields.length === 0 && (
+                  <div className="text-center py-8 text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+                    <p>No committee members added yet.</p>
+                    <p className="text-sm mt-1">Add members to track their contributions and MyCSD points.</p>
+                  </div>
+                )}
               </div>
             </div>
 

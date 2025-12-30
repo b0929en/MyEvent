@@ -59,7 +59,8 @@ CREATE TABLE organizations (
 -- 3. STUDENT (Inherits from USER)
 CREATE TABLE students (
     user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
-    matric_num TEXT UNIQUE NOT NULL
+    matric_num TEXT UNIQUE NOT NULL,
+    faculty TEXT
 );
 
 -- 4. ORGANIZATION_ADMIN (Inherits from USER)

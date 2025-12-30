@@ -44,6 +44,7 @@ const mapEvent = (dbEvent: DBEvent): Event => {
     links: (dbEvent.links as EventLink[]) || [],
     agenda: dbEvent.agenda || [],
     is_mycsd_claimed: dbEvent.is_mycsd_claimed || false,
+    committeeMembers: dbEvent.committee_members || [],
 
     status: (eventRequest?.status === 'pending' ? 'pending_approval' : eventRequest?.status) as EventStatus || 'published',
     registrationDeadline: dbEvent.event_date,
