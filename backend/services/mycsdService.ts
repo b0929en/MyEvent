@@ -30,9 +30,9 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
   // This ensures the admin sees the correct level before approving
   await supabase
     .from('events')
-    .update({ 
+    .update({
       mycsd_level: level,
-      mycsd_category: category 
+      mycsd_category: category
     })
     .eq('event_id', eventId);
 
@@ -52,14 +52,14 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
         status: 'pending'
       })
       .eq('mr_id', existingRequest.mr_id);
-      
+
     if (error) throw error;
   } else {
     // Handle potential array response for event_requests
-    const eventRequest = Array.isArray(event.event_requests) 
-      ? event.event_requests[0] 
+    const eventRequest = Array.isArray(event.event_requests)
+      ? event.event_requests[0]
       : event.event_requests;
-      
+
     const userId = eventRequest?.user_id;
 
     // Create new request
@@ -98,7 +98,7 @@ export async function approveMyCSDRequest(requestId: string) {
   // 2. Create/Get MyCSD Record & Event MyCSD
   // Determine fixed points based on event level stored in the events table
   const points = getPointsForLevel(event.mycsd_level || 'kampus');
-  
+
   const { data: record, error: recordError } = await supabase
     .from('mycsd_records')
     .insert({
@@ -136,7 +136,7 @@ export async function approveMyCSDRequest(requestId: string) {
     .eq('attendance', 'present');
 
   if (regError) throw regError;
-  
+
   // 4. Distribute Points (Insert into mycsd_logs)
   if (registrations && registrations.length > 0) {
     const logsToInsert = registrations
@@ -218,7 +218,7 @@ export async function getAllMyCSDRequests() {
   const requestsWithCounts = await Promise.all(data.map(async (req: any) => {
     const event = req.events;
     // For pending requests, event_mycsd is empty. We must fallback to the event table data.
-    const eventMycsd = req.event_mycsd?.[0]; 
+    const eventMycsd = req.event_mycsd?.[0];
     const record = eventMycsd?.mycsd_records;
 
     const displayLevel = eventMycsd?.event_level || event?.mycsd_level || 'kampus';
@@ -252,8 +252,8 @@ export async function getAllMyCSDRequests() {
       organizerName: event?.event_requests?.organizations?.org_name || 'Unknown Org',
       category: displayCategory,
       level: displayLevel,
-      points: displayPoints, 
-      role: 'participant', 
+      points: displayPoints,
+      role: 'participant',
       status: req.status,
       proofDocument: req.lk_document,
       participantCount: participantCount || 0,
@@ -323,9 +323,9 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
     return {
       id: log.record_id,
       userId: userId,
-      eventId: event?.event_id || '', 
-      eventName: event?.event_name || 'Unknown Event', 
-      organizationName: organization?.org_name || 'Unknown Organization', 
+      eventId: event?.event_id || '',
+      eventName: event?.event_name || 'Unknown Event',
+      organizationName: organization?.org_name || 'Unknown Organization',
       category: eventMycsd?.mycsd_category || 'REKA CIPTA DAN INOVASI',
       level: eventMycsd?.event_level || 'kampus',
       role: log.position,
@@ -337,8 +337,8 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
   });
 }
 
-export async function getUserClubPositions(): Promise<ClubPosition[]> {
-    return [];
+export async function getUserClubPositions(userId: string): Promise<ClubPosition[]> {
+  return [];
 }
 
 export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], positions: ClubPosition[]) {
@@ -346,9 +346,9 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
     .filter(r => r.status === 'approved')
     .reduce((sum, r) => sum + r.points, 0) +
     positions.reduce((sum, p) => sum + p.points, 0);
-  
+
   const totalEvents = records.length;
-  
+
   const pointsByCategory: Record<string, number> = {
     'REKA CIPTA DAN INOVASI': 0,
     'KEUSAHAWAN': 0,
@@ -356,25 +356,25 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
     'SUKAN/REKREASI/SOSIALISASI': 0,
     'KEPIMPINAN': 0,
   };
-  
+
   records.forEach(record => {
     if (record.status === 'approved' && record.category) {
       pointsByCategory[record.category] = (pointsByCategory[record.category] || 0) + record.points;
     }
   });
-  
+
   const pointsByLevel: Record<string, number> = {
     antarabangsa: 0,
     negeri_universiti: 0,
     kampus: 0,
   };
-  
+
   records.forEach(record => {
     if (record.status === 'approved' && record.level) {
       pointsByLevel[record.level] = (pointsByLevel[record.level] || 0) + record.points;
     }
   });
-  
+
   return {
     totalPoints,
     totalEvents,
