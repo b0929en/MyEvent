@@ -31,8 +31,8 @@ const eventSchema = z.object({
   hasMyCSD: z.boolean(),
   mycsdCategory: z.string().optional(),
   mycsdLevel: z.string().optional(),
-  
-  objectives: z.array(z.string()).min(1, 'Add at least one objective'),
+
+  objectives: z.array(z.string()).optional(), // Made optional
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -41,7 +41,7 @@ export default function EditEventPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isLoading: authLoading } = useRequireRole(['organizer'], '/');
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [eventTitle, setEventTitle] = useState(''); // Read-only
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
@@ -57,9 +57,21 @@ export default function EditEventPage() {
     formState: { errors, isSubmitting }
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
+    defaultValues: {
+      hasMyCSD: false,
+      participationFee: 0,
+      objectives: [''],
+      startTime: '00:00',
+      endTime: '23:59',
+    }
   });
 
   const hasMyCSD = watch('hasMyCSD');
+
+  // Register objectives field manually since it's a custom input list
+  useEffect(() => {
+    register('objectives');
+  }, [register]);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -90,16 +102,16 @@ export default function EditEventPage() {
         setValue('venue', event.venue);
         setValue('capacity', event.capacity);
         setValue('participationFee', event.participationFee);
-        
+
         setValue('hasMyCSD', event.hasMyCSD);
         if (event.hasMyCSD) {
-            setValue('mycsdCategory', event.mycsdCategory);
-            setValue('mycsdLevel', event.mycsdLevel);
+          setValue('mycsdCategory', event.mycsdCategory);
+          setValue('mycsdLevel', event.mycsdLevel);
         }
 
         setObjectives(event.objectives || ['']);
         setValue('objectives', event.objectives || ['']);
-        
+
         setLinks(event.links || []);
         if (event.bannerImage) {
           setBannerPreview(event.bannerImage);
@@ -114,7 +126,7 @@ export default function EditEventPage() {
     };
 
     if (user) {
-        fetchEvent();
+      fetchEvent();
     }
   }, [params.id, user, router, setValue]);
 
@@ -160,7 +172,7 @@ export default function EditEventPage() {
   const onSubmit = async (data: EventFormData) => {
     try {
       let bannerUrl = bannerPreview; // Use existing if no new file
-      
+
       if (bannerFile) {
         const path = `events/${params.id}/${Date.now()}-${bannerFile.name}`;
         bannerUrl = await uploadEventBanner(bannerFile, path);
@@ -169,12 +181,14 @@ export default function EditEventPage() {
       const validObjectives = objectives.filter(o => o.trim() !== '');
       const validLinks = links.filter(l => l.title.trim() && l.url.trim());
 
+      const sanitizeTime = (time: string) => time && time.length > 5 ? time.substring(0, 5) : time;
+
       await updateEvent(params.id as string, {
         event_description: data.description,
         event_date: data.startDate,
         end_date: data.endDate,
-        start_time: data.startTime,
-        end_time: data.endTime,
+        start_time: sanitizeTime(data.startTime),
+        end_time: sanitizeTime(data.endTime),
         event_venue: data.venue,
         category: data.category,
         capacity: data.capacity,
@@ -188,9 +202,9 @@ export default function EditEventPage() {
 
       toast.success('Event updated successfully');
       router.push('/organizer/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating event:', error);
-      toast.error('Failed to update event');
+      toast.error(error.message || 'Failed to update event');
     }
   };
 
@@ -212,8 +226,16 @@ export default function EditEventPage() {
       <Header />
 
       <main className="grow">
-        <form onSubmit={handleSubmit(onSubmit)} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          
+        <form onSubmit={handleSubmit(onSubmit, (errors) => {
+          console.error('Validation Errors:', JSON.stringify(errors, null, 2));
+          // If objectives error, show specific toast
+          if (errors.objectives) {
+            toast.error(errors.objectives.message || 'Please check objectives');
+          } else {
+            toast.error('Please fix the errors in the form (check console for details)');
+          }
+        })} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
           {/* Breadcrumb & Header Actions */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <Breadcrumb
@@ -255,7 +277,7 @@ export default function EditEventPage() {
                 <span className="text-white font-medium">No Banner Image</span>
               </div>
             )}
-            
+
             {/* Overlay for upload */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 cursor-pointer" onClick={() => document.getElementById('banner-upload')?.click()}>
               <div className="bg-white/95 px-6 py-3 rounded-full flex items-center gap-2 shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform backdrop-blur-sm">
@@ -263,73 +285,73 @@ export default function EditEventPage() {
                 <span className="font-medium text-gray-800">Change Banner</span>
               </div>
             </div>
-            <input 
-              id="banner-upload" 
-              type="file" 
-              className="hidden" 
+            <input
+              id="banner-upload"
+              type="file"
+              className="hidden"
               accept="image/*"
-              onChange={handleBannerChange} 
+              onChange={handleBannerChange}
             />
           </div>
 
           {/* Event Title (Read Only) & Badges */}
           <div className="mb-8">
             <div className="mb-6">
-               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Event Name (Read Only)</label>
-               <div className="relative">
-                 <h1 className="text-3xl md:text-4xl font-bold text-gray-400 select-none border-b-2 border-dashed border-gray-300 pb-3">
-                   {eventTitle}
-                 </h1>
-                 <div className="absolute right-0 top-0 bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-md opacity-70">
-                   Read-only
-                 </div>
-               </div>
-               <p className="text-sm text-gray-500 mt-2 flex items-center gap-1">
-                 <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>
-                 To change the event name, please submit a new proposal or contact admin.
-               </p>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Event Name (Read Only)</label>
+              <div className="relative">
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-400 select-none border-b-2 border-dashed border-gray-300 pb-3">
+                  {eventTitle}
+                </h1>
+                <div className="absolute right-0 top-0 bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-md opacity-70">
+                  Read-only
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-2 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>
+                To change the event name, please submit a new proposal or contact admin.
+              </p>
             </div>
 
             {/* Editable Badges / MyCSD Settings */}
             <div className="flex flex-wrap items-center gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-               <div className="flex items-center">
-                 <input
-                   type="checkbox"
-                   {...register('hasMyCSD')}
-                   className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
-                 />
-                 <label className="ml-2 font-semibold text-gray-800">Enable MyCSD</label>
-               </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  {...register('hasMyCSD')}
+                  className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                />
+                <label className="ml-2 font-semibold text-gray-800">Enable MyCSD</label>
+              </div>
 
-               {hasMyCSD && (
-                 <>
-                   <div className="h-8 w-px bg-gray-200 mx-2 hidden md:block"></div>
-                   
-                   <div className="flex flex-col md:flex-row gap-3">
-                     <select 
-                       {...register('mycsdCategory')}
-                       className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"
-                     >
-                       <option value="">Select Category</option>
-                       <option value="REKA CIPTA DAN INOVASI">Reka Cipta & Inovasi</option>
-                       <option value="KEUSAHAWAN">Keusahawan</option>
-                       <option value="KEBUDAYAAN">Kebudayaan</option>
-                       <option value="SUKAN/REKREASI/SOSIALISASI">Sukan & Rekreasi</option>
-                       <option value="KEPIMPINAN">Kepimpinan</option>
-                     </select>
+              {hasMyCSD && (
+                <>
+                  <div className="h-8 w-px bg-gray-200 mx-2 hidden md:block"></div>
 
-                     <select 
-                       {...register('mycsdLevel')}
-                       className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"
-                     >
-                       <option value="">Select Level</option>
-                       <option value="kampus">Kampus</option>
-                       <option value="negeri_universiti">Universiti</option>
-                       <option value="antarabangsa">Antarabangsa</option>
-                     </select>
-                   </div>
-                 </>
-               )}
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <select
+                      {...register('mycsdCategory')}
+                      className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"
+                    >
+                      <option value="">Select Category</option>
+                      <option value="REKA CIPTA DAN INOVASI">Reka Cipta & Inovasi</option>
+                      <option value="KEUSAHAWAN">Keusahawan</option>
+                      <option value="KEBUDAYAAN">Kebudayaan</option>
+                      <option value="SUKAN/REKREASI/SOSIALISASI">Sukan & Rekreasi</option>
+                      <option value="KEPIMPINAN">Kepimpinan</option>
+                    </select>
+
+                    <select
+                      {...register('mycsdLevel')}
+                      className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"
+                    >
+                      <option value="">Select Level</option>
+                      <option value="kampus">Kampus</option>
+                      <option value="negeri_universiti">Universiti</option>
+                      <option value="antarabangsa">Antarabangsa</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -339,7 +361,7 @@ export default function EditEventPage() {
               General Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12 bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-              
+
               {/* Category */}
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-gray-700">Category</label>
@@ -421,8 +443,8 @@ export default function EditEventPage() {
 
               {/* Capacity */}
               <div className="space-y-1.5 md:col-span-2">
-                 <label className="text-sm font-bold text-gray-700">Total Capacity</label>
-                 <input
+                <label className="text-sm font-bold text-gray-700">Total Capacity</label>
+                <input
                   type="number"
                   {...register('capacity', { valueAsNumber: true })}
                   className={inputClass}
@@ -467,9 +489,9 @@ export default function EditEventPage() {
                       className={inputClass}
                       placeholder="Enter event objective..."
                     />
-                    <button 
-                      type="button" 
-                      onClick={() => removeObjective(index)} 
+                    <button
+                      type="button"
+                      onClick={() => removeObjective(index)}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-50 group-hover:opacity-100"
                     >
                       <X className="w-5 h-5" />
@@ -492,7 +514,7 @@ export default function EditEventPage() {
                 <Plus className="w-4 h-4" /> Add Link
               </button>
             </div>
-            
+
             {links.length === 0 ? (
               <div className="text-gray-500 italic ml-4 py-4 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">
                 No external links added.
@@ -521,9 +543,9 @@ export default function EditEventPage() {
                         className={inputClass}
                       />
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={() => removeLink(index)} 
+                    <button
+                      type="button"
+                      onClick={() => removeLink(index)}
                       className="mt-5 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                     >
                       <X className="w-5 h-5" />

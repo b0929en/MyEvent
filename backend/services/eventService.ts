@@ -6,15 +6,15 @@ import { createNotification } from './notificationService';
 const mapEvent = (dbEvent: DBEvent): Event => {
   // Extract MyCSD info if available
   const mycsdRequest = dbEvent.mycsd_requests?.find((req: DBMyCSDRequest) => req.status === 'approved') || dbEvent.mycsd_requests?.[0];
-  const eventMycsd = mycsdRequest?.event_mycsd?.[0]; 
+  const eventMycsd = mycsdRequest?.event_mycsd?.[0];
   const mycsdRecord = eventMycsd?.mycsd_records;
   const resolvedLevel = dbEvent.mycsd_level || eventMycsd?.event_level;
   const resolvedPoints = mycsdRecord?.mycsd_score ?? getPointsForLevel(resolvedLevel || undefined);
 
   // Use the proposal's submission time as the event creation time
   // Fallback to current time only if data is missing
-  const eventRequest = Array.isArray(dbEvent.event_requests) 
-    ? dbEvent.event_requests[0] 
+  const eventRequest = Array.isArray(dbEvent.event_requests)
+    ? dbEvent.event_requests[0]
     : dbEvent.event_requests;
   const createdDate = eventRequest?.submitted_at || new Date().toISOString();
 
@@ -33,17 +33,18 @@ const mapEvent = (dbEvent: DBEvent): Event => {
     category: (dbEvent.category as EventCategory) || 'other',
     organizerId: eventRequest?.org_id || '',
     organizerName: eventRequest?.organizations?.org_name || 'Unknown Organizer',
-    
+
     participationFee: 0,
     hasMyCSD: dbEvent.has_mycsd ?? (!!mycsdRequest && mycsdRequest.status === 'approved'),
     mycsdCategory: (dbEvent.mycsd_category || eventMycsd?.mycsd_category) as MyCSDCategory,
     mycsdLevel: (dbEvent.mycsd_level || eventMycsd?.event_level) as MyCSDLevel,
     mycsdPoints: resolvedPoints,
-    
+
     objectives: dbEvent.objectives || [],
     links: (dbEvent.links as EventLink[]) || [],
     agenda: dbEvent.agenda || [],
     is_mycsd_claimed: dbEvent.is_mycsd_claimed || false,
+    committeeMembers: dbEvent.committee_members || [],
 
     status: (eventRequest?.status === 'pending' ? 'pending_approval' : eventRequest?.status) as EventStatus || 'published',
     registrationDeadline: dbEvent.event_date,
@@ -59,6 +60,15 @@ export async function getEvents(filters?: {
   mycsdCategory?: MyCSDCategory[];
   mycsdLevel?: MyCSDLevel[];
 }) {
+  // Attempt to mark completed events (fire and forget or await, depending on importance)
+  // We await it to ensure the data we fetch right after is up to date.
+  try {
+    await supabase.rpc('mark_events_completed');
+  } catch (err) {
+    // Fail silently or log check error, but allow fetch to proceed
+    console.warn('Failed to mark events as completed:', err);
+  }
+
   let query = supabase
     .from('events')
     .select(`
@@ -152,8 +162,8 @@ export async function updateEventStatus(eventId: string, status: string) {
 
   if (fetchError || !event) throw fetchError || new Error('Event not found');
 
-  const eventRequest = Array.isArray(event.event_requests) 
-    ? event.event_requests[0] 
+  const eventRequest = Array.isArray(event.event_requests)
+    ? event.event_requests[0]
     : event.event_requests;
 
   const { error } = await supabase
@@ -191,12 +201,16 @@ export async function updateEventByRequestId(requestId: string, updates: EventUp
 
 // NEW FUNCTION: Update event by ID
 export async function updateEvent(eventId: string, updates: EventUpdateInput) {
+  console.log('Update Event Payload:', updates);
   const { error } = await supabase
     .from('events')
     .update(updates)
     .eq('event_id', eventId);
 
-  if (error) throw error;
+  if (error) {
+    console.error('Supabase Update Error:', error);
+    throw new Error(error.message || 'Failed to update event');
+  }
 }
 
 export async function deleteEvent(eventId: string) {
@@ -205,7 +219,7 @@ export async function deleteEvent(eventId: string) {
     .select('event_request_id')
     .eq('event_id', eventId)
     .single();
-    
+
   if (fetchError) throw fetchError;
 
   const { error } = await supabase

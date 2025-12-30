@@ -2,13 +2,55 @@ import { supabase } from '../supabase/supabase';
 import { MyCSDRecord, ClubPosition } from '@/types';
 
 // Helper to calculate points based on level string
-export function getPointsForLevel(level?: string): number {
-  if (!level) return 2;
+// Helper to calculate points based on level and role
+export function calculateMyCSDPoints(level: string, role: string): number {
   const l = level.toLowerCase().trim();
-  if (l.includes('antarab') || l.includes('antarabangsa')) return 8;
-  if (l.includes('universit') || l.includes('negeri')) return 4;
-  // P.Pengajian, Desasiswa, Persatuan, Kelab, Kampus and other local levels
-  return 2;
+  const r = role.toLowerCase().trim();
+
+  // 1. ANTABANGSA
+  if (l === 'antarabangsa' || l.includes('antarabangsa')) {
+    if (r === 'pengarah') return 24;
+    if (r === 'ajk_tertinggi') return 24;
+    if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 24;
+    if (r === 'ajk_kecil' || r.includes('ajk')) return 16;
+    if (r === 'peserta') return 8;
+    if (r === 'pengikut') return 4;
+    return 8;
+  }
+
+  // 2. KEBANGSAAN / ANTARA UNIVERSITI
+  if (l === 'kebangsaan / antara university' || l === 'kebangsaan / antara university'.toLowerCase() || l.includes('kebangsaan') || (l.includes('antara') && !l.includes('antarabangsa'))) {
+    if (r === 'pengarah') return 18;
+    if (r === 'ajk_tertinggi') return 18;
+    if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 18;
+    if (r === 'ajk_kecil' || r.includes('ajk')) return 12;
+    if (r === 'peserta') return 6;
+    if (r === 'pengikut') return 3;
+    return 6;
+  }
+
+  // 3. NEGERI / UNIVERSITI
+  if (l === 'negeri / universiti' || l.includes('negeri') || l.includes('universiti')) {
+    if (r === 'pengarah') return 12;
+    if (r === 'ajk_tertinggi') return 12;
+    if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 12;
+    if (r === 'ajk_kecil' || r.includes('ajk')) return 8;
+    if (r === 'peserta') return 4;
+    if (r === 'pengikut') return 2;
+    return 4;
+  }
+
+  // 4. P.Pengajian / Desasiswa / Persatuan / Kelab
+  if (r === 'pengarah') return 6;
+  if (r === 'ajk_tertinggi') return 6;
+  if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 6;
+  if (r === 'ajk_kecil' || r.includes('ajk')) return 4;
+  if (r === 'peserta') return 2;
+  return 1;
+}
+
+export function getPointsForLevel(level?: string): number {
+  return calculateMyCSDPoints(level || 'P.Pengajian / Desasiswa / Persatuan / Kelab', 'peserta');
 }
 
 export async function submitMyCSDClaim(eventId: string, documentUrl: string, level: string, category: string) {
@@ -76,7 +118,7 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
   }
 }
 
-export async function approveMyCSDRequest(requestId: string) {
+export async function approveMyCSDRequest(requestId: string, committeeRoles?: Record<string, string>) {
   // 1. Get Request Details
   const { data: request, error: reqError } = await supabase
     .from('mycsd_requests')
@@ -97,12 +139,13 @@ export async function approveMyCSDRequest(requestId: string) {
 
   // 2. Create/Get MyCSD Record & Event MyCSD
   // Determine fixed points based on event level stored in the events table
-  const points = getPointsForLevel(event.mycsd_level || 'kampus');
+  const eventLevel = event.mycsd_level || 'kampus';
+  const participantPoints = calculateMyCSDPoints(eventLevel, 'peserta');
 
   const { data: record, error: recordError } = await supabase
     .from('mycsd_records')
     .insert({
-      mycsd_score: points,
+      mycsd_score: participantPoints,
       mycsd_type: 'event'
     })
     .select()
@@ -138,14 +181,26 @@ export async function approveMyCSDRequest(requestId: string) {
   if (regError) throw regError;
 
   // 4. Distribute Points (Insert into mycsd_logs)
+  // Identify committee members to exclude them from the 'Peserta' list (Committee role takes precedence)
+  const committeeMatrics = new Set<string>();
+  if (event.committee_members && Array.isArray(event.committee_members)) {
+    event.committee_members.forEach((m: any) => {
+      if (m.matricNumber) committeeMatrics.add(String(m.matricNumber).trim());
+    });
+  }
+
   if (registrations && registrations.length > 0) {
     const logsToInsert = registrations
-      .filter((reg: any) => reg.users?.students?.matric_num)
+      .filter((reg: any) => {
+        const matric = reg.users?.students?.matric_num;
+        // Ensure we compare trimmed strings
+        return matric && !committeeMatrics.has(String(matric).trim());
+      })
       .map((reg: any) => ({
-        matric_no: reg.users.students.matric_num,
+        matric_no: String(reg.users.students.matric_num).trim(),
         record_id: record.record_id,
-        score: points,
-        position: 'Participant'
+        score: participantPoints,
+        position: 'Peserta'
       }));
 
     if (logsToInsert.length > 0) {
@@ -161,11 +216,45 @@ export async function approveMyCSDRequest(requestId: string) {
       user_id: reg.user_id,
       type: 'mycsd',
       title: 'MyCSD Points Awarded',
-      message: `You have received ${points} MyCSD points for attending ${event.event_name}.`,
+      message: `You have received ${participantPoints} MyCSD points for attending ${event.event_name}.`,
       link: '/profile'
     }));
 
-    await supabase.from('notifications').insert(notifications);
+    // Attempt to send notifications, non-blocking
+    supabase.from('notifications').insert(notifications);
+  }
+
+  // 5.5 Distribute Points to Committee Members
+  if (event.committee_members && Array.isArray(event.committee_members)) {
+    const committeeLogs = event.committee_members.map((member: any) => {
+      const trimmedMatric = String(member.matricNumber).trim();
+      // Get role from admin selection or fallback to generic 'ajk_kecil' if not specified (should be specified)
+      // Use the trimmed matric to lookup in committeeRoles
+      const assignedRole = committeeRoles?.[trimmedMatric] || 'ajk_kecil';
+      const points = calculateMyCSDPoints(eventLevel, assignedRole);
+
+      let displayPosition = 'Peserta';
+      if (assignedRole === 'pengarah') displayPosition = 'Pengarah';
+      else if (assignedRole === 'ajk_tertinggi') displayPosition = 'AJK Tertinggi';
+      else if (assignedRole === 'ajk_kecil') displayPosition = 'AJK Kecil';
+      else if (assignedRole === 'pengikut') displayPosition = 'Pengikut';
+
+      return {
+        matric_no: trimmedMatric,
+        record_id: record.record_id,
+        score: points,
+        position: displayPosition
+      };
+    });
+
+    if (committeeLogs.length > 0) {
+      // Use upsert to be safe, though filtering above should prevent conflict
+      const { error: comLogError } = await supabase
+        .from('mycsd_logs')
+        .upsert(committeeLogs, { onConflict: 'matric_no, record_id' });
+
+      if (comLogError) console.error('Error inserting committee logs', comLogError);
+    }
   }
 
   // 6. Update Request Status & Event Claimed Status
@@ -176,7 +265,7 @@ export async function approveMyCSDRequest(requestId: string) {
 
   await supabase
     .from('events')
-    .update({ is_mycsd_claimed: true, mycsd_points: points })
+    .update({ is_mycsd_claimed: true, mycsd_points: participantPoints })
     .eq('event_id', event.event_id);
 }
 
@@ -194,6 +283,7 @@ export async function getAllMyCSDRequests() {
         category,
         mycsd_level,    
         mycsd_category,
+        committee_members,
         event_requests (
           organizations (
             org_name
@@ -238,9 +328,9 @@ export async function getAllMyCSDRequests() {
       .eq('event_id', req.event_id)
       .eq('attendance', 'present');
 
-    // Fetch committee count (Mocked for now as schema doesn't explicit support it)
-    // In future, this could be fetched from a committee table or specific roles
-    const committeeCount = 0;
+    // Fetch committee members
+    const committeeMembers = event?.committee_members || [];
+    const committeeCount = committeeMembers.length;
 
     return {
       id: req.mr_id,
@@ -258,6 +348,7 @@ export async function getAllMyCSDRequests() {
       proofDocument: req.lk_document,
       participantCount: participantCount || 0,
       committeeCount: committeeCount,
+      committeeMembers: committeeMembers,
       submittedAt: req.created_at || new Date().toISOString(), // Use DB created_at if available? fallback to now
       updatedAt: new Date().toISOString(),
     };
@@ -328,7 +419,8 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       organizationName: organization?.org_name || 'Unknown Organization',
       category: eventMycsd?.mycsd_category || 'REKA CIPTA DAN INOVASI',
       level: eventMycsd?.event_level || 'kampus',
-      role: log.position,
+      role: 'participant', // Generic role for type safety
+      position: log.position, // Specific display string (e.g., 'AJK Tertinggi')
       points: log.score,
       semester: '2024/2025-1',
       status: 'approved',

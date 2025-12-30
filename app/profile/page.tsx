@@ -274,6 +274,7 @@ export default function ProfilePage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organizer</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Participation Status</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">MyCSD Status</th>
                     </tr>
@@ -304,6 +305,13 @@ export default function ProfilePage() {
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
+                            </td>
+                            <td className="px-6 py-4 text-center text-sm text-gray-500">
+                              {/* Find MyCSD record to get position */}
+                              {(() => {
+                                const record = mycsdRecords.find(r => r.eventId === reg.eventId);
+                                return record?.position || 'Peserta'; // Default if null? Or '-'?
+                              })()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(reg.status)}`}>

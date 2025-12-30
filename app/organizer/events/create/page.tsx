@@ -39,10 +39,15 @@ const eventSchema = z.object({
     'SUKAN/REKREASI/SOSIALISASI',
     'KEPIMPINAN'
   ]).optional(),
-  mycsdLevel: z.enum(['antarabangsa', 'negeri_universiti', 'kampus']).optional(),
+  mycsdLevel: z.enum([
+    'P.Pengajian / Desasiswa / Persatuan / Kelab',
+    'Negeri / Universiti',
+    'Kebangsaan / Antara University',
+    'Antarabangsa'
+  ]).optional(),
   // mycsdPoints removed: points are computed from level
   registrationDeadline: z.string().min(1, 'Registration deadline is required'),
-  objectives: z.array(z.string()).min(1, 'Add at least one objective'),
+  objectives: z.array(z.string()).optional(), // Made optional
 }).refine(data => {
   if (data.hasMyCSD) {
     return data.mycsdCategory && data.mycsdLevel;
@@ -107,7 +112,7 @@ export default function CreateEventPage() {
       setValue('venue', proposal.proposedVenue);
       setValue('capacity', proposal.estimatedParticipants);
       setValue('startDate', proposal.proposedDate);
-      
+
       setIsProposalLoaded(true);
       toast.success('Proposal loaded successfully');
     } catch (error) {
@@ -179,7 +184,7 @@ export default function CreateEventPage() {
     try {
       // Filter out empty objectives
       const validObjectives = objectives.filter(obj => obj.trim() !== '');
-      
+
       // Filter out incomplete links
       const validLinks = links.filter(link => link.title.trim() && link.url.trim());
 
@@ -200,11 +205,12 @@ export default function CreateEventPage() {
         event_name: data.title,
         event_description: data.description,
         event_date: data.startDate,
+        end_date: data.endDate,
         event_venue: data.venue,
         category: data.category,
         capacity: data.capacity,
-        start_time: data.startTime,
-        end_time: data.endTime,
+        start_time: data.startTime?.substring(0, 5),
+        end_time: data.endTime?.substring(0, 5),
         banner_image: bannerUrl || undefined,
         objectives: validObjectives,
         links: validLinks,
@@ -216,7 +222,7 @@ export default function CreateEventPage() {
 
       // Update status to published
       await updateProposalStatus(secretKey, 'published');
-      
+
       toast.success('Event published successfully!');
       router.push('/organizer/dashboard');
     } catch (error) {
@@ -306,404 +312,405 @@ export default function CreateEventPage() {
           </div>
 
           {isProposalLoaded && (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* Basic Information */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
-              
-              <div className="space-y-4">
-                {/* Title */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Event Title <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    {...register('title')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                    placeholder="e.g., HackUSM 2026 - National Hackathon"
-                  />
-                  {errors.title && (
-                    <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
-                  )}
-                </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              {/* Basic Information */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
 
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    {...register('description')}
-                    rows={5}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                    placeholder="Provide a detailed description of your event..."
-                  />
-                  {errors.description && (
-                    <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
-                  )}
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    {...register('category')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                  >
-                    <option value="">Select category</option>
-                    <option value="sport">Sport</option>
-                    <option value="academic">Academic</option>
-                    <option value="cultural">Cultural</option>
-                    <option value="social">Social</option>
-                    <option value="competition">Competition</option>
-                    <option value="talk">Talk</option>
-                    <option value="workshop">Workshop</option>
-                    <option value="other">Other</option>
-                  </select>
-                  {errors.category && (
-                    <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
-                  )}
-                </div>
-
-                {/* Banner Image Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Event Banner
-                  </label>
-                  <div 
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer relative overflow-hidden"
-                    onClick={() => document.getElementById('banner-upload')?.click()}
-                  >
-                    {bannerPreview ? (
-                      <div className="relative h-48 w-full">
-                        <Image 
-                          src={bannerPreview} 
-                          alt="Banner preview" 
-                          fill
-                          className="object-cover rounded-lg"
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity z-10">
-                          <p className="text-white font-medium">Click to change</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600 mb-1">Click to upload or drag and drop</p>
-                        <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
-                      </>
-                    )}
-                    <input 
-                      id="banner-upload"
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*" 
-                      onChange={handleBannerChange}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Date & Time */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Date & Time</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    {...register('startDate')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                  />
-                  {errors.startDate && (
-                    <p className="mt-1 text-sm text-red-600">{errors.startDate.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    {...register('endDate')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                  />
-                  {errors.endDate && (
-                    <p className="mt-1 text-sm text-red-600">{errors.endDate.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Time <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    {...register('startTime')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                  />
-                  {errors.startTime && (
-                    <p className="mt-1 text-sm text-red-600">{errors.startTime.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Time <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    {...register('endTime')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                  />
-                  {errors.endTime && (
-                    <p className="mt-1 text-sm text-red-600">{errors.endTime.message}</p>
-                  )}
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Registration Deadline <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    {...register('registrationDeadline')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                  />
-                  {errors.registrationDeadline && (
-                    <p className="mt-1 text-sm text-red-600">{errors.registrationDeadline.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Venue & Capacity */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Venue & Capacity</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Venue <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    {...register('venue')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                    placeholder="e.g., School of Computer Sciences, USM"
-                  />
-                  {errors.venue && (
-                    <p className="mt-1 text-sm text-red-600">{errors.venue.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Capacity <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    {...register('capacity', { valueAsNumber: true })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                    placeholder="100"
-                  />
-                  {errors.capacity && (
-                    <p className="mt-1 text-sm text-red-600">{errors.capacity.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Participation Fee (RM)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...register('participationFee', { valueAsNumber: true })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                    placeholder="0.00"
-                  />
-                  {errors.participationFee && (
-                    <p className="mt-1 text-sm text-red-600">{errors.participationFee.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* MyCSD */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">MyCSD Points</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    {...register('hasMyCSD')}
-                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                  />
-                  <label className="ml-2 text-sm font-medium text-gray-700">
-                    This event offers MyCSD points
-                  </label>
-                </div>
-
-                {hasMyCSD && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-purple-200">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Category <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        {...register('mycsdCategory')}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                      >
-                        <option value="">Select</option>
-                        <option value="">Select</option>
-                        <option value="REKA CIPTA DAN INOVASI">REKA CIPTA DAN INOVASI</option>
-                        <option value="KEUSAHAWAN">KEUSAHAWAN</option>
-                        <option value="KEBUDAYAAN">KEBUDAYAAN</option>
-                        <option value="SUKAN/REKREASI/SOSIALISASI">SUKAN/REKREASI/SOSIALISASI</option>
-                        <option value="KEPIMPINAN">KEPIMPINAN</option>
-                      </select>
-                      {errors.mycsdCategory && (
-                        <p className="mt-1 text-sm text-red-600">{errors.mycsdCategory.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Level <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        {...register('mycsdLevel')}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                      >
-                        <option value="">Select</option>
-                        <option value="kampus">Kampus</option>
-                        <option value="negeri_universiti">Negeri/Universiti</option>
-                        <option value="antarabangsa">Antarabangsa</option>
-                      </select>
-                      {errors.mycsdLevel && (
-                        <p className="mt-1 text-sm text-red-600">{errors.mycsdLevel.message}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Objectives */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Event Objectives</h2>
-                <button
-                  type="button"
-                  onClick={addObjective}
-                  className="flex items-center gap-1 text-purple-600 hover:text-purple-700 text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Objective
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {objectives.map((obj, index) => (
-                  <div key={index} className="flex gap-2">
+                <div className="space-y-4">
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Event Title <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
-                      value={obj}
-                      onChange={(e) => updateObjective(index, e.target.value)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                      placeholder={`Objective ${index + 1}`}
+                      {...register('title')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      placeholder="e.g., HackUSM 2026 - National Hackathon"
                     />
-                    {objectives.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeObjective(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                    {errors.title && (
+                      <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
                     )}
                   </div>
-                ))}
-              </div>
-              {errors.objectives && (
-                <p className="mt-2 text-sm text-red-600">{errors.objectives.message}</p>
-              )}
-            </div>
 
-            {/* Additional Links (Optional) */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Additional Links</h2>
-                <button
-                  type="button"
-                  onClick={addLink}
-                  className="flex items-center gap-1 text-purple-600 hover:text-purple-700 text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Link
-                </button>
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      {...register('description')}
+                      rows={5}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      placeholder="Provide a detailed description of your event..."
+                    />
+                    {errors.description && (
+                      <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+                    )}
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Category <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      {...register('category')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                    >
+                      <option value="">Select category</option>
+                      <option value="sport">Sport</option>
+                      <option value="academic">Academic</option>
+                      <option value="cultural">Cultural</option>
+                      <option value="social">Social</option>
+                      <option value="competition">Competition</option>
+                      <option value="talk">Talk</option>
+                      <option value="workshop">Workshop</option>
+                      <option value="other">Other</option>
+                    </select>
+                    {errors.category && (
+                      <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
+                    )}
+                  </div>
+
+                  {/* Banner Image Upload */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Event Banner
+                    </label>
+                    <div
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer relative overflow-hidden"
+                      onClick={() => document.getElementById('banner-upload')?.click()}
+                    >
+                      {bannerPreview ? (
+                        <div className="relative h-48 w-full">
+                          <Image
+                            src={bannerPreview}
+                            alt="Banner preview"
+                            fill
+                            className="object-cover rounded-lg"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity z-10">
+                            <p className="text-white font-medium">Click to change</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600 mb-1">Click to upload or drag and drop</p>
+                          <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+                        </>
+                      )}
+                      <input
+                        id="banner-upload"
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleBannerChange}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {links.length === 0 ? (
-                <p className="text-sm text-gray-500">No links added yet</p>
-              ) : (
+              {/* Date & Time */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Date & Time</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      {...register('startDate')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                    />
+                    {errors.startDate && (
+                      <p className="mt-1 text-sm text-red-600">{errors.startDate.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      {...register('endDate')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                    />
+                    {errors.endDate && (
+                      <p className="mt-1 text-sm text-red-600">{errors.endDate.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      {...register('startTime')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                    />
+                    {errors.startTime && (
+                      <p className="mt-1 text-sm text-red-600">{errors.startTime.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      {...register('endTime')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                    />
+                    {errors.endTime && (
+                      <p className="mt-1 text-sm text-red-600">{errors.endTime.message}</p>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Registration Deadline <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      {...register('registrationDeadline')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                    />
+                    {errors.registrationDeadline && (
+                      <p className="mt-1 text-sm text-red-600">{errors.registrationDeadline.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Venue & Capacity */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Venue & Capacity</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Venue <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      {...register('venue')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      placeholder="e.g., School of Computer Sciences, USM"
+                    />
+                    {errors.venue && (
+                      <p className="mt-1 text-sm text-red-600">{errors.venue.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Capacity <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      {...register('capacity', { valueAsNumber: true })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      placeholder="100"
+                    />
+                    {errors.capacity && (
+                      <p className="mt-1 text-sm text-red-600">{errors.capacity.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Participation Fee (RM)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      {...register('participationFee', { valueAsNumber: true })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      placeholder="0.00"
+                    />
+                    {errors.participationFee && (
+                      <p className="mt-1 text-sm text-red-600">{errors.participationFee.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* MyCSD */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">MyCSD Points</h2>
+
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      {...register('hasMyCSD')}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                    <label className="ml-2 text-sm font-medium text-gray-700">
+                      This event offers MyCSD points
+                    </label>
+                  </div>
+
+                  {hasMyCSD && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-purple-200">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Category <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          {...register('mycsdCategory')}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                        >
+                          <option value="">Select</option>
+                          <option value="">Select</option>
+                          <option value="REKA CIPTA DAN INOVASI">REKA CIPTA DAN INOVASI</option>
+                          <option value="KEUSAHAWAN">KEUSAHAWAN</option>
+                          <option value="KEBUDAYAAN">KEBUDAYAAN</option>
+                          <option value="SUKAN/REKREASI/SOSIALISASI">SUKAN/REKREASI/SOSIALISASI</option>
+                          <option value="KEPIMPINAN">KEPIMPINAN</option>
+                        </select>
+                        {errors.mycsdCategory && (
+                          <p className="mt-1 text-sm text-red-600">{errors.mycsdCategory.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Level <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          {...register('mycsdLevel')}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                        >
+                          <option value="">Select</option>
+                          <option value="P.Pengajian / Desasiswa / Persatuan / Kelab">P.Pengajian / Desasiswa / Persatuan / Kelab</option>
+                          <option value="Negeri / Universiti">Negeri / Universiti</option>
+                          <option value="Kebangsaan / Antara University">Kebangsaan / Antara University</option>
+                          <option value="Antarabangsa">Antarabangsa</option>
+                        </select>
+                        {errors.mycsdLevel && (
+                          <p className="mt-1 text-sm text-red-600">{errors.mycsdLevel.message}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Objectives */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">Event Objectives</h2>
+                  <button
+                    type="button"
+                    onClick={addObjective}
+                    className="flex items-center gap-1 text-purple-600 hover:text-purple-700 text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Objective
+                  </button>
+                </div>
+
                 <div className="space-y-3">
-                  {links.map((link, index) => (
+                  {objectives.map((obj, index) => (
                     <div key={index} className="flex gap-2">
                       <input
                         type="text"
-                        value={link.title}
-                        onChange={(e) => updateLink(index, 'title', e.target.value)}
+                        value={obj}
+                        onChange={(e) => updateObjective(index, e.target.value)}
                         className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                        placeholder="Link title"
+                        placeholder={`Objective ${index + 1}`}
                       />
-                      <input
-                        type="url"
-                        value={link.url}
-                        onChange={(e) => updateLink(index, 'url', e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                        placeholder="https://..."
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeLink(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                      {objectives.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeObjective(index)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+                {errors.objectives && (
+                  <p className="mt-2 text-sm text-red-600">{errors.objectives.message}</p>
+                )}
+              </div>
 
-            {/* Submit Buttons */}
-            <div className="flex items-center justify-end gap-4">
-              <Link
-                href="/organizer/dashboard"
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </Link>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2 bg-linear-to-r from-purple-600 to-purple-700 text-white rounded-lg font-medium hover:from-purple-700 hover:to-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Publishing...' : 'Publish Event'}
-              </button>
-            </div>
-          </form>
+              {/* Additional Links (Optional) */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">Additional Links</h2>
+                  <button
+                    type="button"
+                    onClick={addLink}
+                    className="flex items-center gap-1 text-purple-600 hover:text-purple-700 text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Link
+                  </button>
+                </div>
+
+                {links.length === 0 ? (
+                  <p className="text-sm text-gray-500">No links added yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {links.map((link, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={link.title}
+                          onChange={(e) => updateLink(index, 'title', e.target.value)}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                          placeholder="Link title"
+                        />
+                        <input
+                          type="url"
+                          value={link.url}
+                          onChange={(e) => updateLink(index, 'url', e.target.value)}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                          placeholder="https://..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeLink(index)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-4">
+                <Link
+                  href="/organizer/dashboard"
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-linear-to-r from-purple-600 to-purple-700 text-white rounded-lg font-medium hover:from-purple-700 hover:to-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Publishing...' : 'Publish Event'}
+                </button>
+              </div>
+            </form>
           )}
         </div>
       </main>

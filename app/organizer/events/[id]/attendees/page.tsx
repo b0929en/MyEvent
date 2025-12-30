@@ -10,16 +10,19 @@ import { getEventById } from '@/backend/services/eventService';
 import { getEventRegistrations } from '@/backend/services/registrationService';
 import { Event, Registration } from '@/types';
 import { format } from 'date-fns';
-import { 
-  ArrowLeft, 
-  Search, 
+import {
+  ArrowLeft,
+  Search,
   Download,
   QrCode,
   CheckCircle,
   XCircle,
   Clock,
   Filter,
-  Users as UsersIcon
+  Users as UsersIcon,
+  Phone,
+  Mail,
+  Award
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -33,6 +36,7 @@ export default function AttendeesPage() {
   const { user, isLoading: authLoading } = useRequireRole(['organizer'], '/');
   const eventId = params.id as string;
 
+  const [activeTab, setActiveTab] = useState<'attendees' | 'committee'>('attendees');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
   const [showQRModal, setShowQRModal] = useState(false);
@@ -99,7 +103,7 @@ export default function AttendeesPage() {
         name: reg.userName,
         email: reg.userEmail,
         matricNumber: reg.matricNumber || '',
-        faculty: '',
+        faculty: reg.faculty || '',
         registeredAt: reg.registeredAt,
         status: status,
         checkInTime: reg.status === 'attended' ? reg.updatedAt : null,
@@ -119,7 +123,7 @@ export default function AttendeesPage() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(a => 
+      filtered = filtered.filter(a =>
         a.name.toLowerCase().includes(query) ||
         a.email.toLowerCase().includes(query) ||
         a.matricNumber?.toLowerCase().includes(query)
@@ -128,6 +132,24 @@ export default function AttendeesPage() {
 
     return filtered;
   }, [attendees, statusFilter, searchQuery]);
+
+  // Filter committee members
+  const filteredCommittee = useMemo(() => {
+    if (!event?.committeeMembers) return [];
+
+    let filtered = event.committeeMembers;
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(member =>
+        member.name.toLowerCase().includes(query) ||
+        member.matricNumber.toLowerCase().includes(query) ||
+        member.position.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [event, searchQuery]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -146,19 +168,31 @@ export default function AttendeesPage() {
   };
 
   const handleExportCSV = () => {
-    // Backend will implement CSV export
-    const csvData = filteredAttendees.map(a => ({
-      Name: a.name,
-      Email: a.email,
-      'Matric Number': a.matricNumber,
-      Faculty: a.faculty,
-      'Registered At': format(new Date(a.registeredAt), 'yyyy-MM-dd HH:mm'),
-      Status: a.status,
-      'Check-in Time': a.checkInTime ? format(new Date(a.checkInTime), 'yyyy-MM-dd HH:mm') : '-'
-    }));
-
-    console.log('Export CSV data:', csvData);
-    toast.success('CSV exported successfully!');
+    if (activeTab === 'attendees') {
+      // Export Attendees
+      const csvData = filteredAttendees.map(a => ({
+        Name: a.name,
+        Email: a.email,
+        'Matric Number': a.matricNumber,
+        Faculty: a.faculty,
+        'Registered At': format(new Date(a.registeredAt), 'yyyy-MM-dd HH:mm'),
+        Status: a.status,
+        'Check-in Time': a.checkInTime ? format(new Date(a.checkInTime), 'yyyy-MM-dd HH:mm') : '-'
+      }));
+      console.log('Export Attendees CSV:', csvData);
+      toast.success('Attendees CSV exported successfully!');
+    } else {
+      // Export Committee
+      const csvData = filteredCommittee.map(c => ({
+        Name: c.name,
+        'Matric Number': c.matricNumber,
+        Position: c.position,
+        Email: c.email || '-',
+        Phone: c.phone || '-'
+      }));
+      console.log('Export Committee CSV:', csvData);
+      toast.success('Committee list exported successfully!');
+    }
   };
 
   const getStatusBadge = (status: AttendanceStatus) => {
@@ -185,6 +219,14 @@ export default function AttendeesPage() {
           </span>
         );
     }
+  };
+
+  const getPositionBadgeColor = (position: string) => {
+    const lower = position.toLowerCase();
+    if (lower.includes('pengarah') || lower.includes('director')) return 'bg-purple-100 text-purple-800';
+    if (lower.includes('ajk tertinggi') || lower.includes('top committee')) return 'bg-blue-100 text-blue-800';
+    if (lower.includes('ajk') || lower.includes('committee')) return 'bg-cyan-100 text-cyan-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   if (authLoading) {
@@ -250,7 +292,7 @@ export default function AttendeesPage() {
             </Link>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">{event.title}</h1>
-              <p className="text-gray-600">Attendee Management</p>
+              <p className="text-gray-600">Attendee & Committee Management</p>
             </div>
             <div className="flex gap-2">
               <button
@@ -270,187 +312,317 @@ export default function AttendeesPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Attendees</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <UsersIcon className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Checked In</p>
-                  <p className="text-3xl font-bold text-green-600">{stats.checkedIn}</p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Registered</p>
-                  <p className="text-3xl font-bold text-blue-600">{stats.registered}</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Cancelled</p>
-                  <p className="text-3xl font-bold text-red-600">{stats.cancelled}</p>
-                </div>
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <XCircle className="w-6 h-6 text-red-600" />
-                </div>
-              </div>
-            </div>
+          {/* Tabs */}
+          <div className="border-b border-gray-200 mb-6">
+            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('attendees')}
+                className={`${activeTab === 'attendees'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2`}
+              >
+                <UsersIcon className="w-4 h-4" />
+                Participants
+                <span className="bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs ml-2">{stats.total}</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('committee')}
+                className={`${activeTab === 'committee'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2`}
+              >
+                <Award className="w-4 h-4" />
+                Committee List
+                <span className="bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs ml-2">
+                  {event.committeeMembers?.length || 0}
+                </span>
+              </button>
+            </nav>
           </div>
 
-          {/* Filters & Search */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, email, or matric number..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
+          {/* Tab Content */}
+          {activeTab === 'attendees' ? (
+            <>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Total Attendees</p>
+                      <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                      <UsersIcon className="w-6 h-6 text-purple-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Checked In</p>
+                      <p className="text-3xl font-bold text-green-600">{stats.checkedIn}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Registered</p>
+                      <p className="text-3xl font-bold text-blue-600">{stats.registered}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-blue-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Cancelled</p>
+                      <p className="text-3xl font-bold text-red-600">{stats.cancelled}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                      <XCircle className="w-6 h-6 text-red-600" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Status Filter */}
-              <div className="flex items-center gap-2">
-                <Filter className="w-5 h-5 text-gray-400" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as AttendanceStatus | 'all')}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="all">All Status</option>
-                  <option value="checked-in">Checked In</option>
-                  <option value="registered">Registered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-            </div>
-          </div>
+              {/* Filters & Search */}
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                  {/* Search */}
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search by name, email, or matric number..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
 
-          {/* Attendees Table */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {isLoadingData ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading attendees...</p>
+                  {/* Status Filter */}
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-5 h-5 text-gray-400" />
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value as AttendanceStatus | 'all')}
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="checked-in">Checked In</option>
+                      <option value="registered">Registered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                {filteredAttendees.length > 0 ? (
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Attendee
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Faculty
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Registered
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Check-in Time
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredAttendees.map((attendee) => (
-                      <tr key={attendee.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{attendee.name}</div>
-                            <div className="text-sm text-gray-500">{attendee.email}</div>
-                            {attendee.matricNumber && (
-                              <div className="text-xs text-gray-400">{attendee.matricNumber}</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {attendee.faculty}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {format(new Date(attendee.registeredAt), 'MMM dd, yyyy')}
-                          <div className="text-xs text-gray-500">
-                            {format(new Date(attendee.registeredAt), 'h:mm a')}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {getStatusBadge(attendee.status)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {attendee.checkInTime ? (
-                            <>
-                              {format(new Date(attendee.checkInTime), 'MMM dd, yyyy')}
-                              <div className="text-xs text-gray-500">
-                                {format(new Date(attendee.checkInTime), 'h:mm a')}
+
+              {/* Attendees Table */}
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                {isLoadingData ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading attendees...</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    {filteredAttendees.length > 0 ? (
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Attendee
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Faculty
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Registered
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Check-in Time
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredAttendees.map((attendee) => (
+                            <tr key={attendee.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{attendee.name}</div>
+                                  <div className="text-sm text-gray-500">{attendee.email}</div>
+                                  {attendee.matricNumber && (
+                                    <div className="text-xs text-gray-400">{attendee.matricNumber}</div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900">
+                                {attendee.faculty}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900">
+                                {format(new Date(attendee.registeredAt), 'MMM dd, yyyy')}
+                                <div className="text-xs text-gray-500">
+                                  {format(new Date(attendee.registeredAt), 'h:mm a')}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                {getStatusBadge(attendee.status)}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900">
+                                {attendee.checkInTime ? (
+                                  <>
+                                    {format(new Date(attendee.checkInTime), 'MMM dd, yyyy')}
+                                    <div className="text-xs text-gray-500">
+                                      {format(new Date(attendee.checkInTime), 'h:mm a')}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4">
+                                {attendee.status === 'registered' && (
+                                  <button
+                                    onClick={() => handleCheckIn(attendee.id)}
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                    Check In
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="text-center py-12">
+                        <UsersIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 text-lg">No attendees found</p>
+                        <p className="text-gray-400 text-sm">
+                          {searchQuery || statusFilter !== 'all'
+                            ? 'Try adjusting your filters'
+                            : 'No one has registered yet'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            // Committee Tab Content
+            <>
+              {/* Filter & Search for Committee */}
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search committee by name, matric, or position..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Committee Table */}
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  {filteredCommittee.length > 0 ? (
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Name / Matric
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Position
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Faculty
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Contact Info
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredCommittee.map((member, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-6 py-4">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{member.name}</div>
+                                <div className="text-sm text-gray-500">{member.matricNumber}</div>
                               </div>
-                            </>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {attendee.status === 'registered' && (
-                            <button
-                              onClick={() => handleCheckIn(attendee.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                              Check In
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="text-center py-12">
-                  <UsersIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg">No attendees found</p>
-                  <p className="text-gray-400 text-sm">
-                    {searchQuery || statusFilter !== 'all' 
-                      ? 'Try adjusting your filters'
-                      : 'No one has registered yet'}
-                  </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPositionBadgeColor(member.position)}`}
+                              >
+                                {member.position}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900">
+                              {member.faculty || '-'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col gap-1">
+                                {member.email && (
+                                  <div className="flex items-center text-sm text-gray-500 gap-2">
+                                    <Mail className="w-3 h-3" />
+                                    {member.email}
+                                  </div>
+                                )}
+                                {member.phone && (
+                                  <div className="flex items-center text-sm text-gray-500 gap-2">
+                                    <Phone className="w-3 h-3" />
+                                    {member.phone}
+                                  </div>
+                                )}
+                                {!member.email && !member.phone && (
+                                  <span className="text-gray-400 text-sm">-</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 text-lg">No committee members found</p>
+                      <p className="text-gray-400 text-sm">
+                        {searchQuery ? 'Try adjusting your search' : 'No committee members assigned to this event'}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
               </div>
-            )}
-          </div>
+            </>
+          )}
+
         </div>
       </main>
 
@@ -484,12 +656,12 @@ export default function AttendeesPage() {
               Event ID: <span className="font-mono font-semibold">{event.id}</span>
             </p>
             <div className="mt-2 p-2 bg-yellow-50 border border-yellow-100 rounded text-xs text-yellow-800 break-all">
-               <strong>Encoded URL:</strong> {`${origin}/checkin?eventId=${event.id}&t=${qrTimestamp}`}
-               {origin.includes('localhost') && (
-                 <div className="mt-1 font-bold text-red-600">
-                   Warning: You are on localhost. Phone scanning will fail. Access this page via your Network IP (e.g., 192.168.x.x) on this computer.
-                 </div>
-               )}
+              <strong>Encoded URL:</strong> {`${origin}/checkin?eventId=${event.id}&t=${qrTimestamp}`}
+              {origin.includes('localhost') && (
+                <div className="mt-1 font-bold text-red-600">
+                  Warning: You are on localhost. Phone scanning will fail. Access this page via your Network IP (e.g., 192.168.x.x) on this computer.
+                </div>
+              )}
             </div>
             <p className="text-xs text-gray-500 mt-2">
               <strong>How to Test:</strong>

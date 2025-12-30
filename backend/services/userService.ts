@@ -12,6 +12,7 @@ const mapUser = (dbUser: DBUser): User => {
     name: dbUser.user_name,
     role: role,
     matricNumber: dbUser.students?.matric_num,
+    faculty: dbUser.students?.faculty,
     organizationId: dbUser.organization_admins?.org_id,
     createdAt: dbUser.created_at,
     updatedAt: dbUser.created_at,
@@ -23,7 +24,7 @@ export async function getUsers() {
     .from('users')
     .select(`
       *,
-      students (matric_num),
+      students (matric_num, faculty),
       organization_admins (org_id)
     `);
 
@@ -40,7 +41,7 @@ export async function getUserByEmail(email: string) {
     .from('users')
     .select(`
       *,
-      students (matric_num),
+      students (matric_num, faculty),
       organization_admins (org_id)
     `)
     .eq('user_email', email)
@@ -59,7 +60,7 @@ export async function getUserById(id: string) {
     .from('users')
     .select(`
       *,
-      students (matric_num),
+      students (matric_num, faculty),
       organization_admins (org_id)
     `)
     .eq('user_id', id)
@@ -74,11 +75,11 @@ export async function getUserById(id: string) {
 }
 
 export async function getAllUsers() {
-    const { data, error } = await supabase
+  const { data, error } = await supabase
     .from('users')
     .select(`
       *,
-      students (matric_num),
+      students (matric_num, faculty),
       organization_admins (org_id)
     `);
 
@@ -88,4 +89,34 @@ export async function getAllUsers() {
   }
 
   return data.map(mapUser);
+}
+
+export async function getStudentByMatric(matricNumber: string) {
+  const { data, error } = await supabase
+    .from('students')
+    .select(`
+      matric_num,
+      faculty,
+      users (
+        user_id,
+        user_name,
+        user_email
+      )
+    `)
+    .eq('matric_num', matricNumber)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const userUser = Array.isArray(data.users) ? data.users[0] : data.users;
+
+  return {
+    matricNumber: data.matric_num,
+    faculty: data.faculty,
+    name: userUser?.user_name,
+    email: userUser?.user_email,
+    userId: userUser?.user_id
+  };
 }
