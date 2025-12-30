@@ -7,12 +7,23 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import Modal from '@/components/Modal';
-import { getEventById } from '@/backend/services/eventService';
+import { getEventById, getEvents } from '@/backend/services/eventService';
 import { createRegistration, getUserRegistrations } from '@/backend/services/registrationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Event } from '@/types';
+import EventCard from '@/components/event/EventCard';
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Ticket,
+  User,
+  Award,
+  Share2,
+  ExternalLink
+} from 'lucide-react';
 
 export default function EventDetailsPage() {
   const params = useParams();
@@ -21,6 +32,7 @@ export default function EventDetailsPage() {
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [event, setEvent] = useState<Event | null>(null);
+  const [suggestedEvents, setSuggestedEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistered, setIsRegistered] = useState(false);
 
@@ -30,6 +42,15 @@ export default function EventDetailsPage() {
         try {
           const fetchedEvent = await getEventById(params.id as string);
           setEvent(fetchedEvent);
+
+          // Fetch suggested events
+          const allEvents = await getEvents();
+          if (fetchedEvent) {
+            const suggestions = allEvents
+              .filter(e => e.id !== fetchedEvent.id)
+              .slice(0, 3);
+            setSuggestedEvents(suggestions);
+          }
         } catch (error) {
           console.error('Error fetching event:', error);
         } finally {
@@ -107,13 +128,13 @@ export default function EventDetailsPage() {
     if (!user || !event) return;
 
     setIsRegistering(true);
-    
+
     try {
       await createRegistration({
         eventId: event.id,
         userId: user.id,
       });
-      
+
       toast.success('Successfully registered for ' + event.title);
       setShowRegistrationModal(false);
       router.push('/profile');
@@ -134,7 +155,7 @@ export default function EventDetailsPage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      <main className="grow">
+      <main className="grow pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Breadcrumb */}
           <div className="mb-6">
@@ -167,113 +188,209 @@ export default function EventDetailsPage() {
             )}
           </div>
 
-          {/* Event Title and Badges */}
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
-            <div className="flex flex-wrap gap-3">
-              {event.hasMyCSD ? (
-                <span className="px-4 py-1 bg-orange-500 text-white text-sm font-medium rounded-full">
-                  MyCSD Available
-                </span>
-              ) : (
-                <span className="px-4 py-1 bg-gray-500 text-white text-sm font-medium rounded-full">
-                  MyCSD Not Available
-                </span>
-              )}
-              
-              {event.hasMyCSD && event.mycsdLevel && (
-                <span className="px-4 py-1 bg-purple-400 text-white text-sm font-medium rounded-full capitalize">
-                  {event.mycsdLevel.replace('_', ' ')}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* General Information */}
-          <div className="mb-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">General Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 text-gray-700">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Left Content Column - Title Section */}
+            <div className="lg:col-span-2">
+              {/* Event Title, Organizer and Badges */}
               <div>
-                <p className="mb-2">
-                  <span className="font-medium text-gray-900">Organizer:</span> {event.organizerName}
-                </p>
-                <p>
-                  <span className="font-medium text-gray-900">Participation Fee:</span> {event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`}
-                </p>
-              </div>
-              <div>
-                <p className="mb-2">
-                  <span className="font-medium text-gray-900">Date:</span> {format(eventDate, 'do MMMM yyyy (EEEE)')}
-                </p>
-                <p>
-                  <span className="font-medium text-gray-900">Time:</span> {event.startTime} - {event.endTime} (GMT+8)
-                </p>
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
+                <p className="text-xl text-gray-600 mb-4">Organized by: {event.organizerName}</p>
+                <div className="flex flex-wrap gap-3">
+                  {event.hasMyCSD && (
+                    <span className="px-4 py-1 bg-orange-500 text-white text-sm font-medium rounded-full">
+                      MyCSD Available
+                    </span>
+                  )}
+
+                  {event.hasMyCSD && event.mycsdLevel && (
+                    <span className="px-4 py-1 bg-purple-400 text-white text-sm font-medium rounded-full capitalize">
+                      {event.mycsdLevel.replace('_', ' ')}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* RSVP Button */}
-            <div className="mt-8">
-              <button 
-                onClick={handleRSVP}
-                disabled={isPastDeadline || isFull || isRegistered}
-                className={`font-semibold py-3 px-8 rounded-full transition-colors disabled:cursor-not-allowed ${
-                  isRegistered 
-                    ? 'bg-gray-400 text-white' 
-                    : 'bg-orange-500 hover:bg-orange-600 text-white disabled:bg-gray-400'
-                }`}
-              >
-                {isRegistered ? 'Registered' : isPastDeadline ? 'Registration Closed' : isFull ? 'Event Full' : 'RSVP Now'}
-              </button>
-            </div>
-          </div>
+            {/* Right Sidebar (Non-sticky) */}
+            <div className="lg:col-span-1">
+              <div className="space-y-6">
+                {/* Event Actions Card */}
+                <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+                  <div className="p-6">
+                    <div className="flex gap-5">
+                      <button
+                        onClick={handleRSVP}
+                        disabled={isPastDeadline || isFull || isRegistered}
+                        className={`grow font-bold py-3.5 px-6 border border-gray-200 rounded-xl cursor-not-allowed transition-all duration-300 ${isRegistered
+                          ? 'bg-gray-100 text-gray-400'
+                          : isPastDeadline
+                            ? 'bg-gray-200 text-gray-500'
+                            : isFull
+                              ? 'bg-red-50 text-red-500 border border-red-100'
+                              : 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
+                          }`}
+                      >
+                        {isRegistered ? 'Registered' : isPastDeadline ? 'Registration Closed' : isFull ? 'Fully Booked' : 'RSVP Now'}
+                      </button>
 
-          {/* Description */}
-          <div className="mb-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Description</h2>
-            <p className="text-gray-700 leading-relaxed whitespace-pre-line">{event.description}</p>
-            
-            {event.objectives && event.objectives.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Objectives</h3>
-                <ul className="list-disc list-inside space-y-2">
-                  {event.objectives.map((objective, index) => (
-                    <li key={index} className="text-gray-700">{objective}</li>
-                  ))}
-                </ul>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.href);
+                          toast.success('Link copied to clipboard!');
+                        }}
+                        className="p-3.5 rounded-full border border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-purple-600 cursor-pointer transition-colors flex items-center justify-center shrink-0 transition-all duration-300"
+                        title="Share this event"
+                      >
+                        <Share2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* Gallery */}
-          <div className="mb-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Gallery</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Placeholder gallery items as per design */}
-              <div className="aspect-square bg-gray-200 rounded-lg"></div>
-              <div className="aspect-square bg-gray-200 rounded-lg"></div>
-              <div className="aspect-square bg-gray-200 rounded-lg"></div>
-              <div className="aspect-square bg-gray-200 rounded-lg"></div>
             </div>
           </div>
 
-          {/* Links */}
-          {event.links && event.links.length > 0 && (
-            <div className="mb-10">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Links</h2>
-              <ul className="list-disc list-inside space-y-2">
-                {event.links.map((link, index) => (
-                  <li key={index}>
+          {/* Full Width Content Sections */}
+          <div className="mt-10 space-y-10">
+            {/* General Information Grid */}
+            <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">General Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                {/* Date */}
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 mb-1">Date</p>
+                    <p className="text-gray-600 text-sm">
+                      {format(eventDate, 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Time */}
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-green-50 rounded-xl text-green-600">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 mb-1">Time</p>
+                    <p className="text-gray-600 text-sm">
+                      {event.startTime} - {event.endTime}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-red-50 rounded-xl text-red-600">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 mb-1">Location</p>
+                    <p className="text-gray-600 text-sm line-clamp-2">
+                      {event.venue || 'University Main Hall'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-purple-50 rounded-xl text-purple-600">
+                    <Ticket className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 mb-1">Price</p>
+                    <p className="text-gray-600 text-sm">
+                      {event.participationFee === 0 ? 'Free' : `RM ${event.participationFee.toFixed(2)}`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Overview</h2>
+              <div className="prose prose-purple max-w-none text-gray-600 leading-relaxed whitespace-pre-line">
+                {event.description}
+              </div>
+
+              {event.objectives && event.objectives.length > 0 && (
+                <div className="mt-8 bg-purple-50 rounded-xl p-6 border border-purple-100">
+                  <h3 className="text-lg font-bold text-purple-900 mb-4 flex items-center gap-2">
+                    <Award className="w-5 h-5 text-purple-600" />
+                    Objectives
+                  </h3>
+                  <ul className="space-y-3">
+                    {event.objectives.map((objective, index) => (
+                      <li key={index} className="flex items-start gap-3 text-gray-700">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-50 mt-2 shrink-0" />
+                        {objective}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
+
+            {/* Gallery */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Event Gallery</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((item) => (
+                  <div key={item} className="aspect-square bg-gray-200 rounded-2xl hover:scale-101 transition-transform duration-300 cursor-pointer overflow-hidden relative group">
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Links */}
+            {event.links && event.links.length > 0 && (
+              <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Wait, there&apos;s more</h2>
+                <div className="grid gap-3">
+                  {event.links.map((link, index) => (
                     <a
+                      key={index}
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-900 hover:text-purple-600 hover:underline"
+                      className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50/50 transition-all group"
                     >
-                      {link.title}
+                      <div className="p-2 bg-purple-100 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                        <ExternalLink className="w-5 h-5" />
+                      </div>
+                      <span className="font-medium text-gray-700 group-hover:text-purple-700">
+                        {link.title}
+                      </span>
                     </a>
-                  </li>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Suggested Events */}
+          {suggestedEvents.length > 0 && (
+            <div className="mt-20 border-t border-gray-200 pt-10">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Events you might like</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {suggestedEvents.map((suggestedEvent) => (
+                  <div key={suggestedEvent.id} className="h-full">
+                    <EventCard
+                      id={suggestedEvent.id}
+                      title={suggestedEvent.title}
+                      date={format(new Date(suggestedEvent.startDate), 'MMMM do, yyyy')}
+                      venue={suggestedEvent.venue || 'TBA'}
+                      price={suggestedEvent.participationFee === 0 ? 'Free' : `RM ${suggestedEvent.participationFee}`}
+                      image={suggestedEvent.bannerImage}
+                    />
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
         </div>
@@ -289,7 +406,7 @@ export default function EventDetailsPage() {
           <p className="text-gray-700">
             You are about to register for <strong>{event.title}</strong>
           </p>
-          
+
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Event:</span>
@@ -312,10 +429,6 @@ export default function EventDetailsPage() {
               </div>
             )}
           </div>
-
-          <p className="text-sm text-gray-600">
-            * You will receive a confirmation email after registration
-          </p>
 
           <div className="flex gap-3 pt-4">
             <button

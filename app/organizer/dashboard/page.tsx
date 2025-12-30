@@ -156,12 +156,6 @@ export default function OrganizerDashboard() {
                 Submit Proposal
               </Link>
               <Link
-                href="/organizer/proposals"
-                className="inline-flex items-center gap-2 bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-3 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all shadow-md"
-              >
-                View Proposals
-              </Link>
-              <Link
                 href="/organizer/events/create"
                 className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-6 py-3 rounded-full font-medium hover:bg-purple-200 transition-all shadow-md"
               >

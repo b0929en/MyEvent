@@ -68,6 +68,7 @@ export async function getEvents(filters?: {
   hasMyCSD?: boolean;
   mycsdCategory?: MyCSDCategory[];
   mycsdLevel?: MyCSDLevel[];
+  organizerId?: string;
 }) {
   // Attempt to mark completed events (fire and forget or await, depending on importance)
   // We await it to ensure the data we fetch right after is up to date.
@@ -119,7 +120,15 @@ export async function getEvents(filters?: {
     throw error;
   }
 
-  return data.map(mapEvent);
+  let filteredData = data;
+  if (filters?.organizerId) {
+    filteredData = data.filter((evt: any) => {
+      const req = Array.isArray(evt.event_requests) ? evt.event_requests[0] : evt.event_requests;
+      return req?.org_id === filters.organizerId;
+    });
+  }
+
+  return filteredData.map(mapEvent);
 }
 
 export async function getEventById(id: string) {

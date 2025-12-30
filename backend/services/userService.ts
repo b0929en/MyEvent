@@ -14,6 +14,7 @@ const mapUser = (dbUser: DBUser): User => {
     matricNumber: dbUser.students?.matric_num,
     faculty: dbUser.students?.faculty,
     organizationId: dbUser.organization_admins?.org_id,
+    position: dbUser.organization_admins?.user_position || undefined,
     createdAt: dbUser.created_at,
     updatedAt: dbUser.created_at,
   };
@@ -25,7 +26,7 @@ export async function getUsers() {
     .select(`
       *,
       students (matric_num, faculty),
-      organization_admins (org_id)
+      organization_admins (org_id, user_position)
     `);
 
   if (error) {
@@ -42,7 +43,7 @@ export async function getUserByEmail(email: string) {
     .select(`
       *,
       students (matric_num, faculty),
-      organization_admins (org_id)
+      organization_admins (org_id, user_position)
     `)
     .eq('user_email', email)
     .single();
@@ -63,7 +64,7 @@ export async function getUserById(id: string) {
     .select(`
       *,
       students (matric_num, faculty),
-      organization_admins (org_id)
+      organization_admins (org_id, user_position)
     `)
     .eq('user_id', id)
     .single();
@@ -84,7 +85,7 @@ export async function getAllUsers() {
     .select(`
       *,
       students (matric_num, faculty),
-      organization_admins (org_id)
+      organization_admins (org_id, user_position)
     `);
 
   if (error) {

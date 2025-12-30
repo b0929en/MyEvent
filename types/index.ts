@@ -186,6 +186,7 @@ export type User = {
   organizationId?: string; // For organizers
   phone?: string;
   faculty?: string;
+  position?: string; // For organizers (e.g. President, Secretary)
   createdAt: string;
   updatedAt: string;
 };

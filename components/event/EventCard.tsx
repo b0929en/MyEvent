@@ -25,7 +25,7 @@ export default function EventCard({ title, date, venue, price, image, id = '1' }
 
         {/* Event Details */}
         <div className="p-4 flex flex-col flex-1">
-          <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-500 transition-colors">
+          <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 transition-colors">
             {title}
           </h3>
           <p className="text-sm text-gray-600 mb-1">{date}</p>
