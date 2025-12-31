@@ -356,7 +356,7 @@ function EventsPage() {
                       checked={selectedMyCSDLevels.includes('P.Pengajian / Desasiswa / Persatuan / Kelab')}
                       onChange={() => toggleMyCSDLevel('P.Pengajian / Desasiswa / Persatuan / Kelab')}
                     />
-                    <span className="text-gray-700">Kampus (P.Pengajian...) <span className="text-gray-400">({mycsdLevelCounts['P.Pengajian / Desasiswa / Persatuan / Kelab'] || 0})</span></span>
+                    <span className="text-gray-700">P.Pengajian / Desasiswa / Persatuan / Kelab <span className="text-gray-400">({mycsdLevelCounts['P.Pengajian / Desasiswa / Persatuan / Kelab'] || 0})</span></span>
                   </label>
                 </div>
               </div>

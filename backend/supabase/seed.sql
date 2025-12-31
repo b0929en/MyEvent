@@ -78,9 +78,9 @@ INSERT INTO mycsd_records (record_id, mycsd_score, mycsd_type) VALUES
 
 -- Event MyCSD
 INSERT INTO event_mycsd (record_id, mycsd_category, event_level, mr_id) VALUES
-('40000000-0000-0000-0000-000000000001', 'REKA CIPTA DAN INOVASI', 'P.Pengajian / Desasiswa / Persatuan / Kelab', '60000000-0000-0000-0000-000000000001'),
-('40000000-0000-0000-0000-000000000002', 'SUKAN/REKREASI/SOSIALISASI', 'Negeri / Universiti', '60000000-0000-0000-0000-000000000002'),
-('40000000-0000-0000-0000-000000000003', 'REKA CIPTA DAN INOVASI', 'Antarabangsa', '60000000-0000-0000-0000-000000000003');
+('40000000-0000-0000-0000-000000000001', 'Reka Cipta dan Inovasi', 'P.Pengajian / Desasiswa / Persatuan / Kelab', '60000000-0000-0000-0000-000000000001'),
+('40000000-0000-0000-0000-000000000002', 'Sukan/Rekreasi/Sosialisasi', 'Negeri / Universiti', '60000000-0000-0000-0000-000000000002'),
+('40000000-0000-0000-0000-000000000003', 'Reka Cipta dan Inovasi', 'Antarabangsa', '60000000-0000-0000-0000-000000000003');
 
 -- MyCSD Logs
 INSERT INTO mycsd_logs (matric_no, record_id, score, position) VALUES

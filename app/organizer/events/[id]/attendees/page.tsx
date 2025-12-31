@@ -7,8 +7,8 @@ import Footer from '@/components/layout/Footer';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useRequireRole } from '@/contexts/AuthContext';
 import { getEventById } from '@/backend/services/eventService';
-import { getEventRegistrations } from '@/backend/services/registrationService';
-import { Event, Registration } from '@/types';
+import { getEventRegistrations, approveRegistration, rejectRegistration, checkInUser } from '@/backend/services/registrationService';
+import { Event, Registration, PaymentStatus } from '@/types';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
@@ -22,14 +22,19 @@ import {
   Users as UsersIcon,
   Phone,
   Mail,
-  Award
+  Award,
+  Eye,
+  Check,
+  X,
+  AlertCircle
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from '@/components/Modal';
 
-type AttendanceStatus = 'checked-in' | 'registered' | 'cancelled';
+type AttendanceStatus = 'checked-in' | 'registered' | 'cancelled' | 'pending';
 
 export default function AttendeesPage() {
   const params = useParams();
@@ -46,6 +51,9 @@ export default function AttendeesPage() {
   const [origin, setOrigin] = useState('');
   const [timeLeft, setTimeLeft] = useState(30);
   const [qrTimestamp, setQrTimestamp] = useState(Date.now());
+  const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -96,6 +104,7 @@ export default function AttendeesPage() {
       let status: AttendanceStatus = 'registered';
       if (reg.status === 'attended') status = 'checked-in';
       if (reg.status === 'cancelled') status = 'cancelled';
+      if (reg.status === 'pending') status = 'pending';
 
       return {
         id: reg.id,
@@ -107,6 +116,9 @@ export default function AttendeesPage() {
         registeredAt: reg.registeredAt,
         status: status,
         checkInTime: reg.status === 'attended' ? reg.updatedAt : null,
+        paymentStatus: reg.paymentStatus,
+        paymentAmount: reg.paymentAmount,
+        receiptUrl: reg.qrCode // Using qrCode field for receipt URL as mapped in service
       };
     });
   }, [registrations]);
@@ -157,14 +169,64 @@ export default function AttendeesPage() {
     const checkedIn = attendees.filter(a => a.status === 'checked-in').length;
     const registered = attendees.filter(a => a.status === 'registered').length;
     const cancelled = attendees.filter(a => a.status === 'cancelled').length;
+    const pending = attendees.filter(a => a.status === 'pending').length;
 
-    return { total, checkedIn, registered, cancelled };
+    return { total, checkedIn, registered, cancelled, pending };
   }, [attendees]);
 
-  const handleCheckIn = (attendeeId: string) => {
-    // Backend will implement actual check-in logic
-    toast.success('Attendee checked in successfully!');
-    console.log('Check in attendee:', attendeeId);
+  const handleCheckIn = async (userId: string) => {
+    setIsProcessing(true);
+    try {
+      await checkInUser(eventId, userId);
+      toast.success('Attendee checked in successfully!');
+      // Refresh data
+      const regs = await getEventRegistrations(eventId);
+      setRegistrations(regs);
+    } catch (error) {
+      console.error('Error checking in:', error);
+      toast.error('Failed to check in attendee');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleApprovePayment = async (userId: string) => {
+    if (!confirm('Are you sure you want to approve this payment?')) return;
+    setIsProcessing(true);
+    try {
+      await approveRegistration(eventId, userId);
+      toast.success('Payment approved successfully');
+      // Refresh data
+      const regs = await getEventRegistrations(eventId);
+      setRegistrations(regs);
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      toast.error('Failed to approve payment');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectPayment = async (userId: string) => {
+    if (!confirm('Are you sure you want to reject this payment?')) return;
+    setIsProcessing(true);
+    try {
+      await rejectRegistration(eventId, userId);
+      toast.success('Payment rejected');
+      // Refresh data
+      const regs = await getEventRegistrations(eventId);
+      setRegistrations(regs);
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
+      toast.error('Failed to reject payment');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const openReceiptModal = (url: string) => {
+    setSelectedReceipt(url);
+    setReceiptModalOpen(true);
   };
 
   const handleExportCSV = () => {
@@ -209,6 +271,13 @@ export default function AttendeesPage() {
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
             <Clock className="w-3 h-3" />
             Registered
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <AlertCircle className="w-3 h-3" />
+            Pending Approval
           </span>
         );
       case 'cancelled':
@@ -457,6 +526,12 @@ export default function AttendeesPage() {
                               Check-in Time
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Payment
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Receipt
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Actions
                             </th>
                           </tr>
@@ -498,15 +573,74 @@ export default function AttendeesPage() {
                                 )}
                               </td>
                               <td className="px-6 py-4">
-                                {attendee.status === 'registered' && (
-                                  <button
-                                    onClick={() => handleCheckIn(attendee.id)}
-                                    className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                                  >
-                                    <CheckCircle className="w-4 h-4" />
-                                    Check In
-                                  </button>
+                                {event.participationFee > 0 ? (
+                                  attendee.paymentStatus === 'paid' ? (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      Paid
+                                    </span>
+                                  ) : attendee.paymentStatus === 'pending' ? (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                      Pending
+                                    </span>
+                                  ) : attendee.paymentStatus === 'failed' ? (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                      Rejected
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">-</span>
+                                  )
+                                ) : (
+                                  <span className="text-gray-400 text-xs">Free</span>
                                 )}
+                              </td>
+                              <td className="px-6 py-4">
+                                {attendee.receiptUrl ? (
+                                  <button
+                                    onClick={() => openReceiptModal(attendee.receiptUrl!)}
+                                    className="text-purple-600 hover:text-purple-900"
+                                    title="View Receipt"
+                                  >
+                                    <Eye className="w-5 h-5" />
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">-</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  {/* Check-in Action */}
+                                  {attendee.status === 'registered' && (
+                                    <button
+                                      onClick={() => handleCheckIn(attendee.userId)}
+                                      className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                      title="Check In"
+                                    >
+                                      <CheckCircle className="w-5 h-5" />
+                                    </button>
+                                  )}
+
+                                  {/* Payment Approval Actions */}
+                                  {attendee.paymentStatus === 'pending' && (
+                                    <>
+                                      <button
+                                        onClick={() => handleApprovePayment(attendee.userId)}
+                                        disabled={isProcessing}
+                                        className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                                        title="Approve Payment"
+                                      >
+                                        <Check className="w-5 h-5" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectPayment(attendee.userId)}
+                                        disabled={isProcessing}
+                                        className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
+                                        title="Reject Payment"
+                                      >
+                                        <X className="w-5 h-5" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -671,6 +805,37 @@ export default function AttendeesPage() {
               <li>2. Or copy the link: <a href={`${origin}/checkin?eventId=${event.id}`} target="_blank" className="text-purple-600 underline">Check-in Link</a></li>
               <li>3. Or manually enter the Event ID at <Link href="/checkin" className="text-purple-600 underline">/checkin</Link></li>
             </ul>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Receipt Modal */}
+      <Modal
+        isOpen={receiptModalOpen}
+        onClose={() => setReceiptModalOpen(false)}
+        title="Payment Receipt"
+        size="lg"
+      >
+        <div className="flex flex-col items-center">
+          {selectedReceipt ? (
+            <div className="relative w-full h-[60vh] bg-gray-100 rounded-lg">
+              <Image
+                src={selectedReceipt}
+                alt="Payment Receipt"
+                fill
+                className="object-contain"
+              />
+            </div>
+          ) : (
+            <p>No receipt available</p>
+          )}
+          <div className="mt-4 flex justify-end w-full">
+            <button
+              onClick={() => setReceiptModalOpen(false)}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       </Modal>

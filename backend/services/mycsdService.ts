@@ -8,8 +8,9 @@ export function calculateMyCSDPoints(level: string, role: string): number {
   const r = role.toLowerCase().trim();
 
   // 1. ANTABANGSA
-  if (l === 'antarabangsa' || l.includes('antarabangsa')) {
+  if (l === 'antarabangsa') {
     if (r === 'pengarah') return 24;
+    // ... roles
     if (r === 'ajk_tertinggi') return 24;
     if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 24;
     if (r === 'ajk_kecil' || r.includes('ajk')) return 16;
@@ -18,10 +19,11 @@ export function calculateMyCSDPoints(level: string, role: string): number {
     return 8;
   }
 
-  // 2. KEBANGSAAN / ANTARA UNIVERSITI
-  if (l === 'kebangsaan / antara university' || l === 'kebangsaan / antara university'.toLowerCase() || l.includes('kebangsaan') || (l.includes('antara') && !l.includes('antarabangsa'))) {
+  // 2. KEBANGSAAN / ANTARA UNIVERSITY
+  if (l === 'kebangsaan / antara university') {
     if (r === 'pengarah') return 18;
     if (r === 'ajk_tertinggi') return 18;
+    // ...
     if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 18;
     if (r === 'ajk_kecil' || r.includes('ajk')) return 12;
     if (r === 'peserta') return 6;
@@ -30,9 +32,10 @@ export function calculateMyCSDPoints(level: string, role: string): number {
   }
 
   // 3. NEGERI / UNIVERSITI
-  if (l === 'negeri / universiti' || l.includes('negeri') || l.includes('universiti')) {
+  if (l === 'negeri / universiti') {
     if (r === 'pengarah') return 12;
     if (r === 'ajk_tertinggi') return 12;
+    // ...
     if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 12;
     if (r === 'ajk_kecil' || r.includes('ajk')) return 8;
     if (r === 'peserta') return 4;
@@ -41,6 +44,10 @@ export function calculateMyCSDPoints(level: string, role: string): number {
   }
 
   // 4. P.Pengajian / Desasiswa / Persatuan / Kelab
+  // This is default implicit if logic falls through, or explicitly check:
+  if (l === 'p.pengajian / desasiswa / persatuan / kelab') {
+    // fall through logic
+  }
   if (r === 'pengarah') return 6;
   if (r === 'ajk_tertinggi') return 6;
   if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 6;
@@ -325,8 +332,8 @@ export async function getAllMyCSDRequests() {
     const eventMycsd = req.event_mycsd?.[0];
     const record = eventMycsd?.mycsd_records;
 
-    const displayLevel = eventMycsd?.event_level || event?.mycsd_level || 'kampus';
-    const displayCategory = eventMycsd?.mycsd_category || event?.mycsd_category || 'REKA CIPTA DAN INOVASI';
+    const displayLevel = eventMycsd?.event_level || event?.mycsd_level || 'P.Pengajian / Desasiswa / Persatuan / Kelab';
+    const displayCategory = eventMycsd?.mycsd_category || event?.mycsd_category || 'Reka Cipta dan Inovasi';
 
     let displayPoints = 0;
     if (record?.mycsd_score) {
@@ -397,6 +404,8 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
     .from('registrations')
     .select(`
       event_id,
+      event_status,
+      attendance,
       events (
         event_id,
         event_name,
@@ -404,6 +413,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
         mycsd_category,
         mycsd_points,
         event_requests (
+          status,
           organizations (
             org_name
           )
@@ -416,16 +426,15 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
           event_mycsd (
             event_level,
             mycsd_category,
-             mycsd_records (
-               record_id,
-               mycsd_score
-             )
+            mycsd_records (
+              record_id,
+              mycsd_score
+            )
           )
         )
       )
     `)
-    .eq('user_id', userId)
-    .eq('attendance', 'present');
+    .eq('user_id', userId);
 
   if (regError) {
     console.error('Error fetching registrations:', regError);
@@ -441,21 +450,11 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
   const logsMap = new Map();
   if (csdLogs) {
     csdLogs.forEach((log: any) => {
-      // We need to map logs back to event_id. 
-      // Path: log -> record -> event_mycsd -> request -> event_id
-      // This is deep. 
-      // Alternative: The log has record_id. In step 3, we can try to match record_id if available.
-      // But record_id is only available if we fetch it via event->mycsd_request->...
-      // Let's store by record_id for easy lookup later
       logsMap.set(log.record_id, log);
     });
   }
 
   // 2.5 Get Events where Student is a Committee Member
-  // We need to query events where the committee_members JSONB column contains an object with this matric number.
-  // Note: Using `contains` for JSONB. Structure is [{ matricNumber: "..." }, ...]
-  // We need to be careful with the structure. The committee_members is an array of objects.
-
   const { data: committeeEvents, error: committeeError } = await supabase
     .from('events')
     .select(`
@@ -466,6 +465,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       mycsd_points,
       committee_members,
       event_requests (
+        status,
         organizations (
           org_name
         )
@@ -478,23 +478,13 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
         event_mycsd (
           event_level,
           mycsd_category,
-           mycsd_records (
-             record_id,
-             mycsd_score
-           )
+          mycsd_records (
+            record_id,
+            mycsd_score
+          )
         )
       )
     `)
-    // Ideally we use .contains, but Supabase JS filter for JSON array containing object matches on subset of keys.
-    // Let's try to fetch relevant ones or just client side filter if volume is low, but better to filter DB side.
-    // However, since we don't have a normalized committee table, we might have to fetch recent events or similar.
-    // For now, let's try a text search on the JSON column as a workaround or fetch all and filter if dataset is small.
-    // Better approach: Since we can't easily do deep array filter in standard REST easily without proper index or RPC,
-    // we'll try to rely on a "contains" filter if the structure is consistent, 
-    // OR we just fetch all events (bad). 
-    // actually, let's assume we can filter by `committee_members` not being null, and then filter in JS for this user.
-    // It's not efficient for production at scale but works for MVP.
-    // A better approach would be to have a separate table for committee members.
     .not('committee_members', 'is', null);
 
   // Filter committee events for this student
@@ -505,11 +495,11 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
     }
     return false;
   }).map((evt: any) => {
-    // Shape it similar to registration event structure to reuse mapping logic
     return { events: evt };
   });
 
   // Merge (deduplicate based on event_id)
+  // Registrations take precedence for status checking
   const allRecords = [...registrations, ...myCommitteeEvents];
   const uniqueRecordsMap = new Map();
 
@@ -534,10 +524,14 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
     const organization = event?.event_requests?.organizations;
 
     // Determine Status
-    let status: 'waiting_for_report' | 'pending_approval' | 'approved' | 'rejected' = 'waiting_for_report'; // Default: waiting for organizer
+    let status: 'waiting_for_report' | 'pending_approval' | 'approved' | 'rejected' | 'cancelled' = 'waiting_for_report';
     let rejectionReason = '';
 
-    if (mycsdRequest) {
+    // Check for registration cancellation first
+    const eventStatus = event.event_requests?.status;
+    if (reg.event_status === 'rejected' || reg.event_status === 'cancelled' || eventStatus === 'cancelled') {
+      status = 'cancelled';
+    } else if (mycsdRequest) {
       if (mycsdRequest.status === 'approved') {
         status = 'approved';
       } else if (mycsdRequest.status === 'rejected') {
@@ -603,10 +597,19 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       }
     }
 
-    // Force "-" if not approved, per user request
+    // Force "-" if not approved AND not just waiting/pending (i.e. if rejected or cancelled), or as per user request if not approved at all?
+    // User requested: "if the participation is cancelled the mycsd status should be '-'"
+    // This implies that for cancelled participation specifically, we show "-".
+    // But currently line 607 forces "-" for anything NOT approved.
+    // "if status !== 'approved' { points = '-' }"
+    // This covers cancelled too.
+
+    // We just need to make sure status is 'cancelled' so frontend can render "-" as status text if needed
+    // The previous logic was:
     if (status !== 'approved') {
       points = '-' as any;
-      position = '-';
+      // We keep position visible for pending, but maybe hide for cancelled?
+      if (status === 'cancelled') position = '-';
     }
 
     return {
@@ -615,8 +618,8 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       eventId: event.event_id,
       eventName: event.event_name,
       organizationName: organization?.org_name || 'Unknown Organization',
-      category: eventMycsd?.mycsd_category || event.mycsd_category || 'REKA CIPTA DAN INOVASI',
-      level: eventMycsd?.event_level || event.mycsd_level || 'kampus',
+      category: eventMycsd?.mycsd_category || event.mycsd_category || 'Reka Cipta dan Inovasi',
+      level: eventMycsd?.event_level || event.mycsd_level || 'P.Pengajian / Desasiswa / Persatuan / Kelab',
       role: role as any,
       position: position as any,
       points: points,
@@ -641,11 +644,13 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
   const totalEvents = records.length;
 
   const pointsByCategory: Record<string, number> = {
-    'REKA CIPTA DAN INOVASI': 0,
-    'KEUSAHAWAN': 0,
-    'KEBUDAYAAN': 0,
-    'SUKAN/REKREASI/SOSIALISASI': 0,
-    'KEPIMPINAN': 0,
+    'Reka Cipta dan Inovasi': 0,
+    'Keusahawanan': 0,
+    'Kebudayaan': 0,
+    'Sukan/Rekreasi/Sosialisasi': 0,
+    'Kepimpinan': 0,
+    'Debat dan Pidato': 0,
+    'Khidmat Masyarakat': 0,
   };
 
   records.forEach(record => {
@@ -655,9 +660,10 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
   });
 
   const pointsByLevel: Record<string, number> = {
-    antarabangsa: 0,
-    negeri_universiti: 0,
-    kampus: 0,
+    'Antarabangsa': 0,
+    'Kebangsaan / Antara University': 0,
+    'Negeri / Universiti': 0,
+    'P.Pengajian / Desasiswa / Persatuan / Kelab': 0,
   };
 
   records.forEach(record => {

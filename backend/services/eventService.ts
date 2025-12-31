@@ -41,7 +41,9 @@ const mapEvent = (dbEvent: DBEvent): Event => {
     organizerId: eventRequest?.org_id || '',
     organizerName: eventRequest?.organizations?.org_name || 'Unknown Organizer',
 
-    participationFee: 0,
+    participationFee: dbEvent.participation_fee || 0,
+    paymentQrCode: dbEvent.payment_qr_code || undefined,
+    bankAccountInfo: dbEvent.bank_account_info || undefined,
     hasMyCSD: dbEvent.has_mycsd ?? (!!mycsdRequest && mycsdRequest.status === 'approved'),
     mycsdCategory: (dbEvent.mycsd_category || eventMycsd?.mycsd_category) as MyCSDCategory,
     mycsdLevel: (dbEvent.mycsd_level || eventMycsd?.event_level) as MyCSDLevel,

@@ -44,6 +44,7 @@ export default function EditEventPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [eventTitle, setEventTitle] = useState(''); // Read-only
+  const [isPublished, setIsPublished] = useState(false);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [objectives, setObjectives] = useState<string[]>(['']);
@@ -89,6 +90,10 @@ export default function EditEventPage() {
           toast.error('You do not have permission to edit this event');
           router.push('/organizer/dashboard');
           return;
+        }
+
+        if (['published', 'completed', 'cancelled'].includes(event.status)) {
+          setIsPublished(true);
         }
 
         // Populate Form
@@ -220,6 +225,7 @@ export default function EditEventPage() {
 
   // Shared Input Styles - Updated for better visibility
   const inputClass = "w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 font-medium placeholder-gray-500 transition-all shadow-sm";
+  const disabledInputClass = "w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 font-medium shadow-none cursor-not-allowed";
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -318,9 +324,10 @@ export default function EditEventPage() {
                 <input
                   type="checkbox"
                   {...register('hasMyCSD')}
-                  className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                  disabled={isPublished}
+                  className={`w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer ${isPublished ? 'cursor-not-allowed opacity-60' : ''}`}
                 />
-                <label className="ml-2 font-semibold text-gray-800">Enable MyCSD</label>
+                <label className={`ml-2 font-semibold text-gray-800 ${isPublished ? 'text-gray-500' : ''}`}>Enable MyCSD</label>
               </div>
 
               {hasMyCSD && (
@@ -330,29 +337,39 @@ export default function EditEventPage() {
                   <div className="flex flex-col md:flex-row gap-3">
                     <select
                       {...register('mycsdCategory')}
-                      className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"
+                      disabled={isPublished}
+                      className={isPublished ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
                     >
                       <option value="">Select Category</option>
-                      <option value="REKA CIPTA DAN INOVASI">Reka Cipta & Inovasi</option>
-                      <option value="KEUSAHAWAN">Keusahawan</option>
-                      <option value="KEBUDAYAAN">Kebudayaan</option>
-                      <option value="SUKAN/REKREASI/SOSIALISASI">Sukan & Rekreasi</option>
-                      <option value="KEPIMPINAN">Kepimpinan</option>
+                      <option value="Debat dan Pidato">Debat dan Pidato</option>
+                      <option value="Khidmat Masyarakat">Khidmat Masyarakat</option>
+                      <option value="Kebudayaan">Kebudayaan</option>
+                      <option value="Kepimpinan">Kepimpinan</option>
+                      <option value="Keusahawanan">Keusahawan</option>
+                      <option value="Reka Cipta dan Inovasi">Reka Cipta dan Inovasi</option>
+                      <option value="Sukan/Rekreasi/Sosialisasi">Sukan/Rekreasi/Sosialisasi</option>
                     </select>
 
                     <select
                       {...register('mycsdLevel')}
-                      className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"
+                      disabled={isPublished}
+                      className={isPublished ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
                     >
                       <option value="">Select Level</option>
-                      <option value="kampus">Kampus</option>
-                      <option value="negeri_universiti">Universiti</option>
-                      <option value="antarabangsa">Antarabangsa</option>
+                      <option value="P.Pengajian / Desasiswa / Persatuan / Kelab">P.Pengajian / Desasiswa / Persatuan / Kelab</option>
+                      <option value="Negeri / Universiti">Negeri / Universiti</option>
+                      <option value="Kebangsaan / Antara University">Kebangsaan / Antara University</option>
+                      <option value="Antarabangsa">Antarabangsa</option>
                     </select>
                   </div>
                 </>
               )}
             </div>
+            {isPublished && (
+              <p className="text-xs text-orange-600 mt-2 font-medium">
+                Event is published. MyCSD settings and participation fees are locked.
+              </p>
+            )}
           </div>
 
           {/* General Information Grid (Editable) */}
@@ -386,8 +403,9 @@ export default function EditEventPage() {
                 <input
                   type="number"
                   step="0.01"
+                  disabled={isPublished}
                   {...register('participationFee', { valueAsNumber: true })}
-                  className={inputClass}
+                  className={isPublished ? disabledInputClass : inputClass}
                 />
               </div>
 

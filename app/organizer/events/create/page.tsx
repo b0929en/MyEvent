@@ -33,11 +33,13 @@ const eventSchema = z.object({
   participationFee: z.number().min(0, 'Fee cannot be negative'),
   hasMyCSD: z.boolean(),
   mycsdCategory: z.enum([
-    'REKA CIPTA DAN INOVASI',
-    'KEUSAHAWAN',
-    'KEBUDAYAAN',
-    'SUKAN/REKREASI/SOSIALISASI',
-    'KEPIMPINAN'
+    'Debat dan Pidato',
+    'Khidmat Masyarakat',
+    'Kebudayaan',
+    'Kepimpinan',
+    'Keusahawanan',
+    'Reka Cipta dan Inovasi',
+    'Sukan/Rekreasi/Sosialisasi'
   ]).optional(),
   mycsdLevel: z.enum([
     'P.Pengajian / Desasiswa / Persatuan / Kelab',
@@ -48,6 +50,7 @@ const eventSchema = z.object({
   // mycsdPoints removed: points are computed from level
   registrationDeadline: z.string().min(1, 'Registration deadline is required'),
   objectives: z.array(z.string()).optional(), // Made optional
+  bankAccountInfo: z.string().optional(),
 }).refine(data => {
   if (data.hasMyCSD) {
     return data.mycsdCategory && data.mycsdLevel;
@@ -56,6 +59,14 @@ const eventSchema = z.object({
 }, {
   message: 'MyCSD category, level, and points are required when MyCSD is enabled',
   path: ['mycsdCategory']
+}).refine(data => {
+  if (data.participationFee > 0 && !data.bankAccountInfo) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Bank account info is required when a participation fee is set',
+  path: ['bankAccountInfo']
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -70,6 +81,8 @@ export default function CreateEventPage() {
   const [isLoadingProposal, setIsLoadingProposal] = useState(false);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
+  const [qrCodePreview, setQrCodePreview] = useState<string | null>(null);
 
   const {
     register,
@@ -124,6 +137,7 @@ export default function CreateEventPage() {
   };
 
   const hasMyCSD = watch('hasMyCSD');
+  const participationFee = watch('participationFee');
 
   // Handle objectives
   const addObjective = () => {
@@ -175,6 +189,22 @@ export default function CreateEventPage() {
     }
   };
 
+  const handleQrCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('File size must be less than 2MB');
+        return;
+      }
+      setQrCodeFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setQrCodePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const onSubmit = async (data: EventFormData) => {
     if (!isProposalLoaded) {
       toast.error('Please load a proposal first');
@@ -200,6 +230,20 @@ export default function CreateEventPage() {
         }
       }
 
+      let qrCodeUrl = '';
+      if (qrCodeFile) {
+        try {
+          // Re-using uploadEventBanner for now, or use generic uploadDocument if implemented
+          // Assuming documents bucket is public for QR codes or use event-banners bucket for public images
+          const path = `events/${secretKey}/payment-qr-${Date.now()}-${qrCodeFile.name}`;
+          qrCodeUrl = await uploadEventBanner(qrCodeFile, path);
+        } catch (error) {
+          console.error('Error uploading QR code:', error);
+          toast.error('Failed to upload QR code');
+          return;
+        }
+      }
+
       // Update event details
       await updateEventByRequestId(secretKey, {
         event_name: data.title,
@@ -218,6 +262,9 @@ export default function CreateEventPage() {
         mycsd_category: data.mycsdCategory,
         mycsd_level: data.mycsdLevel,
         mycsd_points: getPointsForLevel(data.mycsdLevel),
+        participation_fee: data.participationFee,
+        payment_qr_code: qrCodeUrl || undefined,
+        bank_account_info: data.bankAccountInfo || undefined,
       });
 
       // Update status to published
@@ -542,6 +589,66 @@ export default function CreateEventPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Payment Details - Only if Fee > 0 */}
+                {participationFee > 0 && (
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">Payment Details</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Bank Account Information <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          {...register('bankAccountInfo')}
+                          rows={3}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                          placeholder="Bank Name, Account Number, Account Holder Name, etc."
+                        />
+                        {errors.bankAccountInfo && (
+                          <p className="mt-1 text-sm text-red-600">{errors.bankAccountInfo.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Payment QR Code (Touch 'n Go / DuitNow)
+                        </label>
+                        <div
+                          className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-500 transition-colors cursor-pointer relative overflow-hidden bg-white"
+                          onClick={() => document.getElementById('qr-upload')?.click()}
+                        >
+                          {qrCodePreview ? (
+                            <div className="relative h-48 w-full">
+                              <Image
+                                src={qrCodePreview}
+                                alt="QR Code preview"
+                                fill
+                                className="object-contain" // Contain for QR code
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity z-10">
+                                <p className="text-white font-medium">Click to change</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-600 mb-1">Upload QR Code</p>
+                              <p className="text-xs text-gray-500">PNG, JPG up to 2MB</p>
+                            </>
+                          )}
+                          <input
+                            id="qr-upload"
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleQrCodeChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* MyCSD */}
@@ -571,12 +678,13 @@ export default function CreateEventPage() {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                         >
                           <option value="">Select</option>
-                          <option value="">Select</option>
-                          <option value="REKA CIPTA DAN INOVASI">REKA CIPTA DAN INOVASI</option>
-                          <option value="KEUSAHAWAN">KEUSAHAWAN</option>
-                          <option value="KEBUDAYAAN">KEBUDAYAAN</option>
-                          <option value="SUKAN/REKREASI/SOSIALISASI">SUKAN/REKREASI/SOSIALISASI</option>
-                          <option value="KEPIMPINAN">KEPIMPINAN</option>
+                          <option value="Debat dan Pidato">Debat dan Pidato</option>
+                          <option value="Khidmat Masyarakat">Khidmat Masyarakat</option>
+                          <option value="Kebudayaan">Kebudayaan</option>
+                          <option value="Kepimpinan">Kepimpinan</option>
+                          <option value="Keusahawanan">Keusahawan</option>
+                          <option value="Reka Cipta dan Inovasi">Reka Cipta dan Inovasi</option>
+                          <option value="Sukan/Rekreasi/Sosialisasi">Sukan/Rekreasi/Sosialisasi</option>
                         </select>
                         {errors.mycsdCategory && (
                           <p className="mt-1 text-sm text-red-600">{errors.mycsdCategory.message}</p>
