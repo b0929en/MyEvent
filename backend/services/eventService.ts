@@ -246,3 +246,123 @@ export async function deleteEvent(eventId: string) {
 }
 
 
+
+export async function getTrendingEvents(limit: number = 8) {
+  // Sort by registered_count descending
+  const { data, error } = await supabase
+    .from('events')
+    .select(`
+      *,
+      event_requests!inner (
+        org_id,
+        status,
+        submitted_at, 
+        organizations (
+          org_name
+        )
+      ),
+      mycsd_requests (
+        status,
+        rejection_reason,
+        submitted_at, 
+        event_mycsd (
+          mycsd_category, 
+          event_level, 
+          mycsd_records (
+            mycsd_score
+          )
+        )
+      )
+    `)
+    .eq('event_requests.status', 'published') // Ensure only published events
+    .order('registered_count', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching trending events:', error);
+    return [];
+  }
+
+  // Map and return
+  const events = data.map(mapEvent); // Filter is already applied in DB
+  return events;
+}
+
+export async function getRecommendedEvents(userId?: string, limit: number = 8) {
+  let categories: string[] = [];
+  let registeredEventIds: string[] = [];
+
+  if (userId) {
+    // 1. Get user's past registered event categories and IDs
+    const { data: userHistory, error: historyError } = await supabase
+      .from('registrations')
+      .select(`
+        event_id,
+        events!inner (
+          category
+        )
+      `)
+      .eq('user_id', userId);
+
+    if (!historyError && userHistory && userHistory.length > 0) {
+      // Extract registered event IDs
+      registeredEventIds = userHistory.map((h: any) => h.event_id);
+
+      // Extract unique categories, filter out nulls/undefined
+      const rawCategories = userHistory.map((h: any) => h.events?.category).filter(Boolean);
+      categories = [...new Set(rawCategories)];
+    }
+  }
+
+  // 2. Fetch upcoming events
+  let query = supabase
+    .from('events')
+    .select(`
+      *,
+      event_requests!inner (
+        org_id,
+        status,
+        submitted_at, 
+        organizations (
+          org_name
+        )
+      ),
+      mycsd_requests (
+        status,
+        rejection_reason,
+        submitted_at, 
+        event_mycsd (
+          mycsd_category, 
+          event_level, 
+          mycsd_records (
+            mycsd_score
+          )
+        )
+      )
+    `)
+    .eq('event_requests.status', 'published') // Ensure only published events
+    .gte('event_date', new Date().toISOString()) // Only future events
+    .order('event_date', { ascending: true }); // Soonest first
+
+  const { data: allUpcoming, error: eventsError } = await query;
+
+  if (eventsError) {
+    console.error('Error fetching upcoming events:', eventsError);
+    return [];
+  }
+
+  // Filter out events the user has already registered for
+  const filteredUpcoming = allUpcoming.filter(event => !registeredEventIds.includes(event.event_id));
+
+  let mappedEvents = filteredUpcoming.map(mapEvent);
+
+  // 3. Filter/Sort by category relevance if we have user categories
+  if (categories.length > 0) {
+    const recommended = mappedEvents.filter(e => categories.includes(e.category));
+    const others = mappedEvents.filter(e => !categories.includes(e.category));
+    // Prioritize recommended, then fill with others
+    mappedEvents = [...recommended, ...others];
+  }
+
+  return mappedEvents.slice(0, limit);
+}
