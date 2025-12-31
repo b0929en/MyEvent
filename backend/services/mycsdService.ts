@@ -75,15 +75,7 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
 
   if (eventError || !event) throw new Error('Event not found');
 
-  // CRITICAL: Update the event with the organizer's proposed level/category
-  // This ensures the admin sees the correct level before approving
-  await supabase
-    .from('events')
-    .update({
-      mycsd_level: level,
-      mycsd_category: category
-    })
-    .eq('event_id', eventId);
+
 
   // 2. Check if a request already exists
   const { data: existingRequest } = await supabase
@@ -102,6 +94,16 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
       throw new Error('Laporan Kejayaan has already been submitted for this event.');
     }
   }
+
+  // CRITICAL: Update the event with the organizer's proposed level/category
+  // Moved after validation to prevent unauthorized overwrites
+  await supabase
+    .from('events')
+    .update({
+      mycsd_level: level,
+      mycsd_category: category
+    })
+    .eq('event_id', eventId);
 
   // Handle potential array response for event_requests
   const eventRequest = Array.isArray(event.event_requests)

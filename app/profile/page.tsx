@@ -298,7 +298,11 @@ export default function ProfilePage() {
                               {reg.event.hasMyCSD ? (
                                 <span className="flex items-center justify-center gap-1 text-purple-600 font-medium">
                                   <Award className="w-4 h-4" />
-                                  {reg.event.mycsdPoints}
+                                  {(() => {
+                                    const record = mycsdRecords.find(r => r.eventId === reg.eventId);
+                                    // If approved, show actual points. If pending/rejected, show what's in record (which might be estimated or '-') or fallback
+                                    return record ? record.points : reg.event.mycsdPoints;
+                                  })()}
                                 </span>
                               ) : (
                                 <span className="text-gray-400">-</span>

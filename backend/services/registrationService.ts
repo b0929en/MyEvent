@@ -149,10 +149,36 @@ export async function createRegistration(registration: {
   paymentProofUrl?: string; // URL of uploaded file
   paymentAmount?: number;
 }) {
-  // 1. Create registration
+  // 1. Fetch event validation data (check fee)
+  const { data: eventData, error: eventError } = await supabase
+    .from('events')
+    .select('participation_fee, event_date') // Fetch date for registration_date fallback logic if needed
+    .eq('event_id', registration.eventId)
+    .single();
+
+  if (eventError || !eventData) {
+    throw new Error('Event not found during registration');
+  }
+
+  const isPaidEvent = (eventData.participation_fee || 0) > 0;
+
+  // 2. Determine status
+  // If paid event AND no proof -> Error or Pending (prevent 'approved')
+  // We prefer throwing an error if it's paid but no proof, unless we want to allow "booking" without payment (usually not for this flow)
+  // Current UI implies payment is required immediately for paid events.
+
+  if (isPaidEvent && !registration.paymentProofUrl) {
+    // STRICT: Require proof for paid events.
+    // Alternatively, set to 'pending_payment' if that status exists, but 'pending' usually implies "waiting for approval".
+    // If we set it to 'approved', that's the bug.
+
+    // Let's force it to 'pending' as a fallback, but really the UI should have blocked this. 
+    // To be safe against API misuse:
+    throw new Error('Payment proof is required for paid events.');
+  }
+
   // Status is 'pending' if payment is required (proof provided), otherwise 'approved' (free event)
-  // Assuming frontend passes proof if required.
-  const status = registration.paymentProofUrl ? 'pending' : 'approved';
+  const status = isPaidEvent ? 'pending' : 'approved';
 
   const { data: reg, error: regError } = await supabase
     .from('registrations')
