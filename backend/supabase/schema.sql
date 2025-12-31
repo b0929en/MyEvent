@@ -114,7 +114,9 @@ CREATE TABLE events (
     is_mycsd_claimed BOOLEAN DEFAULT false,
     participation_fee NUMERIC(10, 2) DEFAULT 0,
     payment_qr_code TEXT,
-    bank_account_info TEXT
+    bank_account_info TEXT,
+    registration_deadline DATE,
+    gallery TEXT[]
 );
 
 -- 8. REGISTRATION

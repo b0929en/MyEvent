@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import Modal from '@/components/Modal';
 
-type TabType = 'all' | 'published' | 'pending_approval' | 'draft' | 'completed';
+type TabType = 'all' | 'published' | 'pending_approval' | 'draft' | 'completed' | 'mycsd_claimed' | 'mycsd_failed_to_claim';
 
 export default function OrganizerDashboard() {
   const { user, isLoading } = useRequireRole(['organizer'], '/');
@@ -65,7 +65,16 @@ export default function OrganizerDashboard() {
 
   const filteredEvents = useMemo(() => {
     if (activeTab === 'all') return organizerEvents;
-    return organizerEvents.filter(event => event.status === activeTab);
+
+    if (activeTab === 'mycsd_claimed') {
+      return organizerEvents.filter(event => event.status === 'completed' && event.hasMyCSD && event.mycsdStatus === 'approved');
+    }
+
+    if (activeTab === 'mycsd_failed_to_claim') {
+      return organizerEvents.filter(event => event.status === 'completed' && event.hasMyCSD && event.mycsdStatus === 'rejected');
+    }
+
+    return organizerEvents.filter(event => event.status === (activeTab as string));
   }, [organizerEvents, activeTab]);
 
   const stats = useMemo(() => {
@@ -320,6 +329,16 @@ export default function OrganizerDashboard() {
                   { key: 'completed', label: 'Completed', count: organizerEvents.filter(e => e.status === 'completed').length },
                   { key: 'pending_approval', label: 'Pending', count: organizerEvents.filter(e => e.status === 'pending_approval').length },
                   { key: 'draft', label: 'Draft', count: organizerEvents.filter(e => e.status === 'draft').length },
+                  {
+                    key: 'mycsd_claimed',
+                    label: 'Claimed',
+                    count: organizerEvents.filter(e => e.status === 'completed' && e.hasMyCSD && e.mycsdStatus === 'approved').length
+                  },
+                  {
+                    key: 'mycsd_failed_to_claim',
+                    label: 'Failed Claim',
+                    count: organizerEvents.filter(e => e.status === 'completed' && e.hasMyCSD && e.mycsdStatus === 'rejected').length
+                  },
                 ].map(tab => (
                   <button
                     key={tab.key}

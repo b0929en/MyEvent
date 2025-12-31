@@ -27,6 +27,7 @@ const eventSchema = z.object({
   venue: z.string().min(3, 'Venue is required'),
   capacity: z.number().min(1, 'Capacity must be at least 1'),
   participationFee: z.number().min(0, 'Fee cannot be negative'),
+  registrationDeadline: z.string().optional(), // Made optional but recommended
   // MyCSD fields
   hasMyCSD: z.boolean(),
   mycsdCategory: z.string().optional(),
@@ -49,6 +50,8 @@ export default function EditEventPage() {
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [objectives, setObjectives] = useState<string[]>(['']);
   const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
+  const [galleryItems, setGalleryItems] = useState<{ url: string; file: File | null }[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const {
     register,
@@ -107,6 +110,7 @@ export default function EditEventPage() {
         setValue('venue', event.venue);
         setValue('capacity', event.capacity);
         setValue('participationFee', event.participationFee);
+        setValue('registrationDeadline', event.registrationDeadline);
 
         setValue('hasMyCSD', event.hasMyCSD);
         if (event.hasMyCSD) {
@@ -117,7 +121,9 @@ export default function EditEventPage() {
         setObjectives(event.objectives || ['']);
         setValue('objectives', event.objectives || ['']);
 
-        setLinks(event.links || []);
+        // Remove hidden links just in case, though backend should have handled it
+        setLinks((event.links || []).filter(l => l.title !== '_REG_DEADLINE_' && l.title !== '_GALLERY_'));
+        setGalleryItems((event.gallery || []).map(url => ({ url, file: null })));
         if (event.bannerImage) {
           setBannerPreview(event.bannerImage);
         }
@@ -174,6 +180,32 @@ export default function EditEventPage() {
     }
   };
 
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      // Validate size
+      const validFiles = files.filter(file => {
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`File ${file.name} is too large (max 5MB)`);
+          return false;
+        }
+        return true;
+      });
+
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setGalleryItems(prev => [...prev, { url: reader.result as string, file }]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setGalleryItems(prev => prev.filter((_, i) => i !== index));
+  };
+
   const onSubmit = async (data: EventFormData) => {
     try {
       let bannerUrl = bannerPreview; // Use existing if no new file
@@ -182,6 +214,15 @@ export default function EditEventPage() {
         const path = `events/${params.id}/${Date.now()}-${bannerFile.name}`;
         bannerUrl = await uploadEventBanner(bannerFile, path);
       }
+
+      // Process Gallery
+      const galleryUrls = await Promise.all(galleryItems.map(async (item) => {
+        if (item.file) {
+          const path = `events/${params.id}/gallery/${Date.now()}-${item.file.name}`;
+          return await uploadEventBanner(item.file, path);
+        }
+        return item.url;
+      }));
 
       const validObjectives = objectives.filter(o => o.trim() !== '');
       const validLinks = links.filter(l => l.title.trim() && l.url.trim());
@@ -197,9 +238,12 @@ export default function EditEventPage() {
         event_venue: data.venue,
         category: data.category,
         capacity: data.capacity,
+        participation_fee: data.participationFee,
         banner_image: bannerUrl || undefined,
         objectives: validObjectives,
         links: validLinks,
+        registration_deadline: data.registrationDeadline,
+        gallery: galleryUrls,
         has_mycsd: data.hasMyCSD,
         mycsd_category: data.mycsdCategory,
         mycsd_level: data.mycsdLevel,
@@ -234,12 +278,7 @@ export default function EditEventPage() {
       <main className="grow">
         <form onSubmit={handleSubmit(onSubmit, (errors) => {
           console.error('Validation Errors:', JSON.stringify(errors, null, 2));
-          // If objectives error, show specific toast
-          if (errors.objectives) {
-            toast.error(errors.objectives.message || 'Please check objectives');
-          } else {
-            toast.error('Please fix the errors in the form (check console for details)');
-          }
+          if (!errors.objectives) toast.error('Please fix the errors in the form');
         })} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
           {/* Breadcrumb & Header Actions */}
@@ -449,6 +488,19 @@ export default function EditEventPage() {
                 />
               </div>
 
+              {/* Registration Deadline - MOVED HERE */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-gray-700">Registration Deadline</label>
+                <input
+                  type="date"
+                  {...register('registrationDeadline')}
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Placeholder for grid balance */}
+              <div className="hidden md:block"></div>
+
               {/* Venue */}
               <div className="space-y-1.5 md:col-span-2">
                 <label className="text-sm font-bold text-gray-700">Venue</label>
@@ -482,6 +534,96 @@ export default function EditEventPage() {
                 placeholder="Describe your event in detail..."
               />
               {errors.description && <p className="text-red-600 text-sm mt-1 font-medium">{errors.description.message}</p>}
+            </div>
+
+            {/* Gallery (Editable) */}
+            <div className="mt-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                Event Gallery
+                <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Optional</span>
+              </h2>
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <p className="text-sm text-gray-500 mb-4">
+                  Upload photos from your event to showcase in the gallery. These will be visible to everyone on the event page.
+                </p>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  {galleryItems.map((item, index) => (
+                    <div key={index} className="relative w-full pt-[100%] rounded-lg overflow-hidden group border border-gray-200 bg-white">
+                      <div className="absolute inset-0">
+                        <Image
+                          src={item.url}
+                          alt={`Gallery ${index + 1}`}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                          onClick={() => setSelectedImage(item.url)}
+                        />
+                        <div className="absolute inset-0 bg-transparent group-hover:bg-black/30 transition-all flex items-center justify-center pointer-events-none">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeGalleryImage(index);
+                            }}
+                            className="bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 pointer-events-auto"
+                            title="Remove image"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Upload Button */}
+                  <div
+                    className="relative w-full pt-[100%] rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all"
+                    onClick={() => document.getElementById('gallery-upload')?.click()}
+                  >
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Plus className="w-8 h-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-500 font-medium">Add Photo</span>
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  id="gallery-upload"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onClick={(e) => (e.currentTarget.value = '')}
+                  onChange={handleGalleryUpload}
+                />
+
+                {/* Lightbox Modal */}
+                {selectedImage && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"
+                    onClick={() => setSelectedImage(null)}
+                  >
+                    <div className="relative max-w-4xl w-full h-full flex items-center justify-center">
+                      <button
+                        onClick={() => setSelectedImage(null)}
+                        className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 p-2"
+                      >
+                        <X className="w-8 h-8" />
+                      </button>
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={selectedImage}
+                          alt="Full size preview"
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Objectives List */}

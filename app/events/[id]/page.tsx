@@ -16,6 +16,7 @@ import { Event } from '@/types';
 
 import { uploadDocument } from '@/backend/services/storageService';
 import { Upload, X } from 'lucide-react';
+import EventGallery from '@/components/events/EventGallery';
 
 export default function EventDetailsPage() {
   const params = useParams();
@@ -304,16 +305,7 @@ export default function EventDetailsPage() {
           </div>
 
           {/* Gallery */}
-          <div className="mb-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Gallery</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Placeholder gallery items as per design */}
-              <div className="aspect-square bg-gray-200 rounded-lg"></div>
-              <div className="aspect-square bg-gray-200 rounded-lg"></div>
-              <div className="aspect-square bg-gray-200 rounded-lg"></div>
-              <div className="aspect-square bg-gray-200 rounded-lg"></div>
-            </div>
-          </div>
+          <EventGallery images={event.gallery || []} title={event.title} />
 
           {/* Links */}
           {event.links && event.links.length > 0 && (

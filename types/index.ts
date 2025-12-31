@@ -100,6 +100,8 @@ export interface DBEvent {
   participation_fee: number;
   payment_qr_code: string | null;
   bank_account_info: string | null;
+  registration_deadline: string | null;
+  gallery: string[] | null;
   committee_members?: any;
   event_requests?: DBEventRequest | DBEventRequest[];
   mycsd_requests?: DBMyCSDRequest[];
@@ -624,6 +626,8 @@ export type EventUpdateInput = Partial<{
   participation_fee: number;
   payment_qr_code: string;
   bank_account_info: string;
+  registration_deadline: string;
+  gallery: string[];
 }>;
 
 export type DocumentsInput = {

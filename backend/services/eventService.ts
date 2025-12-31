@@ -50,7 +50,6 @@ const mapEvent = (dbEvent: DBEvent): Event => {
     mycsdPoints: resolvedPoints,
 
     objectives: dbEvent.objectives || [],
-    links: (dbEvent.links as EventLink[]) || [],
     agenda: dbEvent.agenda || [],
     is_mycsd_claimed: dbEvent.is_mycsd_claimed || false,
     committeeMembers: dbEvent.committee_members || [],
@@ -58,11 +57,14 @@ const mapEvent = (dbEvent: DBEvent): Event => {
     status: (eventRequest?.status === 'pending' ? 'pending_approval' : eventRequest?.status) as EventStatus || 'published',
     mycsdStatus: mycsdRequest?.status || 'none',
     mycsdRejectionReason: mycsdRequest?.rejection_reason || undefined,
-    registrationDeadline: dbEvent.event_date,
+    registrationDeadline: dbEvent.registration_deadline || dbEvent.event_date,
+    gallery: dbEvent.gallery || [],
+    links: (dbEvent.links as EventLink[]) || [],
     createdAt: createdDate,
     updatedAt: createdDate,
   };
 };
+
 
 export async function getEvents(filters?: {
   search?: string;
