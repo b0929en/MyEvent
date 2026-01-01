@@ -20,7 +20,9 @@ import { Plus, Trash2 } from 'lucide-react';
 const proposalSchema = z.object({
   eventTitle: z.string().min(5, 'Title must be at least 5 characters'),
   eventDescription: z.string().min(20, 'Description must be at least 20 characters'),
-  category: z.enum(['sport', 'academic', 'cultural', 'social', 'competition', 'talk', 'workshop', 'other']),
+  category: z.enum(['sport', 'academic', 'cultural', 'social', 'competition', 'talk', 'workshop', 'other'], {
+    message: 'Category is required',
+  }),
   estimatedParticipants: z.number().min(1, 'Must have at least 1 participant'),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
