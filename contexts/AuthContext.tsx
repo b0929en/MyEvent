@@ -13,7 +13,7 @@ type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string) => Promise<{ success: boolean; error?: string; user?: User }>;
   logout: () => void;
 };
 
@@ -56,41 +56,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * @param email - User's USM email
    * @returns Promise with success status and optional error message
    */
-  const login = async (email: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string): Promise<{ success: boolean; error?: string; user?: User }> => {
     setIsLoading(true);
-    
+
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Validate email format (must be USM email)
     const usmEmailRegex = /^[\w.%+-]+@(student\.)?usm\.my$/i;
     if (!usmEmailRegex.test(email)) {
       setIsLoading(false);
-      return { 
-        success: false, 
-        error: 'Please use a valid USM email address (@usm.my or @student.usm.my)' 
+      return {
+        success: false,
+        error: 'Please use a valid USM email address (@usm.my or @student.usm.my)'
       };
     }
-    
+
     // Find user in database
     const foundUser = await getUserByEmail(email);
-    
+
     if (!foundUser) {
       setIsLoading(false);
-      return { 
-        success: false, 
-        error: 'Invalid email or password' 
+      return {
+        success: false,
+        error: 'Invalid email or password'
       };
     }
-    
+
     // TODO: Backend team should implement proper password validation
-    
+
     // Store user in state and localStorage
     setUser(foundUser);
     localStorage.setItem('currentUser', JSON.stringify(foundUser));
-    
+
     setIsLoading(false);
-    return { success: true };
+    return { success: true, user: foundUser };
   };
 
   /**

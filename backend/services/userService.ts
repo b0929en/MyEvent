@@ -3,8 +3,10 @@ import { User, UserRole, DBUser } from '@/types';
 
 const mapUser = (dbUser: DBUser): User => {
   let role: UserRole = 'student';
-  if (dbUser.user_role === 'organization_admin') role = 'organizer';
-  if (dbUser.user_role === 'admin') role = 'admin';
+  const dbRole = dbUser.user_role?.toLowerCase();
+
+  if (dbRole === 'organization_admin' || dbRole === 'organization admin') role = 'organizer';
+  if (dbRole === 'admin') role = 'admin';
 
   return {
     id: dbUser.user_id,

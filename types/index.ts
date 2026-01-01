@@ -16,7 +16,7 @@ export interface DBUser {
   user_name: string;
   created_at: string;
   last_login: string | null;
-  user_role: 'student' | 'organization_admin' | 'admin';
+  user_role: string; // 'student' | 'organization_admin' | 'admin';
   students?: {
     matric_num: string;
     faculty?: string;
