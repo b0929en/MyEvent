@@ -7,8 +7,8 @@ import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
-  
+  const { login, isAuthenticated, isLoading: authLoading, user } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -16,11 +16,18 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   // Redirect if already authenticated
+  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push('/');
+      if (user?.role === 'admin') {
+        router.push('/admin/dashboard');
+      } else if (user?.role === 'organizer') {
+        router.push('/organizer/dashboard');
+      } else {
+        router.push('/');
+      }
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, router, user]);
 
   const validateForm = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
@@ -56,9 +63,17 @@ export default function LoginPage() {
     try {
       const result = await login(email);
 
-      if (result.success) {
+      if (result.success && result.user) {
         toast.success('Login successful! Welcome back.');
-        router.push('/');
+
+        // Redirect based on role
+        if (result.user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else if (result.user.role === 'organizer') {
+          router.push('/organizer/dashboard');
+        } else {
+          router.push('/');
+        }
       } else {
         toast.error(result.error || 'Login failed. Please try again.');
       }
@@ -135,11 +150,10 @@ export default function LoginPage() {
                   if (errors.email) setErrors({ ...errors, email: undefined });
                 }}
                 placeholder="Username / Email Address"
-                className={`w-full px-6 py-4 border-2 rounded-full text-gray-500 focus:outline-none focus:border-purple-600 transition-colors ${
-                  errors.email
-                    ? 'border-red-500'
-                    : 'border-gray-300'
-                }`}
+                className={`w-full px-6 py-4 border-2 rounded-full text-gray-500 focus:outline-none focus:border-purple-600 transition-colors ${errors.email
+                  ? 'border-red-500'
+                  : 'border-gray-300'
+                  }`}
                 disabled={isLoading}
               />
               {errors.email && (
@@ -158,11 +172,10 @@ export default function LoginPage() {
                   if (errors.password) setErrors({ ...errors, password: undefined });
                 }}
                 placeholder="Password"
-                className={`w-full px-6 py-4 border-2 rounded-full text-gray-500 focus:outline-none focus:border-purple-600 transition-colors ${
-                  errors.password
-                    ? 'border-red-500'
-                    : 'border-gray-300'
-                }`}
+                className={`w-full px-6 py-4 border-2 rounded-full text-gray-500 focus:outline-none focus:border-purple-600 transition-colors ${errors.password
+                  ? 'border-red-500'
+                  : 'border-gray-300'
+                  }`}
                 disabled={isLoading}
               />
               {errors.password && (
