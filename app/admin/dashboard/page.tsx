@@ -206,7 +206,7 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-600 mb-1">Pending Events</p>
                   <p className="text-3xl font-bold text-orange-600">{stats.pendingProposals}</p>
                   <Link href="/admin/proposals" className="text-xs text-purple-600 hover:underline mt-1 inline-block">
-                    Review now →
+                    Review Proposal  →
                   </Link>
                 </div>
                 <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-600 mb-1">Pending MyCSD Claims</p>
                   <p className="text-3xl font-bold text-green-600">{stats.pendingMyCSDClaims}</p>
                   <Link href="/admin/mycsd" className="text-xs text-purple-600 hover:underline mt-1 inline-block">
-                    Review now →
+                    Review Claims  →
                   </Link>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
