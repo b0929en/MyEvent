@@ -36,7 +36,7 @@ export default async function Home() {
           subtitleColor="text-white"
           bgColorClass="bg-[#5A2D81]" // USM Deep Purple approximation
           events={trendingEvents}
-          buttonText="View All Trending"
+          buttonText="View All"
           buttonColorClass="bg-orange-500 hover:bg-orange-600 text-white"
         />
 

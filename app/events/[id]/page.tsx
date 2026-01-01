@@ -442,7 +442,7 @@ export default function EventDetailsPage() {
             {/* Links */}
             {event.links && event.links.length > 0 && (
               <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Wait, there&apos;s more</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Find Out More!</h2>
                 <div className="grid gap-3">
                   {event.links.map((link, index) => (
                     <a
