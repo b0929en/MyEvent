@@ -111,7 +111,12 @@ CREATE TABLE events (
     mycsd_points INT,
     agenda TEXT[],
     committee_members JSONB DEFAULT '[]'::jsonb,
-    is_mycsd_claimed BOOLEAN DEFAULT false
+    is_mycsd_claimed BOOLEAN DEFAULT false,
+    participation_fee NUMERIC(10, 2) DEFAULT 0,
+    payment_qr_code TEXT,
+    bank_account_info TEXT,
+    registration_deadline DATE,
+    gallery TEXT[]
 );
 
 -- 8. REGISTRATION
@@ -230,6 +235,10 @@ CREATE POLICY "Public update access" ON events FOR UPDATE USING (true);
 CREATE POLICY "Public read access" ON mycsd_requests FOR SELECT USING (true);
 CREATE POLICY "Public insert access" ON mycsd_requests FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public update access" ON mycsd_requests FOR UPDATE USING (true);
+
+CREATE POLICY "Public read access" ON payments FOR SELECT USING (true);
+CREATE POLICY "Public insert access" ON payments FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update access" ON payments FOR UPDATE USING (true);
 
 -- FIX: Added insert access for record tables
 CREATE POLICY "Public read access" ON mycsd_records FOR SELECT USING (true);

@@ -696,7 +696,10 @@ export default function MyCSDPage() {
                                     )}
                                   </div>
                                 )}
-                                {(row.mycsd === 'waiting_for_report' || !row.mycsd || (row.mycsd !== 'approved' && row.mycsd !== 'rejected' && row.mycsd !== 'pending_approval')) && (
+                                {row.mycsd === 'cancelled' && (
+                                  <span className="text-gray-400 font-bold">-</span>
+                                )}
+                                {(row.mycsd === 'waiting_for_report' || !row.mycsd || (row.mycsd !== 'approved' && row.mycsd !== 'rejected' && row.mycsd !== 'pending_approval' && row.mycsd !== 'cancelled')) && (
                                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800" title="Waiting for organizer submission">
                                     Waiting Report
                                   </span>

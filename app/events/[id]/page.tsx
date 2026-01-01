@@ -25,6 +25,10 @@ import {
   ExternalLink
 } from 'lucide-react';
 
+import { uploadDocument } from '@/backend/services/storageService';
+import { Upload, X } from 'lucide-react';
+import EventGallery from '@/components/events/EventGallery';
+
 export default function EventDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -35,6 +39,9 @@ export default function EventDetailsPage() {
   const [suggestedEvents, setSuggestedEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [registrationStatus, setRegistrationStatus] = useState<string | null>(null);
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -67,8 +74,11 @@ export default function EventDetailsPage() {
       if (user && event) {
         try {
           const registrations = await getUserRegistrations(user.id);
-          const isReg = registrations.some(reg => reg.eventId === event.id);
-          setIsRegistered(isReg);
+          const userRegistration = registrations.find(reg => reg.eventId === event.id);
+          if (userRegistration) {
+            setIsRegistered(true);
+            setRegistrationStatus(userRegistration.status);
+          }
         } catch (error) {
           console.error('Error checking registration:', error);
         }
@@ -76,6 +86,22 @@ export default function EventDetailsPage() {
     };
     checkRegistration();
   }, [user, event]);
+
+  const handleProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+      setPaymentProofFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPaymentProofPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -121,21 +147,49 @@ export default function EventDetailsPage() {
       return;
     }
 
+    const isCommitteeMember = event.committeeMembers?.some(
+      member => String(member.matricNumber).trim() === user?.matricNumber?.trim()
+    );
+    if (isCommitteeMember) {
+      toast.error('Committee members cannot register for their own event');
+      return;
+    }
+
     setShowRegistrationModal(true);
   };
 
   const handleConfirmRegistration = async () => {
     if (!user || !event) return;
 
+    if (event.participationFee > 0 && !paymentProofFile) {
+      toast.error('Please upload payment proof');
+      return;
+    }
+
     setIsRegistering(true);
 
     try {
+      let paymentProofUrl = undefined;
+      if (paymentProofFile) {
+        try {
+          const path = `payment-proofs/${event.id}/${user.id}-${Date.now()}-${paymentProofFile.name}`;
+          paymentProofUrl = await uploadDocument(paymentProofFile, path);
+        } catch (error) {
+          console.error('Error uploading payment proof:', error);
+          toast.error('Failed to upload payment proof');
+          setIsRegistering(false);
+          return;
+        }
+      }
+
       await createRegistration({
         eventId: event.id,
         userId: user.id,
+        paymentProofUrl: paymentProofUrl,
+        paymentAmount: event.participationFee > 0 ? event.participationFee : undefined,
       });
 
-      toast.success('Successfully registered for ' + event.title);
+      toast.success(event.participationFee > 0 ? 'Registration submitted! Pending approval.' : 'Successfully registered for ' + event.title);
       setShowRegistrationModal(false);
       router.push('/profile');
     } catch (error) {
@@ -150,6 +204,9 @@ export default function EventDetailsPage() {
   const registrationDeadline = new Date(event.registrationDeadline);
   const isPastDeadline = registrationDeadline < new Date();
   const isFull = event.registeredCount >= event.capacity;
+  const isCommitteeMember = event.committeeMembers?.some(
+    member => String(member.matricNumber).trim() === user?.matricNumber?.trim()
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -430,6 +487,83 @@ export default function EventDetailsPage() {
             )}
           </div>
 
+          {event.participationFee > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <h4 className="font-semibold text-orange-800 mb-2">Payment Required</h4>
+              <p className="text-sm text-orange-700 mb-4">
+                Please make a payment of <span className="font-bold">RM {event.participationFee.toFixed(2)}</span> to the details below and upload your receipt.
+              </p>
+
+              {event.bankAccountInfo && (
+                <div className="mb-4 text-sm text-gray-700 whitespace-pre-line bg-white p-2 rounded border border-gray-200">
+                  <p className="font-medium text-gray-900 mb-1">Bank Details:</p>
+                  {event.bankAccountInfo}
+                </div>
+              )}
+
+              {event.paymentQrCode && (
+                <div className="mb-4 flex flex-col items-center">
+                  <p className="text-sm font-medium text-gray-900 mb-2">Scan QR to Pay</p>
+                  <div className="relative w-48 h-48 bg-white border border-gray-200 p-2 rounded-lg">
+                    <Image
+                      src={event.paymentQrCode}
+                      alt="Payment QR"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Upload Payment Receipt <span className="text-red-500">*</span>
+                </label>
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-purple-500 transition-colors cursor-pointer relative overflow-hidden bg-white"
+                  onClick={() => document.getElementById('receipt-upload')?.click()}
+                >
+                  {paymentProofPreview ? (
+                    <div className="relative h-32 w-full">
+                      <Image
+                        src={paymentProofPreview}
+                        alt="Receipt preview"
+                        fill
+                        className="object-contain"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPaymentProofFile(null);
+                          setPaymentProofPreview(null);
+                        }}
+                        className="absolute top-1 right-1 p-1 bg-white rounded-full shadow text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-1">Upload Receipt</p>
+                    </>
+                  )}
+                  <input
+                    id="receipt-upload"
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleProofChange}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <p className="text-sm text-gray-600">
+            * You will receive a confirmation email after registration
+          </p>
+
           <div className="flex gap-3 pt-4">
             <button
               onClick={() => setShowRegistrationModal(false)}
@@ -446,10 +580,10 @@ export default function EventDetailsPage() {
               {isRegistering ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Registering...
+                  {event.participationFee > 0 ? 'Submitting...' : 'Registering...'}
                 </>
               ) : (
-                'Confirm Registration'
+                event.participationFee > 0 ? 'Submit Payment & Register' : 'Confirm Registration'
               )}
             </button>
           </div>

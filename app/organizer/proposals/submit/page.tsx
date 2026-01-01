@@ -422,7 +422,7 @@ export default function SubmitProposalPage() {
                         {...register(`committeeMembers.${index}.matricNumber`)}
                         onBlur={(e) => handleMatricBlur(index, e.target.value)}
                         placeholder="123456"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                       />
                       {errors.committeeMembers?.[index]?.matricNumber && (
                         <p className="mt-1 text-xs text-red-600">{errors.committeeMembers[index]?.matricNumber?.message}</p>
@@ -437,7 +437,7 @@ export default function SubmitProposalPage() {
                         {...register(`committeeMembers.${index}.name`)}
                         placeholder="Student Name"
                         readOnly
-                        className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed"
+                        className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded-lg text-gray-900 cursor-not-allowed"
                       />
                       {errors.committeeMembers?.[index]?.name && (
                         <p className="mt-1 text-xs text-red-600">{errors.committeeMembers[index]?.name?.message}</p>
@@ -451,7 +451,7 @@ export default function SubmitProposalPage() {
                       <input
                         {...register(`committeeMembers.${index}.position`)}
                         placeholder="e.g. Logistics Head"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                       />
                       {errors.committeeMembers?.[index]?.position && (
                         <p className="mt-1 text-xs text-red-600">{errors.committeeMembers[index]?.position?.message}</p>

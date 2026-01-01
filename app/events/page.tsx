@@ -153,11 +153,13 @@ function EventsPage() {
     handleFilterChange();
   };
 
-  // Count events per category
+  // Count events per category (only published)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     allEvents.forEach(event => {
-      counts[event.category] = (counts[event.category] || 0) + 1;
+      if (event.status === 'published') {
+        counts[event.category] = (counts[event.category] || 0) + 1;
+      }
     });
     return counts;
   }, [allEvents]);
@@ -165,16 +167,13 @@ function EventsPage() {
   const mycsdCategoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     allEvents.forEach(event => {
-      if (event.mycsdCategory) {
+      if (event.status === 'published' && event.mycsdCategory) {
         // Find which known category it matches (case-insensitive)
         const mycsdCats: MyCSDCategory[] = ['Debat dan Pidato', 'Khidmat Masyarakat', 'Kebudayaan', 'Kepimpinan', 'Keusahawanan', 'Reka Cipta dan Inovasi', 'Sukan/Rekreasi/Sosialisasi'];
         const matchedCategory = mycsdCats.find(c => c.toLowerCase() === event.mycsdCategory?.toLowerCase());
 
         if (matchedCategory) {
           counts[matchedCategory] = (counts[matchedCategory] || 0) + 1;
-        } else {
-          // Fallback for unknown categories if needed, or ignore
-          // counts[event.mycsdCategory] = (counts[event.mycsdCategory] || 0) + 1;
         }
       }
     });
@@ -184,7 +183,7 @@ function EventsPage() {
   const mycsdLevelCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     allEvents.forEach(event => {
-      if (event.mycsdLevel) {
+      if (event.status === 'published' && event.mycsdLevel) {
         counts[event.mycsdLevel] = (counts[event.mycsdLevel] || 0) + 1;
       }
     });
@@ -356,7 +355,7 @@ function EventsPage() {
                       checked={selectedMyCSDLevels.includes('P.Pengajian / Desasiswa / Persatuan / Kelab')}
                       onChange={() => toggleMyCSDLevel('P.Pengajian / Desasiswa / Persatuan / Kelab')}
                     />
-                    <span className="text-gray-700">Kampus (P.Pengajian...) <span className="text-gray-400">({mycsdLevelCounts['P.Pengajian / Desasiswa / Persatuan / Kelab'] || 0})</span></span>
+                    <span className="text-gray-700">P.Pengajian / Desasiswa / Persatuan / Kelab <span className="text-gray-400">({mycsdLevelCounts['P.Pengajian / Desasiswa / Persatuan / Kelab'] || 0})</span></span>
                   </label>
                 </div>
               </div>

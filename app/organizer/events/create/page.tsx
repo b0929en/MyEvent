@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,11 +33,13 @@ const eventSchema = z.object({
   participationFee: z.number().min(0, 'Fee cannot be negative'),
   hasMyCSD: z.boolean(),
   mycsdCategory: z.enum([
-    'REKA CIPTA DAN INOVASI',
-    'KEUSAHAWAN',
-    'KEBUDAYAAN',
-    'SUKAN/REKREASI/SOSIALISASI',
-    'KEPIMPINAN'
+    'Debat dan Pidato',
+    'Khidmat Masyarakat',
+    'Kebudayaan',
+    'Kepimpinan',
+    'Keusahawanan',
+    'Reka Cipta dan Inovasi',
+    'Sukan/Rekreasi/Sosialisasi'
   ]).optional(),
   mycsdLevel: z.enum([
     'P.Pengajian / Desasiswa / Persatuan / Kelab',
@@ -48,6 +50,7 @@ const eventSchema = z.object({
   // mycsdPoints removed: points are computed from level
   registrationDeadline: z.string().min(1, 'Registration deadline is required'),
   objectives: z.array(z.string()).optional(), // Made optional
+  bankAccountInfo: z.string().optional(),
 }).refine(data => {
   if (data.hasMyCSD) {
     return data.mycsdCategory && data.mycsdLevel;
@@ -56,6 +59,14 @@ const eventSchema = z.object({
 }, {
   message: 'MyCSD category, level, and points are required when MyCSD is enabled',
   path: ['mycsdCategory']
+}).refine(data => {
+  if (data.participationFee > 0 && !data.bankAccountInfo) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Bank account info is required when a participation fee is set',
+  path: ['bankAccountInfo']
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -70,6 +81,10 @@ export default function CreateEventPage() {
   const [isLoadingProposal, setIsLoadingProposal] = useState(false);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
+  const [qrCodePreview, setQrCodePreview] = useState<string | null>(null);
+  const [galleryItems, setGalleryItems] = useState<{ url: string; file: File }[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const {
     register,
@@ -124,6 +139,7 @@ export default function CreateEventPage() {
   };
 
   const hasMyCSD = watch('hasMyCSD');
+  const participationFee = watch('participationFee');
 
   // Handle objectives
   const addObjective = () => {
@@ -175,6 +191,50 @@ export default function CreateEventPage() {
     }
   };
 
+  const handleQrCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('File size must be less than 2MB');
+        return;
+      }
+      setQrCodeFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setQrCodePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+
+
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      // Validate size
+      const validFiles = files.filter(file => {
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`File ${file.name} is too large (max 5MB)`);
+          return false;
+        }
+        return true;
+      });
+
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setGalleryItems(prev => [...prev, { url: reader.result as string, file }]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setGalleryItems(prev => prev.filter((_, i) => i !== index));
+  };
+
   const onSubmit = async (data: EventFormData) => {
     if (!isProposalLoaded) {
       toast.error('Please load a proposal first');
@@ -200,6 +260,26 @@ export default function CreateEventPage() {
         }
       }
 
+      let qrCodeUrl = '';
+      if (qrCodeFile) {
+        try {
+          // Re-using uploadEventBanner for now, or use generic uploadDocument if implemented
+          // Assuming documents bucket is public for QR codes or use event-banners bucket for public images
+          const path = `events/${secretKey}/payment-qr-${Date.now()}-${qrCodeFile.name}`;
+          qrCodeUrl = await uploadEventBanner(qrCodeFile, path);
+        } catch (error) {
+          console.error('Error uploading QR code:', error);
+          toast.error('Failed to upload QR code');
+          return;
+        }
+      }
+
+      // Process Gallery
+      const galleryUrls = await Promise.all(galleryItems.map(async (item) => {
+        const path = `events/${secretKey}/gallery/${Date.now()}-${item.file.name}`;
+        return await uploadEventBanner(item.file, path);
+      }));
+
       // Update event details
       await updateEventByRequestId(secretKey, {
         event_name: data.title,
@@ -213,11 +293,16 @@ export default function CreateEventPage() {
         end_time: data.endTime?.substring(0, 5),
         banner_image: bannerUrl || undefined,
         objectives: validObjectives,
+        registration_deadline: data.registrationDeadline,
+        gallery: galleryUrls,
         links: validLinks,
         has_mycsd: data.hasMyCSD,
         mycsd_category: data.mycsdCategory,
         mycsd_level: data.mycsdLevel,
         mycsd_points: getPointsForLevel(data.mycsdLevel),
+        participation_fee: data.participationFee,
+        payment_qr_code: qrCodeUrl || undefined,
+        bank_account_info: data.bankAccountInfo || undefined,
       });
 
       // Update status to published
@@ -542,6 +627,66 @@ export default function CreateEventPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Payment Details - Only if Fee > 0 */}
+                {participationFee > 0 && (
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">Payment Details</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Bank Account Information <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          {...register('bankAccountInfo')}
+                          rows={3}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                          placeholder="Bank Name, Account Number, Account Holder Name, etc."
+                        />
+                        {errors.bankAccountInfo && (
+                          <p className="mt-1 text-sm text-red-600">{errors.bankAccountInfo.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Payment QR Code (Touch 'n Go / DuitNow)
+                        </label>
+                        <div
+                          className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-500 transition-colors cursor-pointer relative overflow-hidden bg-white"
+                          onClick={() => document.getElementById('qr-upload')?.click()}
+                        >
+                          {qrCodePreview ? (
+                            <div className="relative h-48 w-full">
+                              <Image
+                                src={qrCodePreview}
+                                alt="QR Code preview"
+                                fill
+                                className="object-contain" // Contain for QR code
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity z-10">
+                                <p className="text-white font-medium">Click to change</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-600 mb-1">Upload QR Code</p>
+                              <p className="text-xs text-gray-500">PNG, JPG up to 2MB</p>
+                            </>
+                          )}
+                          <input
+                            id="qr-upload"
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleQrCodeChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* MyCSD */}
@@ -571,12 +716,13 @@ export default function CreateEventPage() {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                         >
                           <option value="">Select</option>
-                          <option value="">Select</option>
-                          <option value="REKA CIPTA DAN INOVASI">REKA CIPTA DAN INOVASI</option>
-                          <option value="KEUSAHAWAN">KEUSAHAWAN</option>
-                          <option value="KEBUDAYAAN">KEBUDAYAAN</option>
-                          <option value="SUKAN/REKREASI/SOSIALISASI">SUKAN/REKREASI/SOSIALISASI</option>
-                          <option value="KEPIMPINAN">KEPIMPINAN</option>
+                          <option value="Debat dan Pidato">Debat dan Pidato</option>
+                          <option value="Khidmat Masyarakat">Khidmat Masyarakat</option>
+                          <option value="Kebudayaan">Kebudayaan</option>
+                          <option value="Kepimpinan">Kepimpinan</option>
+                          <option value="Keusahawanan">Keusahawan</option>
+                          <option value="Reka Cipta dan Inovasi">Reka Cipta dan Inovasi</option>
+                          <option value="Sukan/Rekreasi/Sosialisasi">Sukan/Rekreasi/Sosialisasi</option>
                         </select>
                         {errors.mycsdCategory && (
                           <p className="mt-1 text-sm text-red-600">{errors.mycsdCategory.message}</p>
@@ -647,6 +793,87 @@ export default function CreateEventPage() {
                 )}
               </div>
 
+              {/* Gallery */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Event Gallery (Optional)</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  {galleryItems.map((item, index) => (
+                    <div key={index} className="relative w-full pt-[100%] rounded-lg overflow-hidden group border border-gray-200 bg-white">
+                      <div className="absolute inset-0">
+                        <Image
+                          src={item.url}
+                          alt={`Gallery ${index + 1}`}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                          onClick={() => setSelectedImage(item.url)}
+                        />
+                        <div className="absolute inset-0 bg-transparent group-hover:bg-black/30 transition-all flex items-center justify-center pointer-events-none">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeGalleryImage(index);
+                            }}
+                            className="bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 pointer-events-auto"
+                            title="Remove image"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Upload Button */}
+                  <div
+                    className="relative w-full pt-[100%] rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all"
+                    onClick={() => document.getElementById('gallery-upload')?.click()}
+                  >
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Plus className="w-8 h-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-500 font-medium">Add Photo</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <input
+                id="gallery-upload"
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onClick={(e) => (e.currentTarget.value = '')}
+                onChange={handleGalleryUpload}
+              />
+
+              {/* Lightbox Modal */}
+              {selectedImage && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"
+                  onClick={() => setSelectedImage(null)}
+                >
+                  <div className="relative max-w-4xl w-full h-full flex items-center justify-center">
+                    <button
+                      onClick={() => setSelectedImage(null)}
+                      className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 p-2"
+                    >
+                      <X className="w-8 h-8" />
+                    </button>
+                    <div className="relative w-full h-full">
+                      <Image
+                        src={selectedImage}
+                        alt="Full size preview"
+                        fill
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Additional Links (Optional) */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -713,9 +940,8 @@ export default function CreateEventPage() {
             </form>
           )}
         </div>
-      </main>
-
+      </main >
       <Footer />
-    </div>
+    </div >
   );
 }

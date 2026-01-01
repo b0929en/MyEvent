@@ -97,6 +97,11 @@ export interface DBEvent {
   mycsd_points: number | null;
   agenda: string[] | null;
   is_mycsd_claimed: boolean;
+  participation_fee: number;
+  payment_qr_code: string | null;
+  bank_account_info: string | null;
+  registration_deadline: string | null;
+  gallery: string[] | null;
   committee_members?: any;
   event_requests?: DBEventRequest | DBEventRequest[];
   mycsd_requests?: DBMyCSDRequest[];
@@ -294,6 +299,8 @@ export type Event = {
   capacity: number;
   registeredCount: number;
   participationFee: number;
+  paymentQrCode?: string;
+  bankAccountInfo?: string;
   hasMyCSD: boolean;
   mycsdCategory?: MyCSDCategory;
   mycsdLevel?: MyCSDLevel;
@@ -385,7 +392,7 @@ export type MyCSDRecord = {
   role: ParticipantRole;
   points: number;
   semester: string;
-  status: 'approved' | 'pending_approval' | 'rejected' | 'waiting_for_report';
+  status: 'approved' | 'pending_approval' | 'rejected' | 'waiting_for_report' | 'cancelled';
   rejectionReason?: string;
   proofDocument?: string;
   remarks?: string;
@@ -617,6 +624,11 @@ export type EventUpdateInput = Partial<{
   mycsd_category: string;
   mycsd_level: string;
   mycsd_points: number;
+  participation_fee: number;
+  payment_qr_code: string;
+  bank_account_info: string;
+  registration_deadline: string;
+  gallery: string[];
 }>;
 
 export type DocumentsInput = {

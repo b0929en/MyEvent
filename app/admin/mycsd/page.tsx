@@ -404,7 +404,7 @@ export default function AdminMyCSDPage() {
                             [member.matricNumber]: e.target.value
                           }))}
                           disabled={reviewAction === 'reject'}
-                          className="w-full text-xs border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                          className="w-full text-xs border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900"
                         >
                           <option value="pengarah">Pengarah / Director</option>
                           <option value="ajk_tertinggi">AJK Tertinggi / High Committee</option>
@@ -430,7 +430,7 @@ export default function AdminMyCSDPage() {
                     ? 'Optional: Add any notes...'
                     : 'Please provide reasons for rejection...'
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
 

@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import Modal from '@/components/Modal';
 
-type TabType = 'all' | 'published' | 'pending_approval' | 'draft' | 'completed';
+type TabType = 'all' | 'published' | 'pending_approval' | 'draft' | 'completed' | 'mycsd_claimed' | 'mycsd_failed_to_claim';
 
 export default function OrganizerDashboard() {
   const { user, isLoading } = useRequireRole(['organizer'], '/');
@@ -65,7 +65,16 @@ export default function OrganizerDashboard() {
 
   const filteredEvents = useMemo(() => {
     if (activeTab === 'all') return organizerEvents;
-    return organizerEvents.filter(event => event.status === activeTab);
+
+    if (activeTab === 'mycsd_claimed') {
+      return organizerEvents.filter(event => event.status === 'completed' && event.hasMyCSD && event.mycsdStatus === 'approved');
+    }
+
+    if (activeTab === 'mycsd_failed_to_claim') {
+      return organizerEvents.filter(event => event.status === 'completed' && event.hasMyCSD && event.mycsdStatus === 'rejected');
+    }
+
+    return organizerEvents.filter(event => event.status === (activeTab as string));
   }, [organizerEvents, activeTab]);
 
   const stats = useMemo(() => {
@@ -115,6 +124,8 @@ export default function OrganizerDashboard() {
       case 'rejected': return <XCircle className="w-4 h-4" />;
       case 'cancelled': return <Ban className="w-4 h-4" />;
       case 'revision_needed': return <AlertCircle className="w-4 h-4" />;
+      case 'mycsd_claimed': return <Award className="w-4 h-4" />;
+      case 'mycsd_failed_to_claim': return <AlertCircle className="w-4 h-4" />;
       default: return <AlertCircle className="w-4 h-4" />;
     }
   };
@@ -128,6 +139,8 @@ export default function OrganizerDashboard() {
       case 'rejected': return 'bg-red-100 text-red-800 border border-red-200';
       case 'cancelled': return 'bg-gray-100 text-gray-500 border border-gray-200 line-through';
       case 'revision_needed': return 'bg-orange-100 text-orange-800 border border-orange-200';
+      case 'mycsd_claimed': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+      case 'mycsd_failed_to_claim': return 'bg-red-100 text-red-800 border border-red-200';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -310,6 +323,16 @@ export default function OrganizerDashboard() {
                   { key: 'completed', label: 'Completed', count: organizerEvents.filter(e => e.status === 'completed').length },
                   { key: 'pending_approval', label: 'Pending', count: organizerEvents.filter(e => e.status === 'pending_approval').length },
                   { key: 'draft', label: 'Draft', count: organizerEvents.filter(e => e.status === 'draft').length },
+                  {
+                    key: 'mycsd_claimed',
+                    label: 'Claimed',
+                    count: organizerEvents.filter(e => e.status === 'completed' && e.hasMyCSD && e.mycsdStatus === 'approved').length
+                  },
+                  {
+                    key: 'mycsd_failed_to_claim',
+                    label: 'Failed Claim',
+                    count: organizerEvents.filter(e => e.status === 'completed' && e.hasMyCSD && e.mycsdStatus === 'rejected').length
+                  },
                 ].map(tab => (
                   <button
                     key={tab.key}
@@ -349,146 +372,155 @@ export default function OrganizerDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredEvents.map(event => (
-                      <tr key={event.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {event.title}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {event.category}
+                    {filteredEvents.map(event => {
+                      // Calculate display status including MyCSD states
+                      const displayStatus = (event.status === 'completed' && event.hasMyCSD)
+                        ? (event.mycsdStatus === 'approved' ? 'mycsd_claimed'
+                          : event.mycsdStatus === 'rejected' ? 'mycsd_failed_to_claim'
+                            : event.status)
+                        : event.status;
+
+                      return (
+                        <tr key={event.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {event.title}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {event.category}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {format(new Date(event.startDate), 'MMM dd, yyyy')}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {event.startTime}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {event.registeredCount} / {event.capacity}
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                            <div
-                              className="bg-purple-600 h-2 rounded-full"
-                              style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
-                            ></div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusColor(event.status)}`}>
-                            {getStatusIcon(event.status)}
-                            {event.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/events/${event.id}`}
-                              className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
-                              title="View"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Link>
-
-                            {/* Allow edit only if not completed/cancelled */}
-                            {event.status !== 'completed' && event.status !== 'cancelled' && (
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {format(new Date(event.startDate), 'MMM dd, yyyy')}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {event.startTime}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {event.registeredCount} / {event.capacity}
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                              <div
+                                className="bg-purple-600 h-2 rounded-full"
+                                style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
+                              ></div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusColor(displayStatus)}`}>
+                              {getStatusIcon(displayStatus)}
+                              {displayStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center gap-2">
                               <Link
-                                href={`/organizer/events/${event.id}/edit`}
-                                className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded transition-colors"
-                                title="Edit"
+                                href={`/events/${event.id}`}
+                                className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
+                                title="View"
                               >
-                                <Edit className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                               </Link>
-                            )}
 
-                            <Link
-                              href={`/organizer/events/${event.id}/attendees`}
-                              className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded transition-colors"
-                              title="Attendees"
-                            >
-                              <Users className="w-4 h-4" />
-                            </Link>
+                              {/* Allow edit only if not completed/cancelled */}
+                              {event.status !== 'completed' && event.status !== 'cancelled' && (
+                                <Link
+                                  href={`/organizer/events/${event.id}/edit`}
+                                  className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Link>
+                              )}
 
-                            {/* MyCSD Claim Status & Actions */}
-                            {event.hasMyCSD && event.status === 'completed' && (
-                              <>
-                                {/* Case 1: Not Submitted Yet -> Show Button */}
-                                {(event.mycsdStatus === 'none' || !event.mycsdStatus) && (
-                                  <button
-                                    onClick={() => {
-                                      setSelectedEventForClaim(event);
-                                      setShowClaimModal(true);
-                                    }}
-                                    className="text-orange-600 hover:text-orange-900 p-2 hover:bg-orange-50 rounded transition-colors"
-                                    title="Submit Laporan & Claim MyCSD"
-                                  >
-                                    <Award className="w-5 h-5" />
-                                  </button>
-                                )}
+                              <Link
+                                href={`/organizer/events/${event.id}/attendees`}
+                                className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded transition-colors"
+                                title="Attendees"
+                              >
+                                <Users className="w-4 h-4" />
+                              </Link>
 
-                                {/* Case 2: Pending Approval */}
-                                {(event.mycsdStatus === 'pending') && (
-                                  <div className="relative group p-2">
-                                    <Clock className="w-5 h-5 text-amber-500 cursor-help" />
-                                    <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
-                                      Claim Pending Approval
+                              {/* MyCSD Claim Status & Actions */}
+                              {event.hasMyCSD && event.status === 'completed' && (
+                                <>
+                                  {/* Case 1: Not Submitted Yet -> Show Button */}
+                                  {(event.mycsdStatus === 'none' || !event.mycsdStatus) && (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedEventForClaim(event);
+                                        setShowClaimModal(true);
+                                      }}
+                                      className="text-orange-600 hover:text-orange-900 p-2 hover:bg-orange-50 rounded transition-colors"
+                                      title="Submit Laporan & Claim MyCSD"
+                                    >
+                                      <Award className="w-5 h-5" />
+                                    </button>
+                                  )}
+
+                                  {/* Case 2: Pending Approval */}
+                                  {(event.mycsdStatus === 'pending') && (
+                                    <div className="relative group p-2">
+                                      <Clock className="w-5 h-5 text-amber-500 cursor-help" />
+                                      <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
+                                        Claim Pending Approval
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
 
-                                {/* Case 3: Approved */}
-                                {event.mycsdStatus === 'approved' && (
-                                  <div className="relative group p-2">
-                                    <CheckCircle className="w-5 h-5 text-emerald-500 cursor-help" />
-                                    <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
-                                      Claim Approved
+                                  {/* Case 3: Approved */}
+                                  {event.mycsdStatus === 'approved' && (
+                                    <div className="relative group p-2">
+                                      <CheckCircle className="w-5 h-5 text-emerald-500 cursor-help" />
+                                      <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
+                                        Claim Approved
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
 
-                                {/* Case 4: Rejected */}
-                                {event.mycsdStatus === 'rejected' && (
-                                  <div className="relative group p-2">
-                                    <AlertCircle className="w-5 h-5 text-red-500 cursor-pointer" />
-                                    <div className="absolute bottom-full right-0 mb-2 w-64 bg-white text-gray-800 text-xs rounded-lg shadow-xl border border-red-200 p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                      <p className="font-bold text-red-600 mb-1">Claim Rejected</p>
-                                      <p className="text-gray-600 leading-snug">{event.mycsdRejectionReason || 'No reason provided.'}</p>
+                                  {/* Case 4: Rejected */}
+                                  {event.mycsdStatus === 'rejected' && (
+                                    <div className="relative group p-2">
+                                      <AlertCircle className="w-5 h-5 text-red-500 cursor-pointer" />
+                                      <div className="absolute bottom-full right-0 mb-2 w-64 bg-white text-gray-800 text-xs rounded-lg shadow-xl border border-red-200 p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                        <p className="font-bold text-red-600 mb-1">Claim Rejected</p>
+                                        <p className="text-gray-600 leading-snug">{event.mycsdRejectionReason || 'No reason provided.'}</p>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                              </>
-                            )}
+                                  )}
+                                </>
+                              )}
 
-                            <button
-                              onClick={async () => {
-                                if (confirm('Are you sure you want to delete this event?')) {
-                                  try {
-                                    await deleteEvent(event.id);
-                                    setOrganizerEvents(prev => prev.filter(e => e.id !== event.id));
-                                    toast.success('Event deleted successfully');
-                                  } catch (error) {
-                                    console.error('Error deleting event:', error);
-                                    toast.error('Failed to delete event');
+                              <button
+                                onClick={async () => {
+                                  if (confirm('Are you sure you want to delete this event?')) {
+                                    try {
+                                      await deleteEvent(event.id);
+                                      setOrganizerEvents(prev => prev.filter(e => e.id !== event.id));
+                                      toast.success('Event deleted successfully');
+                                    } catch (error) {
+                                      console.error('Error deleting event:', error);
+                                      toast.error('Failed to delete event');
+                                    }
                                   }
-                                }
-                              }}
-                              className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                                }}
+                                className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               ) : (
