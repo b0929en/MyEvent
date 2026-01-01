@@ -46,7 +46,9 @@ export default function InteractiveHero() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-gray-600 mb-10 max-w-2xl mx-auto text-lg md:text-xl"
           >
-            Explore the best events happening around you. Join the community and experience the excitement.
+            Explore the best events happening around USM. 
+            <br />
+            Join and experience the excitement.
           </motion.p>
 
           {/* Search Bar */}
