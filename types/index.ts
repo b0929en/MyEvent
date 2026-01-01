@@ -574,7 +574,13 @@ export type ProposalCreateInput = {
   eventDescription: string;
   category: EventCategory;
   estimatedParticipants: number;
-  proposedDate: string;
+  proposedDate: string; // Used as Start Date
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  registrationDeadline: string;
+  participationFee: number;
   proposedVenue: string;
   documents: Record<string, string> | {
     eventProposal: string;

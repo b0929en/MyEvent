@@ -230,6 +230,7 @@ export default function AttendeesPage() {
   };
 
   const handleExportCSV = () => {
+    if (!event) return;
     if (activeTab === 'attendees') {
       // Export Attendees
       const csvData = filteredAttendees.map(a => ({
@@ -241,7 +242,34 @@ export default function AttendeesPage() {
         Status: a.status,
         'Check-in Time': a.checkInTime ? format(new Date(a.checkInTime), 'yyyy-MM-dd HH:mm') : '-'
       }));
-      console.log('Export Attendees CSV:', csvData);
+
+      if (csvData.length === 0) {
+        toast.error('No attendees to export');
+        return;
+      }
+
+      const headers = Object.keys(csvData[0]);
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => headers.map(header => {
+          // @ts-ignore
+          const value = row[header] ? String(row[header]).replace(/"/g, '""') : '';
+          return `"${value}"`;
+        }).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `attendees-${event.id}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
       toast.success('Attendees CSV exported successfully!');
     } else {
       // Export Committee
@@ -252,7 +280,34 @@ export default function AttendeesPage() {
         Email: c.email || '-',
         Phone: c.phone || '-'
       }));
-      console.log('Export Committee CSV:', csvData);
+
+      if (csvData.length === 0) {
+        toast.error('No committee members to export');
+        return;
+      }
+
+      const headers = Object.keys(csvData[0]);
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => headers.map(header => {
+          // @ts-ignore
+          const value = row[header] ? String(row[header]).replace(/"/g, '""') : '';
+          return `"${value}"`;
+        }).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `committee-${event.id}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
       toast.success('Committee list exported successfully!');
     }
   };
@@ -476,7 +531,7 @@ export default function AttendeesPage() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search by name, email, or matric number..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                     />
                   </div>
 
@@ -486,7 +541,7 @@ export default function AttendeesPage() {
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value as AttendanceStatus | 'all')}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                     >
                       <option value="all">All Status</option>
                       <option value="checked-in">Checked In</option>
@@ -674,7 +729,7 @@ export default function AttendeesPage() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search committee by name, matric, or position..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                     />
                   </div>
                 </div>
@@ -785,27 +840,7 @@ export default function AttendeesPage() {
               </div>
             </div>
           </div>
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">
-              Event ID: <span className="font-mono font-semibold">{event.id}</span>
-            </p>
-            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-100 rounded text-xs text-yellow-800 break-all">
-              <strong>Encoded URL:</strong> {`${origin}/checkin?eventId=${event.id}&t=${qrTimestamp}`}
-              {origin.includes('localhost') && (
-                <div className="mt-1 font-bold text-red-600">
-                  Warning: You are on localhost. Phone scanning will fail. Access this page via your Network IP (e.g., 192.168.x.x) on this computer.
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              <strong>How to Test:</strong>
-            </p>
-            <ul className="text-xs text-gray-500 mt-1 space-y-1 text-left">
-              <li>1. Scan this code with your phone (ensure phone is on same network and use IP instead of localhost)</li>
-              <li>2. Or copy the link: <a href={`${origin}/checkin?eventId=${event.id}`} target="_blank" className="text-purple-600 underline">Check-in Link</a></li>
-              <li>3. Or manually enter the Event ID at <Link href="/checkin" className="text-purple-600 underline">/checkin</Link></li>
-            </ul>
-          </div>
+
         </div>
       </Modal>
 

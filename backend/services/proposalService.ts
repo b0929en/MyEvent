@@ -149,9 +149,16 @@ export async function createProposal(proposalData: ProposalCreateInput) {
       event_name: proposalData.eventTitle,
       event_description: proposalData.eventDescription,
       event_date: proposalData.proposedDate,
+      end_date: proposalData.endDate,
+      start_time: proposalData.startTime,
+      end_time: proposalData.endTime,
+      registration_deadline: proposalData.registrationDeadline,
       event_venue: proposalData.proposedVenue,
       category: proposalData.category,
       capacity: proposalData.estimatedParticipants,
+      participation_fee: proposalData.participationFee,
+      bank_account_info: '',
+      payment_qr_code: '',
       event_request_id: request.event_request_id,
       committee_members: proposalData.committeeMembers || []
     });
@@ -210,7 +217,7 @@ export async function getProposalById(id: string) {
     .select(`
       *,
       organizations ( org_name ),
-      events ( event_name, event_description, category, capacity, event_date, event_venue )
+      events ( * )
     `)
     .eq('event_request_id', id)
     .single();
@@ -229,12 +236,28 @@ export async function getProposalById(id: string) {
     estimatedParticipants: event?.capacity || 0,
     proposedDate: event?.event_date,
     proposedVenue: event?.event_venue,
+    // Add additional fields from event (Draft updates)
+    endDate: event?.end_date,
+    startTime: event?.start_time,
+    endTime: event?.end_time,
+    bannerImage: event?.banner_image,
+    objectives: event?.objectives || [],
+    links: event?.links || [],
+    gallery: event?.gallery || [],
+    registrationDeadline: event?.registration_deadline,
+    participationFee: event?.participation_fee || 0,
+    bankAccountInfo: event?.bank_account_info,
+    paymentQrCode: event?.payment_qr_code,
+    hasMyCSD: event?.has_mycsd || false,
+    mycsdCategory: event?.mycsd_category,
+    mycsdLevel: event?.mycsd_level,
+
     // FIXED: Use parser
     documents: parseDocuments(data.event_request_file),
     status: data.status,
     adminNotes: data.admin_notes || '',
     submittedAt: data.submitted_at,
     updatedAt: data.submitted_at,
-    committeeMembers: data.committee_members || []
+    committeeMembers: event?.committee_members || data.committee_members || []
   };
 }

@@ -83,7 +83,7 @@ export default function CreateEventPage() {
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
   const [qrCodePreview, setQrCodePreview] = useState<string | null>(null);
-  const [galleryItems, setGalleryItems] = useState<{ url: string; file: File }[]>([]);
+  const [galleryItems, setGalleryItems] = useState<{ url: string; file: File | null }[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const {
@@ -128,6 +128,48 @@ export default function CreateEventPage() {
       setValue('capacity', proposal.estimatedParticipants);
       setValue('startDate', proposal.proposedDate);
 
+      // New fields from Draft Updates
+      if (proposal.endDate) setValue('endDate', proposal.endDate);
+      if (proposal.startTime) setValue('startTime', proposal.startTime);
+      if (proposal.endTime) setValue('endTime', proposal.endTime);
+      if (proposal.registrationDeadline) setValue('registrationDeadline', proposal.registrationDeadline);
+
+      setValue('participationFee', proposal.participationFee || 0);
+      if (proposal.bankAccountInfo) setValue('bankAccountInfo', proposal.bankAccountInfo);
+
+      setValue('hasMyCSD', proposal.hasMyCSD || false);
+      if (proposal.hasMyCSD) {
+        if (proposal.mycsdCategory) setValue('mycsdCategory', proposal.mycsdCategory);
+        if (proposal.mycsdLevel) setValue('mycsdLevel', proposal.mycsdLevel);
+      }
+
+      // Complex fields
+      if (proposal.objectives && proposal.objectives.length > 0) {
+        setObjectives(proposal.objectives);
+        setValue('objectives', proposal.objectives);
+      }
+
+      if (proposal.links && proposal.links.length > 0) {
+        setLinks(proposal.links);
+      }
+
+      // Handle Files/Images (Set Previews)
+      if (proposal.bannerImage) {
+        setBannerPreview(proposal.bannerImage);
+        // Note: We can't convert URL to File easily, so we rely on the URL if not changed. 
+        // onSubmit needs to handle "if no new file but bannerUrl exists, use it" -> wait, uploadEventBanner uploads FILE.
+        // We'll need to modify onSubmit logic slightly to allow existing URLs.
+      }
+
+      if (proposal.paymentQrCode) {
+        setQrCodePreview(proposal.paymentQrCode);
+      }
+
+      if (proposal.gallery && proposal.gallery.length > 0) {
+        const existingGallery = proposal.gallery.map((url: string) => ({ url, file: null }));
+        setGalleryItems(existingGallery);
+      }
+
       setIsProposalLoaded(true);
       toast.success('Proposal loaded successfully');
     } catch (error) {
@@ -145,6 +187,7 @@ export default function CreateEventPage() {
   const addObjective = () => {
     const newObjectives = [...objectives, ''];
     setObjectives(newObjectives);
+    setValue('objectives', newObjectives); // Ensure form state is updated
   };
 
   const removeObjective = (index: number) => {
@@ -258,6 +301,9 @@ export default function CreateEventPage() {
           toast.error('Failed to upload banner image');
           return;
         }
+      } else if (bannerPreview && !bannerPreview.startsWith('data:')) {
+        // Existing URL (from proposal prefill)
+        bannerUrl = bannerPreview;
       }
 
       let qrCodeUrl = '';
@@ -272,12 +318,20 @@ export default function CreateEventPage() {
           toast.error('Failed to upload QR code');
           return;
         }
+      } else if (qrCodePreview && !qrCodePreview.startsWith('data:')) {
+        // Existing URL
+        qrCodeUrl = qrCodePreview;
       }
 
       // Process Gallery
       const galleryUrls = await Promise.all(galleryItems.map(async (item) => {
-        const path = `events/${secretKey}/gallery/${Date.now()}-${item.file.name}`;
-        return await uploadEventBanner(item.file, path);
+        if (item.file) {
+          const path = `events/${secretKey}/gallery/${Date.now()}-${item.file.name}`;
+          return await uploadEventBanner(item.file, path);
+        } else {
+          // Existing item
+          return item.url;
+        }
       }));
 
       // Update event details
@@ -411,12 +465,14 @@ export default function CreateEventPage() {
                     <input
                       type="text"
                       {...register('title')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                       placeholder="e.g., HackUSM 2026 - National Hackathon"
                     />
                     {errors.title && (
                       <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
                     )}
+                    <p className="text-xs text-gray-500 mt-1">Contact BHEPA to change.</p>
                   </div>
 
                   {/* Description */}
@@ -511,7 +567,8 @@ export default function CreateEventPage() {
                     <input
                       type="date"
                       {...register('startDate')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                     />
                     {errors.startDate && (
                       <p className="mt-1 text-sm text-red-600">{errors.startDate.message}</p>
@@ -525,7 +582,8 @@ export default function CreateEventPage() {
                     <input
                       type="date"
                       {...register('endDate')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                     />
                     {errors.endDate && (
                       <p className="mt-1 text-sm text-red-600">{errors.endDate.message}</p>
@@ -539,7 +597,8 @@ export default function CreateEventPage() {
                     <input
                       type="time"
                       {...register('startTime')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                     />
                     {errors.startTime && (
                       <p className="mt-1 text-sm text-red-600">{errors.startTime.message}</p>
@@ -553,7 +612,8 @@ export default function CreateEventPage() {
                     <input
                       type="time"
                       {...register('endTime')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                     />
                     {errors.endTime && (
                       <p className="mt-1 text-sm text-red-600">{errors.endTime.message}</p>
@@ -567,11 +627,15 @@ export default function CreateEventPage() {
                     <input
                       type="date"
                       {...register('registrationDeadline')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                     />
                     {errors.registrationDeadline && (
                       <p className="mt-1 text-sm text-red-600">{errors.registrationDeadline.message}</p>
                     )}
+                    <p className="text-sm text-gray-500 mt-2">
+                      Please contact BHEPA to change event dates or registration deadline.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -619,12 +683,14 @@ export default function CreateEventPage() {
                       type="number"
                       step="0.01"
                       {...register('participationFee', { valueAsNumber: true })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                       placeholder="0.00"
                     />
                     {errors.participationFee && (
                       <p className="mt-1 text-sm text-red-600">{errors.participationFee.message}</p>
                     )}
+                    <p className="text-xs text-gray-500 mt-1">Set to 0 for free events. Contact BHEPA to change.</p>
                   </div>
                 </div>
 
@@ -698,12 +764,14 @@ export default function CreateEventPage() {
                     <input
                       type="checkbox"
                       {...register('hasMyCSD')}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      disabled
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-not-allowed disabled:opacity-60"
                     />
                     <label className="ml-2 text-sm font-medium text-gray-700">
                       This event offers MyCSD points
                     </label>
                   </div>
+                  <p className="text-xs text-gray-500 ml-6">Contact BHEPA to change MyCSD status.</p>
 
                   {hasMyCSD && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-purple-200">
@@ -713,7 +781,8 @@ export default function CreateEventPage() {
                         </label>
                         <select
                           {...register('mycsdCategory')}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                         >
                           <option value="">Select</option>
                           <option value="Debat dan Pidato">Debat dan Pidato</option>
@@ -735,7 +804,8 @@ export default function CreateEventPage() {
                         </label>
                         <select
                           {...register('mycsdLevel')}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                         >
                           <option value="">Select</option>
                           <option value="P.Pengajian / Desasiswa / Persatuan / Kelab">P.Pengajian / Desasiswa / Persatuan / Kelab</option>

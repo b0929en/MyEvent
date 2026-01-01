@@ -13,11 +13,12 @@ import { useRequireRole } from '@/contexts/AuthContext';
 import { getEventById, updateEvent } from '@/backend/services/eventService';
 import { uploadEventBanner } from '@/backend/services/storageService';
 import { toast } from 'sonner';
-import { Upload, Plus, X, Save, Loader2 } from 'lucide-react';
+import { Upload, Plus, X, Save, Loader2, Globe } from 'lucide-react';
 import Link from 'next/link';
 
 // Schema Validation
 const eventSchema = z.object({
+  title: z.string().min(5, 'Title must be at least 5 characters').optional(), // Added title
   description: z.string().min(20, 'Description must be at least 20 characters'),
   category: z.enum(['sport', 'academic', 'cultural', 'social', 'competition', 'talk', 'workshop', 'other']),
   startDate: z.string().min(1, 'Start date is required'),
@@ -34,6 +35,7 @@ const eventSchema = z.object({
   mycsdLevel: z.string().optional(),
 
   objectives: z.array(z.string()).optional(), // Made optional
+  bankAccountInfo: z.string().optional(),
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -41,17 +43,22 @@ type EventFormData = z.infer<typeof eventSchema>;
 export default function EditEventPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, isLoading: authLoading } = useRequireRole(['organizer'], '/');
+  // Allow both organizer and admin
+  const { user, isLoading: authLoading } = useRequireRole(['organizer', 'admin'], '/');
 
   const [isLoading, setIsLoading] = useState(true);
-  const [eventTitle, setEventTitle] = useState(''); // Read-only
+  const [eventTitle, setEventTitle] = useState(''); // Read-only for organizers
   const [isPublished, setIsPublished] = useState(false);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
+  const [qrCodePreview, setQrCodePreview] = useState<string | null>(null);
   const [objectives, setObjectives] = useState<string[]>(['']);
   const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
   const [galleryItems, setGalleryItems] = useState<{ url: string; file: File | null }[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const isAdmin = user?.role === 'admin';
 
   const {
     register,
@@ -71,6 +78,7 @@ export default function EditEventPage() {
   });
 
   const hasMyCSD = watch('hasMyCSD');
+  const participationFee = watch('participationFee');
 
   // Register objectives field manually since it's a custom input list
   useEffect(() => {
@@ -88,8 +96,8 @@ export default function EditEventPage() {
           return;
         }
 
-        // Check ownership
-        if (user && event.organizerId !== user.organizationId) {
+        // Check ownership - Bypass for admin
+        if (user && user.role !== 'admin' && event.organizerId !== user.organizationId) {
           toast.error('You do not have permission to edit this event');
           router.push('/organizer/dashboard');
           return;
@@ -101,6 +109,7 @@ export default function EditEventPage() {
 
         // Populate Form
         setEventTitle(event.title);
+        setValue('title', event.title); // Initialize title in form for admins
         setValue('description', event.description);
         setValue('category', event.category);
         setValue('startDate', event.startDate);
@@ -127,6 +136,8 @@ export default function EditEventPage() {
         if (event.bannerImage) {
           setBannerPreview(event.bannerImage);
         }
+        if (event.bankAccountInfo) setValue('bankAccountInfo', event.bankAccountInfo);
+        if (event.paymentQrCode) setQrCodePreview(event.paymentQrCode);
 
       } catch (error) {
         console.error('Error fetching event:', error);
@@ -180,6 +191,20 @@ export default function EditEventPage() {
     }
   };
 
+  const handleQrCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('File size must be less than 2MB');
+        return;
+      }
+      setQrCodeFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setQrCodePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
@@ -215,6 +240,12 @@ export default function EditEventPage() {
         bannerUrl = await uploadEventBanner(bannerFile, path);
       }
 
+      let qrCodeUrl = qrCodePreview;
+      if (qrCodeFile) {
+        const path = `events/${params.id}/payment-qr-${Date.now()}-${qrCodeFile.name}`;
+        qrCodeUrl = await uploadEventBanner(qrCodeFile, path);
+      }
+
       // Process Gallery
       const galleryUrls = await Promise.all(galleryItems.map(async (item) => {
         if (item.file) {
@@ -230,6 +261,7 @@ export default function EditEventPage() {
       const sanitizeTime = (time: string) => time && time.length > 5 ? time.substring(0, 5) : time;
 
       await updateEvent(params.id as string, {
+        event_name: isAdmin && data.title ? data.title : undefined, // Update title if admin
         event_description: data.description,
         event_date: data.startDate,
         end_date: data.endDate,
@@ -247,10 +279,16 @@ export default function EditEventPage() {
         has_mycsd: data.hasMyCSD,
         mycsd_category: data.mycsdCategory,
         mycsd_level: data.mycsdLevel,
+        bank_account_info: data.bankAccountInfo || undefined,
+        payment_qr_code: qrCodeUrl || undefined,
       });
 
       toast.success('Event updated successfully');
-      router.push('/organizer/dashboard');
+      if (user?.role === 'admin') {
+        router.push('/admin/events');
+      } else {
+        router.push('/organizer/dashboard');
+      }
     } catch (error: any) {
       console.error('Error updating event:', error);
       toast.error(error.message || 'Failed to update event');
@@ -339,22 +377,36 @@ export default function EditEventPage() {
             />
           </div>
 
-          {/* Event Title (Read Only) & Badges */}
+          {/* Event Title */}
           <div className="mb-8">
             <div className="mb-6">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Event Name (Read Only)</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Event Name {isAdmin ? '(Editable by Admin)' : '(Read Only)'}
+              </label>
               <div className="relative">
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-400 select-none border-b-2 border-dashed border-gray-300 pb-3">
-                  {eventTitle}
-                </h1>
-                <div className="absolute right-0 top-0 bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-md opacity-70">
-                  Read-only
-                </div>
+                {isAdmin ? (
+                  <input
+                    type="text"
+                    {...register('title')}
+                    className="w-full text-3xl md:text-4xl font-bold text-gray-900 border-none border-b-2 border-dashed border-gray-300 focus:border-purple-600 focus:ring-0 px-0 pb-3 bg-transparent"
+                  />
+                ) : (
+                  <>
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-400 select-none border-b-2 border-dashed border-gray-300 pb-3">
+                      {eventTitle}
+                    </h1>
+                    <div className="absolute right-0 top-0 bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-md opacity-70">
+                      Read-only
+                    </div>
+                  </>
+                )}
               </div>
-              <p className="text-sm text-gray-500 mt-2 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>
-                To change the event name, please submit a new proposal or contact admin.
-              </p>
+              {!isAdmin && (
+                <p className="text-sm text-gray-500 mt-2 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>
+                  To change the event name, please submit a new proposal or contact admin.
+                </p>
+              )}
             </div>
 
             {/* Editable Badges / MyCSD Settings */}
@@ -363,10 +415,10 @@ export default function EditEventPage() {
                 <input
                   type="checkbox"
                   {...register('hasMyCSD')}
-                  disabled={isPublished}
-                  className={`w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer ${isPublished ? 'cursor-not-allowed opacity-60' : ''}`}
+                  disabled={!isAdmin && isPublished}
+                  className={`w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer ${!isAdmin && isPublished ? 'cursor-not-allowed opacity-60' : ''}`}
                 />
-                <label className={`ml-2 font-semibold text-gray-800 ${isPublished ? 'text-gray-500' : ''}`}>Enable MyCSD</label>
+                <label className={`ml-2 font-semibold text-gray-800 ${!isAdmin && isPublished ? 'text-gray-500' : ''}`}>Enable MyCSD</label>
               </div>
 
               {hasMyCSD && (
@@ -376,8 +428,8 @@ export default function EditEventPage() {
                   <div className="flex flex-col md:flex-row gap-3">
                     <select
                       {...register('mycsdCategory')}
-                      disabled={isPublished}
-                      className={isPublished ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
+                      disabled={!isAdmin && isPublished}
+                      className={!isAdmin && isPublished ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
                     >
                       <option value="">Select Category</option>
                       <option value="Debat dan Pidato">Debat dan Pidato</option>
@@ -391,8 +443,8 @@ export default function EditEventPage() {
 
                     <select
                       {...register('mycsdLevel')}
-                      disabled={isPublished}
-                      className={isPublished ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
+                      disabled={!isAdmin && isPublished}
+                      className={!isAdmin && isPublished ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
                     >
                       <option value="">Select Level</option>
                       <option value="P.Pengajian / Desasiswa / Persatuan / Kelab">P.Pengajian / Desasiswa / Persatuan / Kelab</option>
@@ -404,9 +456,9 @@ export default function EditEventPage() {
                 </>
               )}
             </div>
-            {isPublished && (
+            {!isAdmin && isPublished && (
               <p className="text-xs text-orange-600 mt-2 font-medium">
-                Event is published. MyCSD settings and participation fees are locked.
+                Event is published. MyCSD settings and participation fees are locked for organizers.
               </p>
             )}
           </div>
@@ -442,9 +494,9 @@ export default function EditEventPage() {
                 <input
                   type="number"
                   step="0.01"
-                  disabled={isPublished}
+                  disabled={!isAdmin && isPublished}
                   {...register('participationFee', { valueAsNumber: true })}
-                  className={isPublished ? disabledInputClass : inputClass}
+                  className={!isAdmin && isPublished ? disabledInputClass : inputClass}
                 />
               </div>
 
@@ -454,7 +506,8 @@ export default function EditEventPage() {
                 <input
                   type="date"
                   {...register('startDate')}
-                  className={inputClass}
+                  disabled={!isAdmin}
+                  className={!isAdmin ? disabledInputClass : inputClass}
                 />
               </div>
 
@@ -464,7 +517,8 @@ export default function EditEventPage() {
                 <input
                   type="time"
                   {...register('startTime')}
-                  className={inputClass}
+                  disabled={!isAdmin}
+                  className={!isAdmin ? disabledInputClass : inputClass}
                 />
               </div>
 
@@ -474,7 +528,8 @@ export default function EditEventPage() {
                 <input
                   type="date"
                   {...register('endDate')}
-                  className={inputClass}
+                  disabled={!isAdmin}
+                  className={!isAdmin ? disabledInputClass : inputClass}
                 />
               </div>
 
@@ -484,7 +539,8 @@ export default function EditEventPage() {
                 <input
                   type="time"
                   {...register('endTime')}
-                  className={inputClass}
+                  disabled={!isAdmin}
+                  className={!isAdmin ? disabledInputClass : inputClass}
                 />
               </div>
 
@@ -494,7 +550,8 @@ export default function EditEventPage() {
                 <input
                   type="date"
                   {...register('registrationDeadline')}
-                  className={inputClass}
+                  disabled={!isAdmin}
+                  className={!isAdmin ? disabledInputClass : inputClass}
                 />
               </div>
 
@@ -520,6 +577,89 @@ export default function EditEventPage() {
                   className={inputClass}
                 />
               </div>
+
+              {/* Alert for date changes */}
+              <div className="md:col-span-2">
+                {!isAdmin && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Please contact BHEPA to change event dates or registration deadline.
+                  </p>
+                )}
+              </div>
+
+              {/* Participation Fee */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-sm font-bold text-gray-700">Participation Fee (RM)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  {...register('participationFee', { valueAsNumber: true })}
+                  disabled={!isAdmin && isPublished}
+                  className={!isAdmin && isPublished ? disabledInputClass : inputClass}
+                />
+                {!isAdmin && (
+                  <p className="text-xs text-gray-500 mt-1">Set to 0 for free events. Contact BHEPA to change.</p>
+                )}
+              </div>
+              {/* Payment Details Section - Only show if fee > 0 */}
+              {participationFee > 0 && (
+                <div className="md:col-span-2 mt-4 space-y-6 pt-6 border-t border-gray-100">
+                  <h3 className="text-lg font-semibold text-gray-900">Payment Information</h3>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Bank Account Information</label>
+                      <textarea
+                        {...register('bankAccountInfo')}
+                        rows={3}
+                        disabled={!isAdmin && isPublished}
+                        placeholder="Bank Name, Account Number, Account Holder Name"
+                        className={!isAdmin && isPublished ? disabledInputClass : inputClass}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Payment QR Code</label>
+                      <div className="flex items-start gap-6">
+                        <div
+                          className={`
+                            relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden flex items-center justify-center bg-gray-50
+                            ${isAdmin || !isPublished ? 'cursor-pointer hover:border-purple-500 hover:bg-purple-50' : ''}
+                          `}
+                          onClick={() => (isAdmin || !isPublished) && document.getElementById('qr-upload')?.click()}
+                        >
+                          {qrCodePreview ? (
+                            <Image
+                              src={qrCodePreview}
+                              alt="QR Code"
+                              fill
+                              className="object-contain p-2"
+                            />
+                          ) : (
+                            <div className="text-center p-2">
+                              <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                              <span className="text-xs text-gray-500">Upload QR</span>
+                            </div>
+                          )}
+                          {(isAdmin || !isPublished) && (
+                            <input
+                              id="qr-upload"
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleQrCodeChange}
+                            />
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500 flex-1">
+                          <p>Upload a QR code (Touch 'n Go / DuitNow) for participants to scan and pay.</p>
+                          <p className="mt-1 text-xs">Supported formats: JPG, PNG. Max size: 2MB.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

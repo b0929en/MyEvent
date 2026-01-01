@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Header from '@/components/layout/Header';
@@ -22,7 +22,12 @@ const proposalSchema = z.object({
   eventDescription: z.string().min(20, 'Description must be at least 20 characters'),
   category: z.enum(['sport', 'academic', 'cultural', 'social', 'competition', 'talk', 'workshop', 'other']),
   estimatedParticipants: z.number().min(1, 'Must have at least 1 participant'),
-  proposedDate: z.string().min(1, 'Proposed date is required'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
+  startTime: z.string().min(1, 'Start time is required'),
+  endTime: z.string().min(1, 'End time is required'),
+  registrationDeadline: z.string().min(1, 'Registration deadline is required'),
+  participationFee: z.number().min(0, 'Fee cannot be negative').default(0),
   proposedVenue: z.string().min(3, 'Venue is required'),
   committeeMembers: z.array(z.object({
     matricNumber: z.string().min(1, 'Matric number is required'),
@@ -31,13 +36,13 @@ const proposalSchema = z.object({
     email: z.string().optional(),
     phone: z.string().optional(),
     faculty: z.string().optional(),
-  })).optional(),
+  })),
 });
 
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
 // Define the keys for our documents
-type DocKey = 'eventProposal' | 'budgetPlan' | 'riskAssessment' | 'supportingDocuments';
+type DocKey = 'eventProposal';
 
 type DocumentsState = {
   [key in DocKey]: File | null;
@@ -94,20 +99,27 @@ export default function SubmitProposalPage() {
 
   const [documents, setDocuments] = useState<DocumentsState>({
     eventProposal: null,
-    budgetPlan: null,
-    riskAssessment: null,
-    supportingDocuments: null,
   });
 
   const {
-    control, // Add control here
+    control,
     register,
     handleSubmit,
-    setValue, // Add setValue here
+    setValue,
     formState: { errors, isSubmitting }
-  } = useForm<ProposalFormData>({
+  } = useForm({
     resolver: zodResolver(proposalSchema),
     defaultValues: {
+      eventTitle: '',
+      eventDescription: '',
+      estimatedParticipants: 0,
+      participationFee: 0,
+      startDate: '',
+      endDate: '',
+      startTime: '',
+      endTime: '',
+      registrationDeadline: '',
+      proposedVenue: '',
       committeeMembers: []
     }
   });
@@ -141,15 +153,17 @@ export default function SubmitProposalPage() {
     setDocuments(prev => ({ ...prev, [field]: file }));
   };
 
-  const onSubmit = async (data: ProposalFormData) => {
+  const onSubmit = async (data: FieldValues) => {
+    const proposalData = data as ProposalFormData;
+
     if (!user) {
       toast.error('You must be logged in to submit a proposal');
       return;
     }
 
-    // Validate required documents (supportingDocuments is optional in some flows, but let's assume required here based on your previous code)
-    if (!documents.eventProposal || !documents.budgetPlan || !documents.riskAssessment || !documents.supportingDocuments) {
-      toast.error('Please upload all required documents');
+    // Validate required documents
+    if (!documents.eventProposal) {
+      toast.error('Please upload the Event Proposal');
       return;
     }
 
@@ -174,17 +188,24 @@ export default function SubmitProposalPage() {
         return acc;
       }, {} as Record<string, string>);
 
-      const proposalData = {
-        ...data,
+      const finalData = {
+        ...proposalData,
         organizerId: user?.id,
         organizerName: user?.name,
         documents: documentsUrls, // Send URLs, not filenames
         status: 'pending',
         submittedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        proposedDate: proposalData.startDate, // Map startDate to proposedDate for compatibility
+        startDate: proposalData.startDate,
+        endDate: proposalData.endDate,
+        startTime: proposalData.startTime,
+        endTime: proposalData.endTime,
+        registrationDeadline: proposalData.registrationDeadline,
+        participationFee: proposalData.participationFee,
       };
 
-      await createProposal(proposalData);
+      await createProposal(finalData);
 
       toast.success('Proposal submitted successfully! Awaiting admin approval.');
       router.push('/organizer/dashboard');
@@ -240,7 +261,7 @@ export default function SubmitProposalPage() {
               <div>
                 <h3 className="text-sm font-semibold text-blue-900 mb-1">Proposal Requirements</h3>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• All 4 documents must be submitted in PDF format</li>
+                  <li>• Event Proposal must include Kertas Kerja, Pemetaan MyCSD and Borang Permohonan</li>
                   <li>• Admin will review your proposal within 3-5 working days</li>
                   <li>• Once approved, you can create the full event details</li>
                   <li>• Rejected proposals can be revised and resubmitted</li>
@@ -262,7 +283,7 @@ export default function SubmitProposalPage() {
                   <input
                     type="text"
                     {...register('eventTitle')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="e.g., HackUSM 2026 - National Hackathon"
                   />
                   {errors.eventTitle && (
@@ -277,7 +298,7 @@ export default function SubmitProposalPage() {
                   <textarea
                     {...register('eventDescription')}
                     rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="Brief description of your event..."
                   />
                   {errors.eventDescription && (
@@ -292,7 +313,7 @@ export default function SubmitProposalPage() {
                     </label>
                     <select
                       {...register('category')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
                       <option value="">Select category</option>
                       <option value="sport">Sport</option>
@@ -316,7 +337,7 @@ export default function SubmitProposalPage() {
                     <input
                       type="number"
                       {...register('estimatedParticipants', { valueAsNumber: true })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder="100"
                     />
                     {errors.estimatedParticipants && (
@@ -325,29 +346,105 @@ export default function SubmitProposalPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Participation Fee (RM) <span className="text-gray-500 font-normal">(0 for free)</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register('participationFee', { valueAsNumber: true })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="0.00"
+                  />
+                  {errors.participationFee && (
+                    <p className="mt-1 text-sm text-red-600">{errors.participationFee.message}</p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Proposed Date <span className="text-red-500">*</span>
+                      Start Date <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
-                      {...register('proposedDate')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      {...register('startDate')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
-                    {errors.proposedDate && (
-                      <p className="mt-1 text-sm text-red-600">{errors.proposedDate.message}</p>
+                    {errors.startDate && (
+                      <p className="mt-1 text-sm text-red-600">{errors.startDate.message}</p>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Proposed Venue <span className="text-red-500">*</span>
+                      End Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      {...register('endDate')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    {errors.endDate && (
+                      <p className="mt-1 text-sm text-red-600">{errors.endDate.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      {...register('startTime')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    {errors.startTime && (
+                      <p className="mt-1 text-sm text-red-600">{errors.startTime.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      {...register('endTime')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    {errors.endTime && (
+                      <p className="mt-1 text-sm text-red-600">{errors.endTime.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Registration Deadline <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      {...register('registrationDeadline')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    {errors.registrationDeadline && (
+                      <p className="mt-1 text-sm text-red-600">{errors.registrationDeadline.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Venue <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       {...register('proposedVenue')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder="e.g., Dewan Utama USM"
                     />
                     {errors.proposedVenue && (
@@ -364,33 +461,9 @@ export default function SubmitProposalPage() {
 
               <div className="space-y-6">
                 <FileUploadField
-                  label="1. Event Proposal"
+                  label="Event Proposal"
                   field="eventProposal"
-                  description="Detailed event proposal including objectives, timeline, and expected outcomes"
-                  documents={documents}
-                  onFileChange={handleFileChange}
-                />
-
-                <FileUploadField
-                  label="2. Budget Plan"
-                  field="budgetPlan"
-                  description="Comprehensive budget breakdown including income and expenses"
-                  documents={documents}
-                  onFileChange={handleFileChange}
-                />
-
-                <FileUploadField
-                  label="3. Risk Assessment"
-                  field="riskAssessment"
-                  description="Safety and risk management plan for the event"
-                  documents={documents}
-                  onFileChange={handleFileChange}
-                />
-
-                <FileUploadField
-                  label="4. Supporting Documents"
-                  field="supportingDocuments"
-                  description="Additional documents such as partnership agreements, venue bookings, etc."
+                  description="Detailed event proposal including Kertas Kerja, Pemetaan MyCSD and Borang Permohonan Mengadakan Program"
                   documents={documents}
                   onFileChange={handleFileChange}
                 />

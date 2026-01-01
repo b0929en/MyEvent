@@ -666,11 +666,12 @@ export default function OrganizerDashboard() {
                       : 'Create your first event to get started'}
                   </p>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </main>
+              )
+              }
+            </div >
+          </div >
+        </div >
+      </main >
 
       <Footer />
 
@@ -730,6 +731,6 @@ export default function OrganizerDashboard() {
           </div>
         </div>
       </Modal>
-    </div>
+    </div >
   );
 }

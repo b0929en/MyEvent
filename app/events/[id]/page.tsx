@@ -22,7 +22,8 @@ import {
   User,
   Award,
   Share2,
-  ExternalLink
+  ExternalLink,
+  Edit
 } from 'lucide-react';
 
 import { uploadDocument } from '@/backend/services/storageService';
@@ -278,6 +279,15 @@ export default function EventDetailsPage() {
                 {/* Event Actions Card */}
                 <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
                   <div className="p-6">
+                    {user?.role === 'admin' && (
+                      <button
+                        onClick={() => router.push(`/organizer/events/${event.id}/edit`)}
+                        className="w-full mb-4 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Edit Event Details
+                      </button>
+                    )}
                     <div className="flex gap-5">
                       <button
                         onClick={handleRSVP}
@@ -296,8 +306,29 @@ export default function EventDetailsPage() {
 
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(window.location.href);
-                          toast.success('Link copied to clipboard!');
+                          if (navigator.clipboard && window.isSecureContext) {
+                            navigator.clipboard.writeText(window.location.href)
+                              .then(() => toast.success('Link copied to clipboard!'))
+                              .catch(() => toast.error('Failed to copy link'));
+                          } else {
+                            // Fallback for older browsers or non-secure contexts
+                            const textArea = document.createElement("textarea");
+                            textArea.value = window.location.href;
+                            textArea.style.position = "fixed";
+                            textArea.style.left = "-999999px";
+                            textArea.style.top = "-999999px";
+                            document.body.appendChild(textArea);
+                            textArea.focus();
+                            textArea.select();
+                            try {
+                              document.execCommand('copy');
+                              toast.success('Link copied to clipboard!');
+                            } catch (err) {
+                              console.error('Copy failed', err);
+                              toast.error('Failed to copy link');
+                            }
+                            textArea.remove();
+                          }
                         }}
                         className="p-3.5 rounded-full border border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-purple-600 cursor-pointer transition-colors flex items-center justify-center shrink-0 transition-all duration-300"
                         title="Share this event"
