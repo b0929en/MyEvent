@@ -102,6 +102,7 @@ export default function SubmitProposalPage() {
   const [documents, setDocuments] = useState<DocumentsState>({
     eventProposal: null,
   });
+  const [isAcknowledged, setIsAcknowledged] = useState(false);
 
   const {
     control,
@@ -257,16 +258,15 @@ export default function SubmitProposalPage() {
           </div>
 
           {/* Info Banner */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-8">
             <div className="flex gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-sm font-semibold text-blue-900 mb-1">Proposal Requirements</h3>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Event Proposal must include Kertas Kerja, Pemetaan MyCSD and Borang Permohonan</li>
-                  <li>• Admin will review your proposal within 3-5 working days</li>
-                  <li>• Once approved, you can create the full event details</li>
-                  <li>• Rejected proposals can be revised and resubmitted</li>
+                <h3 className="text-sm font-semibold text-purple-900 mb-1">Proposal Requirements</h3>
+                <ul className="text-sm text-purple-800 space-y-1">
+                  <li>• Event Proposal must include Kertas Kerja, Borang Pemetaan MyCSD and Borang Permohonan</li>
+                  <li>• Submitted proposal will be reviewed within 5-7 working days</li>
+                  <li>• Once event application is approved, you can create the event page with assigned secret key</li>
                 </ul>
               </div>
             </div>
@@ -275,7 +275,7 @@ export default function SubmitProposalPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             {/* Basic Information */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Event Information</h2>
 
               <div className="space-y-4">
                 <div>
@@ -285,8 +285,8 @@ export default function SubmitProposalPage() {
                   <input
                     type="text"
                     {...register('eventTitle')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="e.g., HackUSM 2026 - National Hackathon"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500"
+                    placeholder="Full event title (max 50 characters)"
                   />
                   {errors.eventTitle && (
                     <p className="mt-1 text-sm text-red-600">{errors.eventTitle.message}</p>
@@ -447,7 +447,7 @@ export default function SubmitProposalPage() {
                       type="text"
                       {...register('proposedVenue')}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="e.g., Dewan Utama USM"
+                      placeholder="Estimated venue"
                     />
                     {errors.proposedVenue && (
                       <p className="mt-1 text-sm text-red-600">{errors.proposedVenue.message}</p>
@@ -558,6 +558,22 @@ export default function SubmitProposalPage() {
               </div>
             </div>
 
+            {/* Acknowledgement */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="acknowledgement"
+                  checked={isAcknowledged}
+                  onChange={(e) => setIsAcknowledged(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                />
+                <label htmlFor="acknowledgement" className="text-sm text-gray-700 leading-relaxed cursor-pointer">
+                  I hereby declare that all information and documents submitted are authentic. The university management reserves the right to reject this proposal or revoke any approval if any information is found to be false.
+                </label>
+              </div>
+            </div>
+
             {/* Submit Buttons */}
             <div className="flex items-center justify-end gap-4">
               <Link
@@ -568,7 +584,7 @@ export default function SubmitProposalPage() {
               </Link>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isAcknowledged}
                 className="flex items-center gap-2 px-6 py-2 bg-linear-to-r from-purple-600 to-purple-700 text-white rounded-lg font-medium hover:from-purple-700 hover:to-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

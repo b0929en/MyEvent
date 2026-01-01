@@ -27,6 +27,7 @@ export default function OrganizerDashboard() {
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [approvedProposals, setApprovedProposals] = useState<Proposal[]>([]);
   const [actionProposals, setActionProposals] = useState<Proposal[]>([]);
+  const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
 
   // MyCSD Claim State
   const [showClaimModal, setShowClaimModal] = useState(false);
@@ -63,6 +64,9 @@ export default function OrganizerDashboard() {
 
             // Filter for Revision Needed or Rejected
             setActionProposals(myProposals.filter(p => p.status === 'revision_needed' || p.status === 'rejected'));
+
+            // Filter Pending
+            setPendingProposalsCount(myProposals.filter(p => p.status === 'pending').length);
           }
         } catch (error) {
           console.error('Error fetching events:', error);
@@ -249,7 +253,7 @@ export default function OrganizerDashboard() {
                 className="inline-flex items-center gap-2 bg-white border-2 border-purple-500 text-purple-600 px-6 py-3 rounded-full font-medium hover:bg-purple-50 transition-all"
               >
                 <Plus className="w-5 h-5" />
-                Publish Event
+                Create Event Page
               </Link>
             </div>
           </div>
@@ -356,11 +360,11 @@ export default function OrganizerDashboard() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Participants</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.totalParticipants}</p>
+                  <p className="text-sm text-gray-600 mb-1">Pending Requests</p>
+                  <p className="text-3xl font-bold text-gray-900">{pendingProposalsCount}</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-amber-600" />
                 </div>
               </div>
             </div>
