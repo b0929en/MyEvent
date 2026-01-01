@@ -17,7 +17,7 @@ type FilterRole = UserRole | 'all';
 export default function AdminUsersPage() {
   const { user, isLoading } = useRequireRole(['admin'], '/');
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<FilterRole>('all');
+  const [roleFilter, setRoleFilter] = useState<FilterRole>('organizer');
   const [usersList, setUsersList] = useState<User[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by name, email, or matric number..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                 />
               </div>
 
@@ -171,7 +171,7 @@ export default function AdminUsersPage() {
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value as FilterRole)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                 >
                   <option value="all">All Roles</option>
                   <option value="student">Students</option>
