@@ -37,7 +37,7 @@ const proposalSchema = z.object({
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
 // Document types
-type DocKeys = 'eventProposal' | 'budgetPlan' | 'riskAssessment' | 'supportingDocuments';
+type DocKeys = 'kertasKerja' | 'borangProgram' | 'borangMyCSD' | 'supportingDocuments';
 
 export default function EditProposalPage() {
   const params = useParams();
@@ -50,17 +50,17 @@ export default function EditProposalPage() {
 
   // State for files: New files selected by user
   const [newFiles, setNewFiles] = useState<{ [key in DocKeys]: File | null }>({
-    eventProposal: null,
-    budgetPlan: null,
-    riskAssessment: null,
+    kertasKerja: null,
+    borangProgram: null,
+    borangMyCSD: null,
     supportingDocuments: null,
   });
 
   // State for existing paths: URLs/Paths already in DB
   const [existingPaths, setExistingPaths] = useState<{ [key in DocKeys]: string | null }>({
-    eventProposal: null,
-    budgetPlan: null,
-    riskAssessment: null,
+    kertasKerja: null,
+    borangProgram: null,
+    borangMyCSD: null,
     supportingDocuments: null,
   });
 
@@ -139,9 +139,9 @@ export default function EditProposalPage() {
 
         // Load existing paths
         setExistingPaths({
-          eventProposal: proposal.documents.eventProposal || null,
-          budgetPlan: proposal.documents.budgetPlan || null,
-          riskAssessment: proposal.documents.riskAssessment || null,
+          kertasKerja: proposal.documents.kertasKerja || proposal.documents.eventProposal || null,
+          borangProgram: proposal.documents.borangProgram || null,
+          borangMyCSD: proposal.documents.borangMyCSD || null,
           supportingDocuments: proposal.documents.supportingDocuments || null,
         });
 
@@ -176,8 +176,8 @@ export default function EditProposalPage() {
       await Promise.all(uploadPromises);
 
       // Verify we have all required docs (either existing or new)
-      if (!updatedDocuments.eventProposal || !updatedDocuments.budgetPlan || !updatedDocuments.riskAssessment) {
-        toast.error("Please ensure all required documents are uploaded.");
+      if (!updatedDocuments.kertasKerja || !updatedDocuments.borangProgram) {
+        toast.error("Please ensure all required documents (Kertas Kerja, Borang Program) are uploaded.");
         return;
       }
 
@@ -344,9 +344,9 @@ export default function EditProposalPage() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Required Documents</h2>
               <div className="space-y-3">
-                <FileUploadRow label="1. Event Proposal" docKey="eventProposal" />
-                <FileUploadRow label="2. Budget Plan" docKey="budgetPlan" />
-                <FileUploadRow label="3. Risk Assessment" docKey="riskAssessment" />
+                <FileUploadRow label="1. Kertas Kerja (Event Proposal)" docKey="kertasKerja" required={true} />
+                <FileUploadRow label="2. Borang Permohonan (Program Form)" docKey="borangProgram" required={true} />
+                <FileUploadRow label="3. Borang Pemetaan MyCSD" docKey="borangMyCSD" required={false} />
                 <FileUploadRow label="4. Supporting Documents" docKey="supportingDocuments" required={false} />
               </div>
             </div>

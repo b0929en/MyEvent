@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useRequireRole } from '@/contexts/AuthContext';
 import { getEvents } from '@/backend/services/eventService';
-import { getAllProposals, Proposal } from '@/backend/services/proposalService';
+import { getAllProposals, Proposal, updateProposalStatus } from '@/backend/services/proposalService';
 import { submitMyCSDClaim } from '@/backend/services/mycsdService';
 import { uploadDocument } from '@/backend/services/storageService';
 import { Event } from '@/types';
@@ -34,6 +34,10 @@ export default function OrganizerDashboard() {
   const [selectedEventForClaim, setSelectedEventForClaim] = useState<Event | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [laporanFile, setLaporanFile] = useState<File | null>(null);
+
+  // Dismiss Modal State
+  const [showDismissModal, setShowDismissModal] = useState(false);
+  const [proposalToDismiss, setProposalToDismiss] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState(''); // Input value
   const [searchQuery, setSearchQuery] = useState(''); // Actual filter value
@@ -89,6 +93,27 @@ export default function OrganizerDashboard() {
     setSearchQuery(searchTerm);
   };
 
+  const handleAcknowledge = (proposalId: string) => {
+    setProposalToDismiss(proposalId);
+    setShowDismissModal(true);
+  };
+
+  const confirmDismiss = async () => {
+    if (!proposalToDismiss) return;
+
+    try {
+      await updateProposalStatus(proposalToDismiss, 'cancelled');
+      // Update local state to remove it immediately
+      setActionProposals(prev => prev.filter(p => p.id !== proposalToDismiss));
+      toast.success("Proposal dismissed.");
+      setShowDismissModal(false);
+      setProposalToDismiss(null);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to dismiss proposal.");
+    }
+  };
+
   const filteredAndSortedEvents = useMemo(() => {
     let result = [...organizerEvents];
 
@@ -109,6 +134,9 @@ export default function OrganizerDashboard() {
       } else {
         result = result.filter(event => (event.status as string) === statusFilter);
       }
+    } else {
+      // Default: Hide Cancelled events unless specifically filtered
+      result = result.filter(event => event.status !== 'cancelled');
     }
 
     // 3. Sort
@@ -282,15 +310,28 @@ export default function OrganizerDashboard() {
                       </div>
 
                       {/* THIS IS THE BUTTON THAT LINKS TO THE REVISION PAGE */}
-                      {proposal.status === 'revision_needed' && (
-                        <Link
-                          href={`/organizer/proposals/${proposal.id}/edit`}
-                          className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors font-medium text-sm border border-orange-200"
-                        >
-                          <Edit className="w-4 h-4" />
-                          Resubmit Proposal
-                        </Link>
-                      )}
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        {proposal.status === 'revision_needed' && (
+                          <Link
+                            href={`/organizer/proposals/${proposal.id}/edit`}
+                            className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors font-medium text-sm border border-orange-200"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Resubmit Proposal
+                          </Link>
+                        )}
+
+                        {proposal.status === 'rejected' && (
+                          <button
+                            onClick={() => handleAcknowledge(proposal.id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium text-sm border border-red-200"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Acknowledge & Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Display Admin Notes */}
@@ -731,6 +772,41 @@ export default function OrganizerDashboard() {
               ) : (
                 'Submit & Distribute'
               )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Dismiss Confirmation Modal */}
+      <Modal
+        isOpen={showDismissModal}
+        onClose={() => setShowDismissModal(false)}
+        title="Dismiss Message"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-900">Are you sure you want to dismiss this message?</p>
+              <p className="text-sm text-red-800 mt-1">
+                This will remove the rejected proposal from your dashboard view.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setShowDismissModal(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDismiss}
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Dismiss Message
             </button>
           </div>
         </div>

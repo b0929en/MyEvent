@@ -224,8 +224,8 @@ export default function ProposalsPage() {
                   key={status}
                   onClick={() => setStatusFilter(status)}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {status === 'all' ? 'All' : status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -275,20 +275,29 @@ export default function ProposalsPage() {
                   <div className="mb-4">
                     <p className="text-sm font-semibold text-gray-700 mb-2">Detailed Proposal:</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {proposal.documents.eventProposal ? (
-                        <a
-                          href={proposal.documents.eventProposal}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors"
-                        >
-                          <FileText className="w-4 h-4 text-black" />
-                          <span className="truncate text-black">View Proposal</span>
-                          <Download className="w-3 h-3 ml-auto text-black" />
-                        </a>
-                      ) : (
-                        <span className="text-gray-500 text-sm italic">No Document</span>
-                      )}
+                      {(['kertasKerja', 'borangProgram', 'borangMyCSD', 'supportingDocuments'] as const).map((key) => {
+                        const docUrl = proposal.documents[key];
+                        const labels: Record<string, string> = {
+                          kertasKerja: 'Kertas Kerja',
+                          borangProgram: 'Borang Permohonan',
+                          borangMyCSD: 'Borang MyCSD',
+                          supportingDocuments: 'Supporting Docs'
+                        };
+
+                        return docUrl ? (
+                          <a
+                            key={key}
+                            href={docUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors border border-gray-200 max-w-full"
+                          >
+                            <FileText className="w-4 h-4 text-purple-600 shrink-0" />
+                            <span className="truncate text-gray-700 font-medium overflow-hidden whitespace-nowrap">{labels[key]}</span>
+                            <Download className="w-3 h-3 ml-auto text-gray-400 shrink-0" />
+                          </a>
+                        ) : null;
+                      })}
                     </div>
                   </div>
 
@@ -388,10 +397,10 @@ export default function ProposalsPage() {
                 onClick={submitReview}
                 disabled={reviewAction !== 'approve' && !adminNotes.trim()}
                 className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${reviewAction === 'approve'
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : reviewAction === 'reject'
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-orange-600 hover:bg-orange-700 text-white'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : reviewAction === 'reject'
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-orange-600 hover:bg-orange-700 text-white'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 Confirm {reviewAction === 'approve' ? 'Approval' : reviewAction === 'reject' ? 'Rejection' : 'Revision Request'}

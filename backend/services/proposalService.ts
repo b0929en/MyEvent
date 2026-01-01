@@ -13,10 +13,14 @@ export interface Proposal {
   proposedDate: string | null | undefined;
   proposedVenue: string | null | undefined;
   documents: {
-    eventProposal: string;
+    kertasKerja: string;
+    borangProgram: string;
+    borangMyCSD?: string;
+    supportingDocuments?: string;
+    // Legacy support
+    eventProposal?: string;
     budgetPlan?: string;
     riskAssessment?: string;
-    supportingDocuments?: string;
   } | Record<string, string | undefined>;
   status: 'draft' | 'pending' | 'approved' | 'rejected' | 'revision_needed' | 'published' | 'completed' | 'cancelled';
   adminNotes?: string;
@@ -34,14 +38,20 @@ const parseDocuments = (fileString: string | null) => {
     // Try parsing as JSON (New format with multiple files)
     const docs = JSON.parse(fileString);
     return {
-      eventProposal: docs.eventProposal || '',
-      budgetPlan: docs.budgetPlan || '',
-      riskAssessment: docs.riskAssessment || '',
-      supportingDocuments: docs.supportingDocuments || ''
+      kertasKerja: docs.kertasKerja || docs.eventProposal || '', // Fallback to eventProposal for legacy
+      borangProgram: docs.borangProgram || '',
+      borangMyCSD: docs.borangMyCSD || '',
+      supportingDocuments: docs.supportingDocuments || '',
+      // Keep legacy keys just in case
+      eventProposal: docs.eventProposal,
+      budgetPlan: docs.budgetPlan,
+      riskAssessment: docs.riskAssessment
     };
   } catch {
     // Fallback: It's a legacy single string (Old format)
     return {
+      kertasKerja: fileString, // Map legacy single file to kertasKerja
+      borangProgram: '',
       eventProposal: fileString,
     };
   }

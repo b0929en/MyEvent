@@ -267,10 +267,10 @@ export type EventProposal = {
   proposedDate: string;
   proposedVenue: string;
   documents: {
-    eventProposal: string; // PDF file path/URL
-    budgetPlan: string;
-    riskAssessment: string;
-    supportingDocuments: string;
+    kertasKerja: string;
+    borangProgram: string;
+    borangMyCSD?: string;
+    supportingDocuments?: string;
   };
   status: ProposalStatus;
   adminNotes?: string;
@@ -583,9 +583,9 @@ export type ProposalCreateInput = {
   participationFee: number;
   proposedVenue: string;
   documents: Record<string, string> | {
-    eventProposal: string;
-    budgetPlan?: string;
-    riskAssessment?: string;
+    kertasKerja: string;
+    borangProgram: string;
+    borangMyCSD?: string;
     supportingDocuments?: string;
   };
   committeeMembers?: CommitteeMember[];
@@ -638,9 +638,9 @@ export type EventUpdateInput = Partial<{
 }>;
 
 export type DocumentsInput = {
-  eventProposal?: string | null;
-  budgetPlan?: string | null;
-  riskAssessment?: string | null;
+  kertasKerja?: string | null;
+  borangProgram?: string | null;
+  borangMyCSD?: string | null;
   supportingDocuments?: string | null;
 };
 

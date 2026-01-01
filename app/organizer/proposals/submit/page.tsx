@@ -44,7 +44,7 @@ const proposalSchema = z.object({
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
 // Define the keys for our documents
-type DocKey = 'eventProposal';
+type DocKey = 'kertasKerja' | 'borangProgram' | 'borangMyCSD' | 'supportingDocuments';
 
 type DocumentsState = {
   [key in DocKey]: File | null;
@@ -100,7 +100,10 @@ export default function SubmitProposalPage() {
   const { user, isLoading: authLoading } = useRequireRole(['organizer'], '/');
 
   const [documents, setDocuments] = useState<DocumentsState>({
-    eventProposal: null,
+    kertasKerja: null,
+    borangProgram: null,
+    borangMyCSD: null,
+    supportingDocuments: null,
   });
   const [isAcknowledged, setIsAcknowledged] = useState(false);
 
@@ -165,8 +168,12 @@ export default function SubmitProposalPage() {
     }
 
     // Validate required documents
-    if (!documents.eventProposal) {
-      toast.error('Please upload the Event Proposal');
+    if (!documents.kertasKerja) {
+      toast.error('Please upload the Kertas Kerja');
+      return;
+    }
+    if (!documents.borangProgram) {
+      toast.error('Please upload the Borang Permohonan Mengadakan Program');
       return;
     }
 
@@ -174,14 +181,16 @@ export default function SubmitProposalPage() {
       toast.info('Uploading documents...');
 
       // Upload all files in parallel
-      const uploadPromises = (Object.keys(documents) as DocKey[]).map(async (key) => {
-        const file = documents[key];
-        if (!file) throw new Error(`Missing file: ${key}`);
+      const uploadPromises = (Object.keys(documents) as DocKey[])
+        .filter(key => documents[key] !== null)
+        .map(async (key) => {
+          const file = documents[key];
+          if (!file) throw new Error(`Missing file: ${key}`);
 
-        const path = `proposals/${user.id}/${Date.now()}-${key}-${file.name}`;
-        const url = await uploadDocument(file, path);
-        return { key, url };
-      });
+          const path = `proposals/${user.id}/${Date.now()}-${key}-${file.name}`;
+          const url = await uploadDocument(file, path);
+          return { key, url };
+        });
 
       const uploadedFiles = await Promise.all(uploadPromises);
 
@@ -463,12 +472,59 @@ export default function SubmitProposalPage() {
 
               <div className="space-y-6">
                 <FileUploadField
-                  label="Event Proposal"
-                  field="eventProposal"
-                  description="Detailed event proposal including Kertas Kerja, Pemetaan MyCSD and Borang Permohonan Mengadakan Program"
+                  label="Kertas Kerja (Event Proposal)"
+                  field="kertasKerja"
+                  description="Detailed proposal of the event (Compulsory)"
                   documents={documents}
                   onFileChange={handleFileChange}
                 />
+
+                <FileUploadField
+                  label="Borang Permohonan Mengadakan Program"
+                  field="borangProgram"
+                  description="Official application form from HEP/BHEPA (Compulsory)"
+                  documents={documents}
+                  onFileChange={handleFileChange}
+                />
+
+                <FileUploadField
+                  label="Borang Pemetaan MyCSD"
+                  field="borangMyCSD"
+                  description="Required only if applying for MyCSD points (Optional)"
+                  documents={documents}
+                  onFileChange={handleFileChange}
+                />
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Supporting Documents
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-purple-500 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="shrink-0">
+                        <FileText className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-700 font-medium mb-1">Additional supporting files (Optional)</p>
+                        <p className="text-xs text-gray-500 mb-2">PDF format, max 10MB</p>
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          onChange={(e) => handleFileChange('supportingDocuments', e.target.files?.[0] || null)}
+                          className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                        />
+                      </div>
+                    </div>
+                    {documents.supportingDocuments && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-sm text-green-600 flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          {documents.supportingDocuments.name}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
