@@ -36,9 +36,8 @@ export default function Footer() {
               Support
             </h3>
             <ul className="space-y-2">
-              <li><Link href="#" className="text-gray-300 hover:text-white transition-colors duration-300">Report Problem</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white transition-colors duration-300">Event Guides</Link></li>
-              <li><Link href="#" className="text-gray-300 hover:text-white transition-colors duration-300">FAQ</Link></li>
+              <li><Link href="mailto:bhepa@usm.my" className="text-gray-300 hover:text-white transition-colors duration-300">Report Issue</Link></li>
+              <li><Link href="https://hepa.eng.usm.my/index.php/muat-turun" target="_blank" className="text-gray-300 hover:text-white transition-colors duration-300">Document Reference</Link></li>
             </ul>
           </div>
 
@@ -78,7 +77,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="mt-12 py-6 border-t border-white/30 text-center">
           <p className="text-gray-400 text-sm">
-            All Rights Reserved | MyEvent@USM © 2025
+            All Rights Reserved | MyEvent@USM © 2026
           </p>
         </div>
       </div>

@@ -42,7 +42,7 @@ export default function Header() {
           <nav className="hidden md:flex items-center space-x-10">
             <Link
               href="/"
-              className={`flex items-center gap-1 transition-colors ${isActive('/') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
+              className={`flex items-center gap-1 font-medium transition-colors ${isActive('/') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
             >
               Home
             </Link>
@@ -83,20 +83,21 @@ export default function Header() {
 
             {isAuthenticated ? (
               <>
-                <Link
+                {/* <Link
                   href="/notifications"
                   className={`relative flex items-center gap-1 transition-colors ${isActive('/notifications') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
                 >
                   Notifications
-                  {/* Unread badge - backend will provide count */}
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </Link>
-                <Link
-                  href="/profile"
-                  className={`flex items-center gap-1 transition-colors ${isActive('/profile') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
-                >
-                  Profile
-                </Link>
+                </Link> */}
+                {user?.role === 'student' && (
+                  <Link
+                    href="/profile"
+                    className={`flex items-center gap-1 transition-colors ${isActive('/profile') ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'}`}
+                  >
+                    Profile
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-1 text-red-600 hover:text-red-700 transition-colors"
@@ -182,14 +183,16 @@ export default function Header() {
                     Notifications
                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
                   </Link>
-                  <Link
-                    href="/profile"
-                    className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <User className="w-4 h-4" />
-                    Profile
-                  </Link>
+                  {user?.role === 'student' && (
+                    <Link
+                      href="/profile"
+                      className="flex items-center gap-2 text-gray-700 hover:text-orange-500 font-medium py-2 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <User className="w-4 h-4" />
+                      Profile
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       handleLogout();

@@ -250,17 +250,21 @@ export default function EventDetailsPage() {
             <div className="lg:col-span-2">
               {/* Event Title, Organizer and Badges */}
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
-                <p className="text-xl text-gray-600 mb-4">Organized by: {event.organizerName}</p>
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">{event.title}</h1>
+                <p className="text-lg text-gray-600 mb-4">Organized by: {event.organizerName}</p>
                 <div className="flex flex-wrap gap-3">
+                  <span className="px-4 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full capitalize">
+                    {event.category}
+                  </span>
+
                   {event.hasMyCSD && (
-                    <span className="px-4 py-1 bg-orange-500 text-white text-sm font-medium rounded-full">
+                    <span className="px-4 py-1 bg-orange-500 text-white text-sm font-semibold rounded-full">
                       MyCSD Available
                     </span>
                   )}
 
                   {event.hasMyCSD && event.mycsdLevel && (
-                    <span className="px-4 py-1 bg-purple-400 text-white text-sm font-medium rounded-full capitalize">
+                    <span className="px-4 py-1 bg-purple-400 text-white text-sm font-semibold rounded-full capitalize">
                       {event.mycsdLevel.replace('_', ' ')}
                     </span>
                   )}
@@ -268,7 +272,7 @@ export default function EventDetailsPage() {
               </div>
             </div>
 
-            {/* Right Sidebar (Non-sticky) */}
+            {/* Right Sidebar */}
             <div className="lg:col-span-1">
               <div className="space-y-6">
                 {/* Event Actions Card */}
@@ -310,9 +314,9 @@ export default function EventDetailsPage() {
           {/* Full Width Content Sections */}
           <div className="mt-10 space-y-10">
             {/* General Information Grid */}
-            <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">General Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <section className="bg-white rounded-2xl px-8 py-6 shadow-sm border border-gray-100">
+              <h2 className="text-2xl font-bold text-gray-900 mb-8">General Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2">
 
                 {/* Date */}
                 <div className="flex items-start gap-4">

@@ -4,26 +4,26 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useRequireRole } from '@/contexts/AuthContext';
-import { getEvents, deleteEvent } from '@/backend/services/eventService';
+import { getEvents } from '@/backend/services/eventService';
 import { getAllProposals, Proposal } from '@/backend/services/proposalService';
 import { submitMyCSDClaim } from '@/backend/services/mycsdService';
 import { uploadDocument } from '@/backend/services/storageService';
 import { Event } from '@/types';
 import { format } from 'date-fns';
 import {
-  Plus, Calendar, Users, TrendingUp, Edit, Trash2, Eye,
+  Plus, Calendar, Users, TrendingUp, Edit, Eye,
   CheckCircle, XCircle, Clock, Copy, Award, Upload, Globe,
-  FileText, Ban, AlertCircle
+  FileText, Ban, AlertCircle, Search, ArrowRight, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import Modal from '@/components/Modal';
+import Breadcrumb from '@/components/Breadcrumb';
 
-type TabType = 'all' | 'published' | 'pending_approval' | 'draft' | 'completed' | 'mycsd_claimed' | 'mycsd_failed_to_claim';
+const ITEMS_PER_PAGE = 10;
 
 export default function OrganizerDashboard() {
   const { user, isLoading } = useRequireRole(['organizer'], '/');
-  const [activeTab, setActiveTab] = useState<TabType>('all');
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [approvedProposals, setApprovedProposals] = useState<Proposal[]>([]);
   const [actionProposals, setActionProposals] = useState<Proposal[]>([]);
@@ -33,6 +33,16 @@ export default function OrganizerDashboard() {
   const [selectedEventForClaim, setSelectedEventForClaim] = useState<Event | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [laporanFile, setLaporanFile] = useState<File | null>(null);
+
+  const [searchTerm, setSearchTerm] = useState(''); // Input value
+  const [searchQuery, setSearchQuery] = useState(''); // Actual filter value
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Event | null; direction: 'asc' | 'desc' }>({
+    key: 'startDate',
+    direction: 'desc', // Default to newest first
+  });
+
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -51,31 +61,74 @@ export default function OrganizerDashboard() {
             // Filter Approved
             setApprovedProposals(myProposals.filter(p => p.status === 'approved'));
 
-            // NEW: Filter for Revision Needed or Rejected to show comments
+            // Filter for Revision Needed or Rejected
             setActionProposals(myProposals.filter(p => p.status === 'revision_needed' || p.status === 'rejected'));
           }
         } catch (error) {
           console.error('Error fetching events:', error);
+          toast.error('Failed to load events');
         }
       }
     };
 
-    fetchEvents();
+    if (!isLoading && user) {
+      fetchEvents();
+    }
   }, [user, isLoading]);
 
-  const filteredEvents = useMemo(() => {
-    if (activeTab === 'all') return organizerEvents;
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
-    if (activeTab === 'mycsd_claimed') {
-      return organizerEvents.filter(event => event.status === 'completed' && event.hasMyCSD && event.mycsdStatus === 'approved');
+  const handleSearch = () => {
+    setSearchQuery(searchTerm);
+  };
+
+  const filteredAndSortedEvents = useMemo(() => {
+    let result = [...organizerEvents];
+
+    // 1. Filter by Search Query (Title)
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      result = result.filter(event =>
+        event.title.toLowerCase().includes(lowerQuery)
+      );
     }
 
-    if (activeTab === 'mycsd_failed_to_claim') {
-      return organizerEvents.filter(event => event.status === 'completed' && event.hasMyCSD && event.mycsdStatus === 'rejected');
+    // 2. Filter by Status
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'mycsd_claimed') {
+        result = result.filter(event => event.status === 'completed' && event.hasMyCSD && event.mycsdStatus === 'approved');
+      } else if (statusFilter === 'mycsd_failed_to_claim') {
+        result = result.filter(event => event.status === 'completed' && event.hasMyCSD && event.mycsdStatus === 'rejected');
+      } else {
+        result = result.filter(event => (event.status as string) === statusFilter);
+      }
     }
 
-    return organizerEvents.filter(event => event.status === (activeTab as string));
-  }, [organizerEvents, activeTab]);
+    // 3. Sort
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        const aValue = a[sortConfig.key as keyof Event];
+        const bValue = b[sortConfig.key as keyof Event];
+
+        // Handle specific sort keys if needed (e.g., dates are strings, so string comparison works fine for ISO dates)
+
+        if ((aValue as any) < (bValue as any)) return sortConfig.direction === 'asc' ? -1 : 1;
+        if ((aValue as any) > (bValue as any)) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [organizerEvents, searchQuery, statusFilter, sortConfig]);
+
+  const totalPages = Math.ceil(filteredAndSortedEvents.length / ITEMS_PER_PAGE);
+  const paginatedEvents = filteredAndSortedEvents.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const stats = useMemo(() => {
     const totalEvents = organizerEvents.length;
@@ -88,45 +141,57 @@ export default function OrganizerDashboard() {
     return { totalEvents, totalParticipants, upcomingEvents, publishedEvents };
   }, [organizerEvents]);
 
+  const handleSort = (key: 'startDate' | 'status') => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  };
+
   const handleClaimMyCSD = async () => {
     if (!selectedEventForClaim || !laporanFile) return;
 
     setIsClaiming(true);
     try {
-      const path = `documents/${selectedEventForClaim.id}/${Date.now()}-${laporanFile.name}`;
-      const url = await uploadDocument(laporanFile, path);
+      const laporanUrl = await uploadDocument(laporanFile, 'laporan_kejayaan');
 
-      await submitMyCSDClaim(
-        selectedEventForClaim.id,
-        url,
-        selectedEventForClaim.mycsdLevel || '',
-        selectedEventForClaim.mycsdCategory || ''
-      );
+      // Pass level and category to the service
+      const level = selectedEventForClaim.mycsdLevel || 'P.Pengajian / Desasiswa / Persatuan / Kelab';
+      const category = selectedEventForClaim.mycsdCategory || 'Reka Cipta dan Inovasi';
 
-      toast.success('Laporan submitted successfully! Points will be distributed upon admin approval.');
+      await submitMyCSDClaim(selectedEventForClaim.id, laporanUrl, level, category);
+
+      toast.success('MyCSD claim submitted successfully!');
       setShowClaimModal(false);
-      setLaporanFile(null);
-    } catch (error: unknown) {
-      console.error('Error claiming MyCSD:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to submit MyCSD claim';
-      toast.error(errorMessage);
+
+      // Refresh events
+      if (user?.organizationId) {
+        const allEvents = await getEvents();
+        if (allEvents) {
+          setOrganizerEvents(allEvents.filter(event =>
+            event.organizerId === user.organizationId
+          ));
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting MyCSD claim:', error);
+      toast.error('Failed to submit claim. Please try again.');
     } finally {
       setIsClaiming(false);
+      setLaporanFile(null);
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'published': return <Globe className="w-4 h-4" />;
-      case 'completed': return <CheckCircle className="w-4 h-4" />;
-      case 'pending_approval': return <Clock className="w-4 h-4" />;
-      case 'draft': return <FileText className="w-4 h-4" />;
-      case 'rejected': return <XCircle className="w-4 h-4" />;
-      case 'cancelled': return <Ban className="w-4 h-4" />;
-      case 'revision_needed': return <AlertCircle className="w-4 h-4" />;
-      case 'mycsd_claimed': return <Award className="w-4 h-4" />;
-      case 'mycsd_failed_to_claim': return <AlertCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
+      case 'published': return <Globe className="w-3 h-3" />;
+      case 'completed': return <CheckCircle className="w-3 h-3" />;
+      case 'pending_approval': return <Clock className="w-3 h-3" />;
+      case 'draft': return <FileText className="w-3 h-3" />;
+      case 'cancelled': return <Ban className="w-3 h-3" />;
+      case 'mycsd_claimed': return <Award className="w-3 h-3" />;
+      case 'mycsd_failed_to_claim': return <AlertCircle className="w-3 h-3" />;
+      default: return null;
     }
   };
 
@@ -135,42 +200,53 @@ export default function OrganizerDashboard() {
       case 'published': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
       case 'completed': return 'bg-blue-100 text-blue-800 border border-blue-200';
       case 'pending_approval': return 'bg-amber-100 text-amber-800 border border-amber-200';
-      case 'draft': return 'bg-slate-100 text-slate-700 border border-slate-200';
-      case 'rejected': return 'bg-red-100 text-red-800 border border-red-200';
-      case 'cancelled': return 'bg-gray-100 text-gray-500 border border-gray-200 line-through';
-      case 'revision_needed': return 'bg-orange-100 text-orange-800 border border-orange-200';
-      case 'mycsd_claimed': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
-      case 'mycsd_failed_to_claim': return 'bg-red-100 text-red-800 border border-red-200';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'draft': return 'bg-gray-100 text-gray-800 border border-gray-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border border-red-200';
+      case 'mycsd_claimed': return 'bg-purple-100 text-purple-800 border border-purple-200';
+      case 'mycsd_failed_to_claim': return 'bg-red-50 text-red-600 border border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border border-gray-200';
     }
   };
 
-  if (isLoading) return null;
-  if (!user) return null;
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12 min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
 
       <main className="grow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <Breadcrumb
+            items={[
+              { label: 'Home', href: '/' },
+              { label: 'Organizer Dashboard' }
+            ]}
+          />
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Organizer Dashboard</h1>
-              <p className="mt-1 text-gray-600">Manage your events and proposals</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+                <span className="text-purple-900">Organizer</span> <span className="text-orange-500">Dashboard</span>
+              </h1>
+              <p className="mt-2 text-gray-600">Manage your events and proposals</p>
             </div>
             <div className="mt-4 md:mt-0 flex gap-3">
               <Link
                 href="/organizer/proposals/submit"
-                className="inline-flex items-center gap-2 bg-white border-2 border-purple-600 text-purple-600 px-6 py-3 rounded-full font-medium hover:bg-purple-50 transition-all shadow-md"
+                className="inline-flex items-center gap-2 bg-white border-2 border-purple-500 text-purple-600 px-6 py-3 rounded-full font-medium hover:bg-purple-50 transition-all"
               >
                 <Plus className="w-5 h-5" />
                 Submit Proposal
               </Link>
               <Link
                 href="/organizer/events/create"
-                className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-6 py-3 rounded-full font-medium hover:bg-purple-200 transition-all shadow-md"
+                className="inline-flex items-center gap-2 bg-white border-2 border-purple-500 text-purple-600 px-6 py-3 rounded-full font-medium hover:bg-purple-50 transition-all"
               >
                 <Plus className="w-5 h-5" />
                 Publish Event
@@ -179,6 +255,7 @@ export default function OrganizerDashboard() {
           </div>
 
           {/* Proposals Needing Attention Section */}
+          {/* ... (Proposals section remains unchanged until line 285) ... */}
           {actionProposals.length > 0 && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-8">
               <h2 className="text-lg font-semibold text-orange-800 mb-4 flex items-center gap-2">
@@ -313,232 +390,281 @@ export default function OrganizerDashboard() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="bg-white rounded-lg shadow-md mb-6">
-            <div className="border-b border-gray-200">
-              <nav className="flex -mb-px overflow-x-auto">
-                {[
-                  { key: 'all', label: 'All', count: organizerEvents.length },
-                  { key: 'published', label: 'Published', count: organizerEvents.filter(e => e.status === 'published').length },
-                  { key: 'completed', label: 'Completed', count: organizerEvents.filter(e => e.status === 'completed').length },
-                  { key: 'pending_approval', label: 'Pending', count: organizerEvents.filter(e => e.status === 'pending_approval').length },
-                  { key: 'draft', label: 'Draft', count: organizerEvents.filter(e => e.status === 'draft').length },
-                  {
-                    key: 'mycsd_claimed',
-                    label: 'Claimed',
-                    count: organizerEvents.filter(e => e.status === 'completed' && e.hasMyCSD && e.mycsdStatus === 'approved').length
-                  },
-                  {
-                    key: 'mycsd_failed_to_claim',
-                    label: 'Failed Claim',
-                    count: organizerEvents.filter(e => e.status === 'completed' && e.hasMyCSD && e.mycsdStatus === 'rejected').length
-                  },
-                ].map(tab => (
+          {/* Event Controls */}
+          <div className="bg-white rounded-lg shadow-md mb-6 p-4 border border-gray-100">
+            <div className="flex flex-col md:flex-row gap-4 justify-between">
+              {/* Search - Left Side */}
+              <div className="flex w-full md:w-96 gap-2">
+                <div className="relative flex-grow">
+                  <input
+                    type="text"
+                    placeholder="Search events by title..."
+                    className="block w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm text-gray-900"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
                   <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key as TabType)}
-                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.key
-                      ? 'border-purple-600 text-purple-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                    onClick={handleSearch}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-purple-600 transition-colors"
                   >
-                    {tab.label} ({tab.count})
+                    <Search className="w-5 h-5" />
                   </button>
-                ))}
-              </nav>
+                </div>
+              </div>
+
+              {/* Filters - Right Side */}
+              <div className="flex gap-4">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="block w-full md:w-48 pl-3 pr-10 py-2 text-base text-gray-800 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-lg"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="published">Published</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending_approval">Pending Approval</option>
+                  <option value="draft">Draft</option>
+                  <option value="mycsd_claimed">MyCSD Claimed</option>
+                  <option value="mycsd_failed_to_claim">MyCSD Failed</option>
+                </select>
+              </div>
             </div>
+          </div>
 
-            {/* Events Table */}
+          {/* Events Table Container */}
+          <div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden border border-gray-100">
             <div className="overflow-x-auto">
-              {filteredEvents.length > 0 ? (
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Event
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Participants
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredEvents.map(event => {
-                      // Calculate display status including MyCSD states
-                      const displayStatus = (event.status === 'completed' && event.hasMyCSD)
-                        ? (event.mycsdStatus === 'approved' ? 'mycsd_claimed'
-                          : event.mycsdStatus === 'rejected' ? 'mycsd_failed_to_claim'
-                            : event.status)
-                        : event.status;
+              {filteredAndSortedEvents.length > 0 ? (
+                <>
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Event
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('startDate')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Date
+                            {sortConfig.key === 'startDate' && (
+                              <span className="text-gray-400">
+                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Participants
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('status')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Status
+                            {sortConfig.key === 'status' && (
+                              <span className="text-gray-400">
+                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedEvents.map(event => {
+                        // Calculate display status including MyCSD states
+                        const displayStatus = (event.status === 'completed' && event.hasMyCSD)
+                          ? (event.mycsdStatus === 'approved' ? 'mycsd_claimed'
+                            : event.mycsdStatus === 'rejected' ? 'mycsd_failed_to_claim'
+                              : event.status)
+                          : event.status;
 
-                      return (
-                        <tr key={event.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {event.title}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {event.category}
+                        return (
+                          <tr key={event.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {event.title}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {event.category}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {format(new Date(event.startDate), 'MMM dd, yyyy')}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {event.startTime}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {event.registeredCount} / {event.capacity}
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                              <div
-                                className="bg-purple-600 h-2 rounded-full"
-                                style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
-                              ></div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusColor(displayStatus)}`}>
-                              {getStatusIcon(displayStatus)}
-                              {displayStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex items-center gap-2">
-                              <Link
-                                href={`/events/${event.id}`}
-                                className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
-                                title="View"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Link>
-
-                              {/* Allow edit only if not completed/cancelled */}
-                              {event.status !== 'completed' && event.status !== 'cancelled' && (
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {format(new Date(event.startDate), 'MMM dd, yyyy')}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {event.startTime}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {event.registeredCount} / {event.capacity}
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                                <div
+                                  className="bg-purple-600 h-2 rounded-full"
+                                  style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
+                                ></div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusColor(displayStatus)}`}>
+                                {getStatusIcon(displayStatus)}
+                                {displayStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex items-center gap-2">
+                                {/* View Action */}
                                 <Link
-                                  href={`/organizer/events/${event.id}/edit`}
-                                  className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded transition-colors"
-                                  title="Edit"
+                                  href={`/events/${event.id}`}
+                                  className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
+                                  title="View"
                                 >
-                                  <Edit className="w-4 h-4" />
+                                  <Eye className="w-4 h-4" />
                                 </Link>
-                              )}
 
-                              <Link
-                                href={`/organizer/events/${event.id}/attendees`}
-                                className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded transition-colors"
-                                title="Attendees"
-                              >
-                                <Users className="w-4 h-4" />
-                              </Link>
+                                {/* Edit Action - Allow edit only if not completed/cancelled */}
+                                {event.status !== 'completed' && event.status !== 'cancelled' && (
+                                  <Link
+                                    href={`/organizer/events/${event.id}/edit`}
+                                    className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Link>
+                                )}
 
-                              {/* MyCSD Claim Status & Actions */}
-                              {event.hasMyCSD && event.status === 'completed' && (
-                                <>
-                                  {/* Case 1: Not Submitted Yet -> Show Button */}
-                                  {(event.mycsdStatus === 'none' || !event.mycsdStatus) && (
-                                    <button
-                                      onClick={() => {
-                                        setSelectedEventForClaim(event);
-                                        setShowClaimModal(true);
-                                      }}
-                                      className="text-orange-600 hover:text-orange-900 p-2 hover:bg-orange-50 rounded transition-colors"
-                                      title="Submit Laporan & Claim MyCSD"
-                                    >
-                                      <Award className="w-5 h-5" />
-                                    </button>
-                                  )}
+                                {/* Attendees Action */}
+                                <Link
+                                  href={`/organizer/events/${event.id}/attendees`}
+                                  className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded transition-colors"
+                                  title="Attendees"
+                                >
+                                  <Users className="w-4 h-4" />
+                                </Link>
 
-                                  {/* Case 2: Pending Approval */}
-                                  {(event.mycsdStatus === 'pending') && (
-                                    <div className="relative group p-2">
-                                      <Clock className="w-5 h-5 text-amber-500 cursor-help" />
-                                      <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
-                                        Claim Pending Approval
+                                {/* MyCSD Claim Status & Actions (Only if MyCSD is enabled) */}
+                                {event.hasMyCSD && event.status === 'completed' && (
+                                  <>
+                                    {/* Case 1: Not Submitted Yet -> Show Button */}
+                                    {(event.mycsdStatus === 'none' || !event.mycsdStatus) && (
+                                      <button
+                                        onClick={() => {
+                                          setSelectedEventForClaim(event);
+                                          setShowClaimModal(true);
+                                        }}
+                                        className="text-orange-600 hover:text-orange-900 p-2 hover:bg-orange-50 rounded transition-colors"
+                                        title="Submit Laporan & Claim MyCSD"
+                                      >
+                                        <Award className="w-5 h-5" />
+                                      </button>
+                                    )}
+
+                                    {/* Case 2: Pending Approval */}
+                                    {(event.mycsdStatus === 'pending') && (
+                                      <div className="relative group p-2">
+                                        <Clock className="w-5 h-5 text-amber-500 cursor-help" />
+                                        <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
+                                          Claim Pending Approval
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
 
-                                  {/* Case 3: Approved */}
-                                  {event.mycsdStatus === 'approved' && (
-                                    <div className="relative group p-2">
-                                      <CheckCircle className="w-5 h-5 text-emerald-500 cursor-help" />
-                                      <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
-                                        Claim Approved
+                                    {/* Case 3: Approved */}
+                                    {event.mycsdStatus === 'approved' && (
+                                      <div className="relative group p-2">
+                                        <CheckCircle className="w-5 h-5 text-emerald-500 cursor-help" />
+                                        <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap text-center">
+                                          Claim Approved
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
 
-                                  {/* Case 4: Rejected */}
-                                  {event.mycsdStatus === 'rejected' && (
-                                    <div className="relative group p-2">
-                                      <AlertCircle className="w-5 h-5 text-red-500 cursor-pointer" />
-                                      <div className="absolute bottom-full right-0 mb-2 w-64 bg-white text-gray-800 text-xs rounded-lg shadow-xl border border-red-200 p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                        <p className="font-bold text-red-600 mb-1">Claim Rejected</p>
-                                        <p className="text-gray-600 leading-snug">{event.mycsdRejectionReason || 'No reason provided.'}</p>
+                                    {/* Case 4: Rejected */}
+                                    {event.mycsdStatus === 'rejected' && (
+                                      <div className="relative group p-2">
+                                        <AlertCircle className="w-5 h-5 text-red-500 cursor-pointer" />
+                                        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white text-gray-800 text-xs rounded-lg shadow-xl border border-red-200 p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                          <p className="font-bold text-red-600 mb-1">Claim Rejected</p>
+                                          <p className="text-gray-600 leading-snug">{event.mycsdRejectionReason || 'No reason provided.'}</p>
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
-                                </>
-                              )}
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
 
-                              <button
-                                onClick={async () => {
-                                  if (confirm('Are you sure you want to delete this event?')) {
-                                    try {
-                                      await deleteEvent(event.id);
-                                      setOrganizerEvents(prev => prev.filter(e => e.id !== event.id));
-                                      toast.success('Event deleted successfully');
-                                    } catch (error) {
-                                      console.error('Error deleting event:', error);
-                                      toast.error('Failed to delete event');
-                                    }
-                                  }
-                                }}
-                                className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              ) : (
+                  {/* Pagination Controls */}
+                  <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          Showing <span className="font-medium">{filteredAndSortedEvents.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}</span> to <span className="font-medium">{Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedEvents.length)}</span> of <span className="font-medium">{filteredAndSortedEvents.length}</span> results
+                        </p>
+                      </div>
+                      <div>
+                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                          <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <span className="sr-only">Previous</span>
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
+                          {[...Array(totalPages)].map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setCurrentPage(i + 1)}
+                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium
+                                        ${currentPage === i + 1
+                                  ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
+                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                }`}
+                            >
+                              {i + 1}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <span className="sr-only">Next</span>
+                            <ChevronRight className="h-5 w-5" />
+                          </button>
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                </>) : (
                 <div className="text-center py-12">
                   <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-lg mb-2">No events found</p>
                   <p className="text-gray-400 text-sm mb-4">
-                    {activeTab === 'all'
-                      ? 'Create your first event to get started'
-                      : `No ${activeTab} events yet`}
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'Try adjusting your search or filters.'
+                      : 'Create your first event to get started'}
                   </p>
-                  <Link
-                    href="/organizer/events/create"
-                    className="inline-flex items-center gap-2 bg-linear-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-full font-medium hover:from-purple-700 hover:to-purple-800 transition-all"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Create Event
-                  </Link>
                 </div>
               )}
             </div>
@@ -548,7 +674,7 @@ export default function OrganizerDashboard() {
 
       <Footer />
 
-      {/* MyCSD Claim Modal */}
+      {/* MyCSD Claim Modal (remains the same) -- already included in full view from previous reads but logic in component structure maintained */}
       <Modal
         isOpen={showClaimModal}
         onClose={() => setShowClaimModal(false)}
