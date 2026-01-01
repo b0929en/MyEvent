@@ -51,12 +51,39 @@ export default function EventDetailsPage() {
           const fetchedEvent = await getEventById(params.id as string);
           setEvent(fetchedEvent);
 
-          // Fetch suggested events
-          const allEvents = await getEvents();
+          // Fetch suggested events - prioritize same category, fill with latest events if needed
           if (fetchedEvent) {
-            const suggestions = allEvents
-              .filter(e => e.id !== fetchedEvent.id)
-              .slice(0, 3);
+            let suggestions: Event[] = [];
+            
+            // First, try to get events from the same category
+            if (fetchedEvent.category) {
+              const sameCategoryEvents = await getEvents({
+                category: [fetchedEvent.category]
+              });
+              
+              // Filter out current event, sort by date (newest first)
+              suggestions = sameCategoryEvents
+                .filter(e => e.id !== fetchedEvent.id)
+                .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+            }
+            
+            // If we don't have 3 events yet, fetch all events and fill the remaining slots
+            if (suggestions.length < 3) {
+              const allEvents = await getEvents();
+              const usedIds = new Set([fetchedEvent.id, ...suggestions.map(e => e.id)]);
+              
+              // Get other events (excluding current and already selected ones)
+              const otherEvents = allEvents
+                .filter(e => !usedIds.has(e.id))
+                .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+              
+              // Add enough events to reach 3 total
+              suggestions = [...suggestions, ...otherEvents].slice(0, 3);
+            } else {
+              // If we have 3 or more, just take the first 3
+              suggestions = suggestions.slice(0, 3);
+            }
+            
             setSuggestedEvents(suggestions);
           }
         } catch (error) {
