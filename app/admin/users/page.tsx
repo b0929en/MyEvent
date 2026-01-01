@@ -9,7 +9,7 @@ import { useRequireRole } from '@/contexts/AuthContext';
 import { getUsers } from '@/backend/services/userService';
 import { User } from '@/types';
 import { format } from 'date-fns';
-import { ArrowLeft, Users as UsersIcon, Search, Filter, Shield } from 'lucide-react';
+import { ArrowLeft, Users as UsersIcon, Search, Filter, Shield, Mail, Phone } from 'lucide-react';
 import type { UserRole } from '@/types';
 
 type FilterRole = UserRole | 'all';
@@ -46,7 +46,7 @@ export default function AdminUsersPage() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(u => 
+      filtered = filtered.filter(u =>
         u.name.toLowerCase().includes(query) ||
         u.email.toLowerCase().includes(query) ||
         (u.matricNumber && u.matricNumber.toLowerCase().includes(query))
@@ -235,10 +235,21 @@ export default function AdminUsersPage() {
                           {getRoleBadge(usr.role)}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
-                          {usr.faculty || usr.organizationId || '-'}
+                          {usr.organizationName || usr.faculty || usr.organizationId || '-'}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
-                          {usr.phone || '-'}
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Mail className="w-3 h-3" />
+                              <span className="text-xs">{usr.email}</span>
+                            </div>
+                            {usr.phone && (
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Phone className="w-3 h-3" />
+                                <span className="text-xs">{usr.phone}</span>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
                           {format(new Date(usr.createdAt), 'MMM dd, yyyy')}
@@ -253,7 +264,7 @@ export default function AdminUsersPage() {
                 <UsersIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 text-lg">No users found</p>
                 <p className="text-gray-400 text-sm">
-                  {searchQuery || roleFilter !== 'all' 
+                  {searchQuery || roleFilter !== 'all'
                     ? 'Try adjusting your filters'
                     : 'No users in the system'}
                 </p>

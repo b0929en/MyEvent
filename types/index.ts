@@ -24,6 +24,9 @@ export interface DBUser {
   organization_admins?: {
     org_id: string;
     user_position: string | null;
+    organizations?: {
+      org_name: string;
+    } | null;
   } | null;
 }
 
@@ -189,6 +192,7 @@ export type User = {
   name: string;
   matricNumber?: string; // For students
   organizationId?: string; // For organizers
+  organizationName?: string; // For organizers
   phone?: string;
   faculty?: string;
   position?: string; // For organizers (e.g. President, Secretary)

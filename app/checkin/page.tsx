@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { QrCode, ArrowRight, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 
-export default function CheckInPage() {
+function CheckInContent() {
   const { user, isLoading } = useRequireRole(['student'], '/login');
   const [eventId, setEventId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,8 +74,8 @@ export default function CheckInPage() {
             <h1 className="text-2xl font-bold text-gray-900">Attendance Taken!</h1>
             <p className="text-gray-600 mt-2">You have successfully checked in for the event.</p>
             <div className="mt-8">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
               >
                 Back to Home
@@ -139,14 +139,14 @@ export default function CheckInPage() {
           )}
 
           {isSubmitting && (
-             <div className="flex justify-center py-8">
-                <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-             </div>
+            <div className="flex justify-center py-8">
+              <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
           )}
 
           <div className="mt-6 text-center text-sm text-gray-500">
             <p>
-              <strong>Note for Testing:</strong> Since this is a web app, you cannot scan the QR code directly. 
+              <strong>Note for Testing:</strong> Since this is a web app, you cannot scan the QR code directly.
               Copy the Event ID from the Organizer&apos;s QR code modal and paste it here.
             </p>
           </div>
@@ -155,5 +155,13 @@ export default function CheckInPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function CheckInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading Check-In...</div>}>
+      <CheckInContent />
+    </Suspense>
   );
 }
