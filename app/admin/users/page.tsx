@@ -150,6 +150,14 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
+          {/* Info Note */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-900">
+              <strong>Note:</strong> Account management is synchronized with the USM Identity Management System.
+              This page currently shows read-only user data for administrative overview.
+            </p>
+          </div>
+
           {/* Filters & Search */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex flex-col md:flex-row gap-4">
@@ -251,14 +259,6 @@ export default function AdminUsersPage() {
                 </p>
               </div>
             )}
-          </div>
-
-          {/* Info Note */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-900">
-              <strong>Note:</strong> User role changes and account management will be implemented by the backend team.
-              This page currently shows read-only user data for administrative overview.
-            </p>
           </div>
         </div>
       </main>
