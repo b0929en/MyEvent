@@ -22,7 +22,7 @@ type FilterStatus = ProposalStatus | 'all';
 
 export default function ProposalsPage() {
   const { user, isLoading } = useRequireRole(['admin'], '/');
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('pending');
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
