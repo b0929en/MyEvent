@@ -238,7 +238,8 @@ export type MyCSDCategory =
   | 'Kepimpinan'
   | 'Keusahawanan'
   | 'Reka Cipta dan Inovasi'
-  | 'Sukan/Rekreasi/Sosialisasi';
+  | 'Sukan/Rekreasi/Sosialisasi'
+  | 'Persatuan/Kelab';
 
 export type MyCSDLevel =
   | 'P.Pengajian / Desasiswa / Persatuan / Kelab'

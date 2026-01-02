@@ -653,6 +653,7 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
     'Kepimpinan': 0,
     'Debat dan Pidato': 0,
     'Khidmat Masyarakat': 0,
+    'Persatuan/Kelab': 0,
   };
 
   records.forEach(record => {

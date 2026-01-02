@@ -61,7 +61,10 @@ export default function MyCSDPage() {
       'KEUSAHAWAN': 0,
       'KEBUDAYAAN': 0,
       'SUKAN/REKREASI/SOSIALISASI': 0,
-      'KEPIMPINAN': 0
+      'KEPIMPINAN': 0,
+      'DEBAT DAN PIDATO': 0,
+      'KHIDMAT MASYARAKAT': 0,
+      'PERSATUAN/KELAB': 0
     } as Record<string, number>,
     pointsByLevel: { antarabangsa: 0, negeri_universiti: 0, kampus: 0 } as Record<string, number>,
     eventsThisMonth: 0,
@@ -150,7 +153,10 @@ export default function MyCSDPage() {
     'KEUSAHAWAN',
     'KEBUDAYAAN',
     'SUKAN/REKREASI/SOSIALISASI',
-    'KEPIMPINAN'
+    'KEPIMPINAN',
+    'DEBAT DAN PIDATO',
+    'KHIDMAT MASYARAKAT',
+    'PERSATUAN/KELAB'
   ], []);
 
   const COLORS_MAP: Record<string, string> = {
@@ -159,6 +165,9 @@ export default function MyCSDPage() {
     'KEBUDAYAAN': '#800080',
     'SUKAN/REKREASI/SOSIALISASI': '#FF8042',
     'KEPIMPINAN': '#DAA520',
+    'DEBAT DAN PIDATO': '#FF6347',
+    'KHIDMAT MASYARAKAT': '#4682B4',
+    'PERSATUAN/KELAB': '#32CD32',
   };
 
   // --- Helper for Badges ---
@@ -202,16 +211,24 @@ export default function MyCSDPage() {
     eventData.forEach(event => {
       // Only include approved events in the chart
       if (event.mycsd === 'approved') {
-        // Safe cast to number in case it's a string, though logic ensures it shouldn't be '-' if approved
         const p = Number(event.mata) || 0;
         counts[event.teras] = (counts[event.teras] || 0) + p;
       }
     });
-    return Object.keys(counts).map(key => ({
-      name: key,
-      value: counts[key]
-    }));
-  }, [eventData]);
+
+    // Add Club Positions to 'KEPIMPINAN'
+    positionData.forEach(pos => {
+      const p = Number(pos.mata) || 0;
+      counts['KEPIMPINAN'] = (counts['KEPIMPINAN'] || 0) + p;
+    });
+
+    return Object.keys(counts)
+      .map(key => ({
+        name: key,
+        value: counts[key]
+      }))
+      .filter(item => item.value > 0);
+  }, [eventData, positionData]);
 
   // Summary Table Data Aggregation
   const summaryTableData = useMemo(() => {
@@ -238,11 +255,25 @@ export default function MyCSDPage() {
       }
     });
 
+    // Add Club Positions to Summary
+    positionData.forEach(pos => {
+      // Default to 'KEPIMPINAN' for club positions
+      const cat = 'KEPIMPINAN';
+      if (!grouped[cat]) {
+        grouped[cat] = { count: 0, pointsLocal: 0, pointsIntl: 0 };
+      }
+      grouped[cat].count += 1;
+
+      // Assume Local level for Club Positions as they are typically university/club level
+      const p = Number(pos.mata) || 0;
+      grouped[cat].pointsLocal += p;
+    });
+
     return Object.keys(grouped).map(key => ({
       teras: key,
       ...grouped[key]
     }));
-  }, [categoriesOrder, eventData]);
+  }, [categoriesOrder, eventData, positionData]);
 
   const grandTotal = summaryTableData.reduce((acc, curr) => ({
     count: acc.count + curr.count,
@@ -397,12 +428,14 @@ export default function MyCSDPage() {
               <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
                 <Image src="/usm-card-background.webp" alt="" fill className="object-cover grayscale opacity-50 mix-blend-overlay" />
               </div>
-              <div className="relative z-10 flex items-center space-x-2 mb-2">
-                <Layers className="h-4 w-4 text-purple-200" />
-                <h4 className="text-purple-100 font-semibold text-sm uppercase">Events This Month</h4>
-              </div>
-              <div className="relative z-10 mt-2">
-                <span className="text-3xl font-bold text-white"><AnimatedCounter value={eventsThisMonth} /></span>
+              <div className="relative z-10 flex justify-between items-start">
+                <div>
+                  <h4 className="text-purple-100 font-semibold text-xs uppercase tracking-wider">Events This Month</h4>
+                  <span className="text-4xl font-bold text-white mt-2 block"><AnimatedCounter value={eventsThisMonth} /></span>
+                </div>
+                <div className="p-3 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">
+                  <Layers className="h-6 w-6 text-white" />
+                </div>
               </div>
             </div>
 
@@ -411,12 +444,14 @@ export default function MyCSDPage() {
               <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
                 <Image src="/usm-card-background.webp" alt="" fill className="object-cover grayscale opacity-50 mix-blend-overlay" />
               </div>
-              <div className="relative z-10 flex items-center space-x-2 mb-2">
-                <Activity className="h-4 w-4 text-orange-100" />
-                <h4 className="text-orange-100 font-semibold text-sm uppercase">Points This Month</h4>
-              </div>
-              <div className="relative z-10 mt-2">
-                <span className="text-3xl font-bold text-white"><AnimatedCounter value={pointsThisMonth} /></span>
+              <div className="relative z-10 flex justify-between items-start">
+                <div>
+                  <h4 className="text-orange-100 font-semibold text-xs uppercase tracking-wider">Points This Month</h4>
+                  <span className="text-4xl font-bold text-white mt-2 block"><AnimatedCounter value={pointsThisMonth} /></span>
+                </div>
+                <div className="p-3 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">
+                  <Activity className="h-6 w-6 text-white" />
+                </div>
               </div>
             </div>
           </div>
@@ -426,27 +461,34 @@ export default function MyCSDPage() {
 
             <div className="lg:col-span-1 bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col items-center">
               <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wide mb-6">Points Distribution</h3>
-              <div className="w-full h-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ percent }: { percent?: number }) => `${((percent || 0) * 100).toFixed(0)}%`}
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS_MAP[entry.name] || '#999'} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="w-full h-full flex items-center justify-center min-h-[300px]">
+                {pieData.length > 0 && pieData.some(d => d.value > 0) ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ percent }: { percent?: number }) => `${((percent || 0) * 100).toFixed(0)}%`}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS_MAP[entry.name] || '#999'} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-gray-400">
+                    <Award className="h-16 w-16 mb-3 opacity-20" />
+                    <p className="text-sm font-medium">No MyCSD Record</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -458,9 +500,9 @@ export default function MyCSDPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead>
                     <tr className="bg-gray-100 text-gray-500 text-xs uppercase tracking-wider">
-                      <th rowSpan={2} className="px-6 py-3 text-left font-bold border-r border-gray-200 bg-gray-50 w-1/2">Teras</th>
-                      <th rowSpan={2} className="px-4 py-3 text-center font-bold border-r border-gray-200 bg-gray-50">Bil Aktiviti</th>
-                      <th colSpan={2} className="px-4 py-2 text-center font-bold bg-gray-200 text-gray-700 border-b border-gray-300">Mata</th>
+                      <th rowSpan={2} className="px-6 py-3 text-left font-bold border-r border-gray-200 bg-gray-50 w-1/2">MyCSD Category</th>
+                      <th rowSpan={2} className="px-4 py-3 text-center font-bold border-r border-gray-200 bg-gray-50">Number of Activity</th>
+                      <th colSpan={2} className="px-4 py-2 text-center font-bold bg-gray-200 text-gray-700 border-b border-gray-300">MyCSD Points</th>
                     </tr>
                     <tr className="bg-blue-50 text-blue-900 text-xs uppercase">
                       <th className="px-4 py-2 text-center border-r border-blue-100 font-semibold">
@@ -581,12 +623,12 @@ export default function MyCSDPage() {
                     <input
                       type="text"
                       className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-gray-900 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-purple-900 focus:border-purple-900 sm:text-sm"
-                      placeholder="Search persatuan/kelab..."
+                      placeholder="Search club/society..."
                       value={posSearchQuery}
                       onChange={(e) => setPosSearchQuery(e.target.value)}
                     />
                   </div>
-                  <div className="relative col-span-1 md:col-span-2">
+                  <div className="relative col-span-1 md:col-span-1 flex self-center">
                     <select
                       className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 text-gray-900 focus:outline-none focus:ring-purple-900 focus:border-purple-900 sm:text-sm rounded-md"
                       value={posFilters.position}
