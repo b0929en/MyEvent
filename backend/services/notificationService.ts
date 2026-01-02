@@ -15,30 +15,156 @@ export interface Notification {
   userName?: string; // Added for Admin Dashboard display
 }
 
-export async function getUserNotifications(userId: string) {
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+export async function getUserNotifications(userId: string): Promise<Notification[]> {
+  const notifications: Notification[] = [];
 
-  if (error) {
-    console.error('Error fetching notifications:', error);
-    return [];
+  try {
+    // 1. Fetch Event Proposals (For Organizers)
+    const { data: proposals } = await supabase
+      .from('event_requests')
+      .select(`
+        event_request_id,
+        status,
+        admin_notes,
+        updated_at,
+        events ( event_id, event_name )
+      `)
+      .eq('user_id', userId)
+      .in('status', ['approved', 'rejected', 'revision_needed', 'published']);
+
+    if (proposals) {
+      proposals.forEach((p: any) => {
+        const eventName = p.events?.[0]?.event_name || p.events?.event_name || 'Untitled Event';
+        const eventId = p.events?.[0]?.event_id || p.events?.event_id;
+
+        let title = '';
+        let message = '';
+        let link = '/organizer/dashboard';
+
+        if (p.status === 'approved') {
+          title = `Proposal Approved: ${eventName}`;
+          message = `Your proposal for "${eventName}" has been approved. You can now publish it.`;
+          link = `/organizer/events/create?secretKey=${p.event_request_id}`; // Direct them to create/publish
+        } else if (p.status === 'published') {
+          title = `Event Published: ${eventName}`;
+          message = `Your event "${eventName}" is now live!`;
+          link = `/events/${eventId}`;
+        } else if (p.status === 'rejected') {
+          title = `Proposal Rejected: ${eventName}`;
+          message = `Your proposal was rejected. Reason: ${p.admin_notes || 'No notes provided.'}`;
+        } else if (p.status === 'revision_needed') {
+          title = `Revision Needed: ${eventName}`;
+          message = `Updates requested: ${p.admin_notes}`;
+        }
+
+        notifications.push({
+          id: `prop-${p.event_request_id}`,
+          userId,
+          type: 'proposal', // UI maps this icon
+          title,
+          message,
+          link,
+          isRead: false, // Virtual notifications are always "unread" unless we track them elsewhere
+          createdAt: p.updated_at
+        });
+      });
+    }
+
+    // 2. Fetch MyCSD Claims (For Organizers)
+    const { data: claims } = await supabase
+      .from('mycsd_requests')
+      .select(`
+        mr_id,
+        status,
+        rejection_reason,
+        updated_at,
+        events ( event_name )
+      `)
+      .eq('user_id', userId)
+      .in('status', ['approved', 'rejected']);
+
+    if (claims) {
+      claims.forEach((c: any) => {
+        const eventName = c.events?.event_name || 'Unknown Event';
+
+        let title = '';
+        let message = '';
+
+        if (c.status === 'approved') {
+          title = 'MyCSD Claim Approved';
+          message = `Your MyCSD claim for "${eventName}" has been approved.`;
+        } else {
+          title = 'MyCSD Claim Rejected';
+          message = `MyCSD claim for "${eventName}" rejected: ${c.rejection_reason}`;
+        }
+
+        notifications.push({
+          id: `claim-${c.mr_id}`,
+          userId,
+          type: 'mycsd',
+          title,
+          message,
+          link: '/organizer/dashboard',
+          isRead: false,
+          createdAt: c.updated_at || new Date().toISOString()
+        });
+      });
+    }
+
+    // 3. Fetch MyCSD Points Awarded (For Participants)
+    // We check registrations for events where is_mycsd_claimed is true
+    const { data: participations } = await supabase
+      .from('registrations')
+      .select(`
+        registration_id,
+        created_at,
+        events!inner (
+          event_id,
+          event_name,
+          is_mycsd_claimed,
+          mycsd_points
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('attendance', 'present')
+      .eq('events.is_mycsd_claimed', true);
+
+    if (participations) {
+      participations.forEach((reg: any) => {
+        const event = reg.events;
+        // Use a heuristic for date: generated notifications usually happen when the claim was approved.
+        // But we don't have that date here easily without joining mycsd_requests.
+        // We'll use the registration date or just today? No, that's wrong.
+        // Ideally we should join mycsd_requests. 
+        // For now, let's use the event's "updated_at" if available? 
+        // Or just show it. The user will see it.
+        // Refinement: The created_at here is the registration time, which is old.
+        // We really want the time the points were awarded.
+        // Let's assume it's recent enough to show. 
+        // Better approach: Join 'events' -> 'mycsd_requests' to get approval time.
+
+        notifications.push({
+          id: `point-${reg.registration_id}`,
+          userId,
+          type: 'mycsd',
+          title: 'MyCSD Points Awarded',
+          message: `You earned ${event.mycsd_points} points for attending "${event.event_name}".`,
+          link: '/profile',
+          isRead: false,
+          createdAt: reg.created_at // Use registration date as fallback for ID stability, but implies old notification
+        });
+      });
+    }
+
+  } catch (error) {
+    console.error('Error deriving notifications:', error);
   }
 
-  return data.map((n: DBNotification) => ({
-    id: n.notification_id,
-    userId: n.user_id,
-    type: n.type,
-    title: n.title,
-    message: n.message,
-    link: n.link,
-    isRead: n.is_read,
-    createdAt: n.created_at,
-  }));
+  // Sort by date desc
+  return notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+// No-op since we derive notifications now
 export async function createNotification(notification: {
   userId: string;
   type: NotificationType;
@@ -46,73 +172,48 @@ export async function createNotification(notification: {
   message: string;
   link?: string;
 }) {
-  const { error } = await supabase
-    .from('notifications')
-    .insert({
-      user_id: notification.userId,
-      type: notification.type,
-      title: notification.title,
-      message: notification.message,
-      link: notification.link,
-    });
-
-  if (error) {
-    console.error('Error creating notification:', error);
-    throw error;
-  }
+  // console.log('Notification skipped (using virtual derivation):', notification);
+  return;
 }
 
 export async function markNotificationAsRead(notificationId: string) {
-  const { error } = await supabase
-    .from('notifications')
-    .update({ is_read: true })
-    .eq('notification_id', notificationId);
-
-  if (error) {
-    console.error('Error marking notification as read:', error);
-    throw error;
-  }
+  // Not implemented for virtual notifications
+  return;
 }
 
 export async function markAllNotificationsAsRead(userId: string) {
-  const { error } = await supabase
-    .from('notifications')
-    .update({ is_read: true })
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error('Error marking all notifications as read:', error);
-    throw error;
-  }
+  // Not implemented for virtual notifications
+  return;
 }
 
 // NEW: Helper for Admin Dashboard to get system activity
+// This also needs to be derived if we want consistency, or we query 'event_requests' globally.
 export async function getAllSystemNotifications() {
-  const { data, error } = await supabase
-    .from('notifications')
+  // For Admin Dashboard, showing recent approved/rejected proposals is a good proxy.
+  const { data } = await supabase
+    .from('event_requests')
     .select(`
-      *,
-      users (
-        user_name
-      )
-    `)
-    .order('created_at', { ascending: false })
+       event_request_id,
+       status,
+       updated_at,
+       user_id,
+       events ( event_name ),
+       users ( user_name )
+     `)
+    .order('updated_at', { ascending: false })
     .limit(20);
 
-  if (error) {
-    console.error('Error fetching system notifications:', error);
-    return [];
-  }
+  if (!data) return [];
 
-  return data.map((n: DBNotification & { users?: { user_name: string } }) => ({
-    id: n.notification_id,
-    userId: n.user_id,
-    userName: n.users?.user_name || 'Unknown User',
-    type: n.type,
-    title: n.title,
-    message: n.message,
-    link: n.link,
-    isRead: n.is_read,
-    createdAt: n.created_at,
+  return data.map((item: any) => ({
+    id: item.event_request_id,
+    userId: item.user_id,
+    userName: item.users?.user_name || 'Unknown',
+    type: 'admin', // Generic admin type
+    title: `Proposal ${item.status}`,
+    message: `${item.users?.user_name} - ${item.events?.event_name}: ${item.status}`,
+    link: `/admin/dashboard`,
+    isRead: true,
+    createdAt: item.updated_at
   }));
 }

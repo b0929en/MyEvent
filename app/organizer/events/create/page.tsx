@@ -764,14 +764,12 @@ export default function CreateEventPage() {
                     <input
                       type="checkbox"
                       {...register('hasMyCSD')}
-                      disabled
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-not-allowed disabled:opacity-60"
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
                     <label className="ml-2 text-sm font-medium text-gray-700">
                       This event offers MyCSD points
                     </label>
                   </div>
-                  <p className="text-xs text-gray-500 ml-6">Contact BHEPA to change MyCSD status.</p>
 
                   {hasMyCSD && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-purple-200">
@@ -781,8 +779,7 @@ export default function CreateEventPage() {
                         </label>
                         <select
                           {...register('mycsdCategory')}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
                         >
                           <option value="">Select</option>
                           <option value="Debat dan Pidato">Debat dan Pidato</option>
@@ -804,8 +801,7 @@ export default function CreateEventPage() {
                         </label>
                         <select
                           {...register('mycsdLevel')}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
                         >
                           <option value="">Select</option>
                           <option value="P.Pengajian / Desasiswa / Persatuan / Kelab">P.Pengajian / Desasiswa / Persatuan / Kelab</option>
