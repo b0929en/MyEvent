@@ -122,7 +122,8 @@ export async function getUserNotifications(userId: string): Promise<Notification
           event_id,
           event_name,
           is_mycsd_claimed,
-          mycsd_points
+          mycsd_points,
+          mycsd_requests ( updated_at )
         )
       `)
       .eq('user_id', userId)
@@ -132,16 +133,8 @@ export async function getUserNotifications(userId: string): Promise<Notification
     if (participations) {
       participations.forEach((reg: any) => {
         const event = reg.events;
-        // Use a heuristic for date: generated notifications usually happen when the claim was approved.
-        // But we don't have that date here easily without joining mycsd_requests.
-        // We'll use the registration date or just today? No, that's wrong.
-        // Ideally we should join mycsd_requests. 
-        // For now, let's use the event's "updated_at" if available? 
-        // Or just show it. The user will see it.
-        // Refinement: The created_at here is the registration time, which is old.
-        // We really want the time the points were awarded.
-        // Let's assume it's recent enough to show. 
-        // Better approach: Join 'events' -> 'mycsd_requests' to get approval time.
+        // Get the approval date from the linked request, or fallback
+        const approvalDate = event.mycsd_requests?.[0]?.updated_at || reg.created_at;
 
         notifications.push({
           id: `point-${reg.registration_id}`,
@@ -151,7 +144,7 @@ export async function getUserNotifications(userId: string): Promise<Notification
           message: `You earned ${event.mycsd_points} points for attending "${event.event_name}".`,
           link: '/profile',
           isRead: false,
-          createdAt: reg.created_at // Use registration date as fallback for ID stability, but implies old notification
+          createdAt: approvalDate
         });
       });
     }

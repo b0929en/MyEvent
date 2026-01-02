@@ -243,9 +243,6 @@ CREATE POLICY "Public insert access" ON event_mycsd FOR INSERT WITH CHECK (true)
 CREATE POLICY "Public read access" ON mycsd_logs FOR SELECT USING (true);
 CREATE POLICY "Public insert access" ON mycsd_logs FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Public read access" ON notifications FOR SELECT USING (true);
-CREATE POLICY "Public insert access" ON notifications FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update access" ON notifications FOR UPDATE USING (true);
 
 -- Storage Bucket Setup
 INSERT INTO storage.buckets (id, name, public) 

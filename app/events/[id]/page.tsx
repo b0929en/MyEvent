@@ -54,36 +54,36 @@ export default function EventDetailsPage() {
           // Fetch suggested events - prioritize same category, fill with latest events if needed
           if (fetchedEvent) {
             let suggestions: Event[] = [];
-            
+
             // First, try to get events from the same category
             if (fetchedEvent.category) {
               const sameCategoryEvents = await getEvents({
                 category: [fetchedEvent.category]
               });
-              
-              // Filter out current event, sort by date (newest first)
+
+              // Filter out current event and ensure only published events (exclude completed/cancelled)
               suggestions = sameCategoryEvents
-                .filter(e => e.id !== fetchedEvent.id)
+                .filter(e => e.id !== fetchedEvent.id && e.status === 'published')
                 .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
             }
-            
+
             // If we don't have 3 events yet, fetch all events and fill the remaining slots
             if (suggestions.length < 3) {
               const allEvents = await getEvents();
               const usedIds = new Set([fetchedEvent.id, ...suggestions.map(e => e.id)]);
-              
-              // Get other events (excluding current and already selected ones)
+
+              // Get other events (excluding current and already selected ones, and ensuring published status)
               const otherEvents = allEvents
-                .filter(e => !usedIds.has(e.id))
+                .filter(e => !usedIds.has(e.id) && e.status === 'published')
                 .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-              
+
               // Add enough events to reach 3 total
               suggestions = [...suggestions, ...otherEvents].slice(0, 3);
             } else {
               // If we have 3 or more, just take the first 3
               suggestions = suggestions.slice(0, 3);
             }
-            
+
             setSuggestedEvents(suggestions);
           }
         } catch (error) {
@@ -456,14 +456,7 @@ export default function EventDetailsPage() {
 
             {/* Gallery */}
             <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Event Gallery</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((item) => (
-                  <div key={item} className="aspect-square bg-gray-200 rounded-2xl hover:scale-101 transition-transform duration-300 cursor-pointer overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                  </div>
-                ))}
-              </div>
+              <EventGallery images={event.gallery || []} title={event.title} />
             </section>
 
             {/* Links */}
