@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   // Redirect if already authenticated
@@ -60,7 +63,7 @@ export default function LoginPage() {
     setErrors({});
 
     try {
-      const result = await login(email);
+      const result = await login(email, password);
 
       if (result.success && result.user) {
         toast.success('Login successful! Welcome back.');
@@ -162,21 +165,34 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors({ ...errors, password: undefined });
-                }}
-                placeholder="Password"
-                className={`w-full px-6 py-4 border-2 rounded-full text-gray-500 focus:outline-none focus:border-purple-600 transition-colors ${errors.password
-                  ? 'border-red-500'
-                  : 'border-gray-300'
-                  }`}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) setErrors({ ...errors, password: undefined });
+                  }}
+                  placeholder="Password"
+                  className={`w-full px-6 py-4 border-2 rounded-full text-gray-500 focus:outline-none focus:border-purple-600 transition-colors ${errors.password
+                    ? 'border-red-500'
+                    : 'border-gray-300'
+                    }`}
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-purple-600 focus:outline-none"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
               {errors.password && (
                 <p className="mt-2 text-sm text-red-600 px-6">{errors.password}</p>
               )}
@@ -218,21 +234,12 @@ export default function LoginPage() {
             <p className="text-sm text-gray-600 hover:text-purple-600 cursor-pointer">
               Forgot Account ID?
             </p>
-            <p className="text-sm text-gray-600 hover:text-purple-600 cursor-pointer">
+            <Link href="/forgot-password" className="text-sm text-gray-600 hover:text-purple-600 cursor-pointer">
               Forgot Password?
-            </p>
+            </Link>
           </div>
 
-          {/* Demo Credentials - Development Only */}
-          <div className="mt-8 p-4 bg-purple-50 rounded-lg border border-purple-200">
-            <p className="text-xs font-medium text-purple-900 mb-2">Demo Credentials (Dev Only):</p>
-            <div className="text-xs text-purple-700 space-y-1">
-              <p><strong>Student:</strong> jm@student.usm.my</p>
-              <p><strong>Organizer:</strong> css@usm.my</p>
-              <p><strong>Admin:</strong> bhepa@usm.my</p>
-              <p className="text-purple-600 mt-1 italic">Password: any 6+ chars</p>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>

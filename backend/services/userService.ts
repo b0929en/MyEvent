@@ -144,3 +144,40 @@ export async function getStudentByMatric(matricNumber: string) {
     userId: userUser?.user_id
   };
 }
+
+export async function verifyUserPassword(email: string, password: string): Promise<User | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select(`
+      *,
+      students (matric_num, faculty),
+      organization_admins (
+        org_id,
+        user_position,
+        organizations (org_name)
+      )
+    `)
+    .eq('user_email', email)
+    .single();
+
+  if (error || !data) {
+    console.log('verifyUserPassword: User not found or error', error);
+    return null;
+  }
+
+  // Linear comparison for now (or simple string compare)
+  // In a real production app, use bcrypt.compare here
+  const storedPassword = data.user_password ? String(data.user_password).trim() : '';
+  const providedPassword = password ? String(password).trim() : '';
+
+  console.log(`Verifying password for ${email}. Stored (trimmed): '${storedPassword}', Provided (trimmed): '${providedPassword}'`);
+
+  if (storedPassword === providedPassword) {
+    return mapUser(data);
+  }
+
+  console.log('Password mismatch');
+  return null;
+}
+
+

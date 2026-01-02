@@ -5,7 +5,7 @@ export function getPointsForLevel(level?: string): number {
   if (l === 'antarabangsa') return 8;
   if (l === 'kebangsaan / antara university') return 6;
   if (l === 'negeri / universiti') return 4;
-  if (l === 'p.pengajian / desasiswa / persatuan / kelab') return 1;
+  if (l === 'p.pengajian / desasiswa / persatuan / kelab') return 2;
 
   return 1;
 }
