@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { getAllProposals, updateProposalStatus, Proposal as BaseProposal } from '@/backend/services/proposalService';
 import { format } from 'date-fns';
-import { FileText, Download, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { FileText, Download, CheckCircle, XCircle, AlertCircle, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 import type { ProposalStatus } from '@/types';
@@ -24,6 +24,10 @@ export default function ProposalsTab() {
   const [adminNotes, setAdminNotes] = useState('');
   const [isLoadingData, setIsLoadingData] = useState(true);
 
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
   useEffect(() => {
     fetchProposals();
   }, []);
@@ -40,10 +44,39 @@ export default function ProposalsTab() {
     }
   };
 
+  // Reset page when filters change
+  useEffect(() => {
+    // Reset any pagination if needed
+  }, [statusFilter, searchQuery, sortOrder]);
+
   const filteredProposals = useMemo(() => {
-    if (statusFilter === 'all') return proposals;
-    return proposals.filter(p => p.status === statusFilter);
-  }, [statusFilter, proposals]);
+    let filtered = proposals;
+
+    // 1. Status Filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(p => p.status === statusFilter);
+    }
+
+    // 2. Search Filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.eventTitle.toLowerCase().includes(query) ||
+        p.organizerName.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query) ||
+        p.eventDescription?.toLowerCase().includes(query)
+      );
+    }
+
+    // 3. Sort by date
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.submittedAt).getTime();
+      const dateB = new Date(b.submittedAt).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  }, [statusFilter, searchQuery, sortOrder, proposals]);
 
   const stats = useMemo(() => {
     return {
@@ -176,21 +209,53 @@ export default function ProposalsTab() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters & Search */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex gap-2">
-          {(['all', 'pending', 'approved', 'rejected', 'revision_needed'] as const).map((status) => (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+          {/* Status Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+            {(['all', 'pending', 'approved', 'rejected', 'revision_needed'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${statusFilter === status
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                {status === 'all' ? 'All' : status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Bar with Sort Icon */}
+          <div className="relative w-full md:w-64 flex items-center gap-2">
+            <div className="relative flex-1">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="Enter Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none text-gray-900"
+              />
+            </div>
             <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-purple-500 transition-colors"
+              title={sortOrder === 'newest' ? 'Sort: Latest' : 'Sort: Oldest'}
             >
-              {status === 'all' ? 'All' : status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              {sortOrder === 'newest' ? (
+                <ArrowDown className="w-4 h-4 text-gray-600" />
+              ) : (
+                <ArrowUp className="w-4 h-4 text-gray-600" />
+              )}
             </button>
-          ))}
+          </div>
+
         </div>
       </div>
 

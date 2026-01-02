@@ -5,20 +5,24 @@ import Link from 'next/link';
 import { getEvents, updateEventStatus } from '@/backend/services/eventService';
 import { Event, EventStatus } from '@/types';
 import { format } from 'date-fns';
-import { Calendar, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Eye, CheckCircle, XCircle, AlertCircle, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 
 type FilterStatus = 'pending_approval' | 'approved' | 'rejected' | 'all';
 
 export default function EventsTab() {
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('pending_approval');
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
-  const [adminNotes, setAdminNotes] = useState('');
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
+  // const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  // const [showReviewModal, setShowReviewModal] = useState(false);
+  // const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
+  // const [adminNotes, setAdminNotes] = useState('');
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -36,17 +40,46 @@ export default function EventsTab() {
     fetchEvents();
   }, []);
 
+  // Reset page when filters change
+  useEffect(() => {
+    // Reset any pagination if needed
+  }, [statusFilter, searchQuery, sortOrder]);
+
   const filteredEvents = useMemo(() => {
-    const relevantEvents = events.filter(e =>
+    let filtered = events.filter(e =>
       ['pending_approval', 'approved', 'rejected', 'published'].includes(e.status)
     );
 
-    if (statusFilter === 'all') return relevantEvents;
-    // Map 'approved' filter to show both 'approved' and 'published' as they are essentially the same for admin view usually
-    if (statusFilter === 'approved') return relevantEvents.filter(e => e.status === 'approved' || e.status === 'published');
+    // 1. Status Filter
+    if (statusFilter === 'all') {
+      // Keep all relevant events
+    } else if (statusFilter === 'approved') {
+      // Map 'approved' filter to show both 'approved' and 'published'
+      filtered = filtered.filter(e => e.status === 'approved' || e.status === 'published');
+    } else {
+      filtered = filtered.filter(e => e.status === statusFilter);
+    }
 
-    return relevantEvents.filter(e => e.status === statusFilter);
-  }, [statusFilter, events]);
+    // 2. Search Filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(e =>
+        e.title.toLowerCase().includes(query) ||
+        e.description?.toLowerCase().includes(query) ||
+        e.category.toLowerCase().includes(query) ||
+        e.venue?.toLowerCase().includes(query)
+      );
+    }
+
+    // 3. Sort by date
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  }, [statusFilter, searchQuery, sortOrder, events]);
 
   const stats = useMemo(() => {
     return {
@@ -56,34 +89,35 @@ export default function EventsTab() {
     };
   }, [events]);
 
-  const handleReview = (event: Event, action: 'approve' | 'reject') => {
-    setSelectedEvent(event);
-    setReviewAction(action);
-    setAdminNotes('');
-    setShowReviewModal(true);
-  };
+  {/*Hide Review Modal and Review Actions*/}
+  // const handleReview = (event: Event, action: 'approve' | 'reject') => {
+  //   setSelectedEvent(event);
+  //   setReviewAction(action);
+  //   setAdminNotes('');
+  //   setShowReviewModal(true);
+  // };
 
-  const submitReview = async () => {
-    if (!selectedEvent) return;
+  // const submitReview = async () => {
+  //   if (!selectedEvent) return;
 
-    try {
-      const newStatus = reviewAction === 'approve' ? 'published' : 'rejected';
-      await updateEventStatus(selectedEvent.id, newStatus);
+  //   try {
+  //     const newStatus = reviewAction === 'approve' ? 'published' : 'rejected';
+  //     await updateEventStatus(selectedEvent.id, newStatus);
 
-      toast.success(`Event ${reviewAction}d successfully!`);
+  //     toast.success(`Event ${reviewAction}d successfully!`);
 
-      // Refresh events
-      const updatedEvents = await getEvents();
-      setEvents(updatedEvents);
+  //     // Refresh events
+  //     const updatedEvents = await getEvents();
+  //     setEvents(updatedEvents);
 
-      setShowReviewModal(false);
-      setSelectedEvent(null);
-      setAdminNotes('');
-    } catch (error) {
-      console.error('Error updating event status:', error);
-      toast.error('Failed to update event status');
-    }
-  };
+  //     setShowReviewModal(false);
+  //     setSelectedEvent(null);
+  //     setAdminNotes('');
+  //   } catch (error) {
+  //     console.error('Error updating event status:', error);
+  //     toast.error('Failed to update event status');
+  //   }
+  // };
 
   const getStatusBadge = (status: EventStatus) => {
     switch (status) {
@@ -138,21 +172,53 @@ export default function EventsTab() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters & Search */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex gap-2">
-          {(['pending_approval', 'approved', 'rejected', 'all'] as const).map((status) => (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+          {/* Status Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+            {(['all', 'pending_approval', 'approved', 'rejected'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${statusFilter === status
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                {status === 'all' ? 'All' : status === 'approved' ? 'Published' : status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Bar with Sort Icon */}
+          <div className="relative w-full md:w-64 flex items-center gap-2">
+            <div className="relative flex-1">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="Enter Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none text-gray-900"
+              />
+            </div>
             <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-purple-500 transition-colors"
+              title={sortOrder === 'newest' ? 'Sort: Latest' : 'Sort: Oldest'}
             >
-              {status === 'all' ? 'All' : status === 'approved' ? 'Published' : status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              {sortOrder === 'newest' ? (
+                <ArrowDown className="w-4 h-4 text-gray-600" />
+              ) : (
+                <ArrowUp className="w-4 h-4 text-gray-600" />
+              )}
             </button>
-          ))}
+          </div>
+
         </div>
       </div>
 
@@ -198,7 +264,8 @@ export default function EventsTab() {
                   View Event Page
                 </Link>
 
-                {event.status === 'pending_approval' && (
+                {/*Hide Review Modal and Review Actions*/}
+                {/* {event.status === 'pending_approval' && (
                   <>
                     <button
                       onClick={() => handleReview(event, 'approve')}
@@ -215,7 +282,7 @@ export default function EventsTab() {
                       Reject
                     </button>
                   </>
-                )}
+                )} */}
               </div>
             </div>
           ))
@@ -230,7 +297,7 @@ export default function EventsTab() {
         )}
       </div>
 
-      {/* Review Modal - Similar to other tabs */}
+      {/* Review Modal - Similar to other tabs
       <Modal
         isOpen={showReviewModal}
         onClose={() => setShowReviewModal(false)}
@@ -276,7 +343,7 @@ export default function EventsTab() {
             </div>
           </div>
         )}
-      </Modal>
+      </Modal> */}
     </div>
   );
 }

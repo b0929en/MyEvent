@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { getAllMyCSDRequests, approveMyCSDRequest, rejectMyCSDRequest } from '@/backend/services/mycsdService';
-import { TrendingUp, CheckCircle, XCircle, AlertCircle, Eye, Users, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, CheckCircle, XCircle, AlertCircle, Eye, Users, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
 import type { MyCSDStatus } from '@/types';
@@ -43,7 +43,7 @@ export default function MyCSDTab() {
 
   // Search & Pagination State
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchInput, setSearchInput] = useState(''); // Typographical state
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -66,20 +66,10 @@ export default function MyCSDTab() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, searchQuery]);
-
-  const handleSearch = () => {
-    setSearchQuery(searchInput);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
+  }, [statusFilter, searchQuery, sortOrder]);
 
   const filteredSubmissions = useMemo(() => {
-    return submissions.filter(s => {
+    const filtered = submissions.filter(s => {
       // 1. Status Filter
       if (statusFilter !== 'all' && s.status !== statusFilter) return false;
 
@@ -95,32 +85,21 @@ export default function MyCSDTab() {
 
       return true;
     });
-  }, [statusFilter, searchQuery, submissions]);
+
+    // 3. Sort by date
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.submittedAt).getTime();
+      const dateB = new Date(b.submittedAt).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  }, [statusFilter, searchQuery, sortOrder, submissions]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedSubmissions = filteredSubmissions.slice(startIndex, startIndex + itemsPerPage);
-
-  // ... (stats useMemo omitted, it's unchanged) ... 
-  // Wait, I need to include it or carefully splice. 
-  // Since I can't easily skip lines in replace_file_content without context matching risk, 
-  // I will just include the stats block to be safe or try to target specific blocks.
-  // Actually, let's just replace the blocks relating to search logic first.
-
-  // No, the instruction wants layout changes too. 
-  // Layout changes are further down in JSX. 
-  // I will do this in chunks. First chunk: Logic.
-
-  // WAIT, I'm inside "ReplacementContent". 
-  // I should provide the content for the first chunk (Logic).
-
-  // It seems safer to do multiple chunks or separate tool calls if regions are far apart.
-  // logic is lines 44-93.
-  // layout is lines 196-387.
-
-  // Multi-replace is better.
-
 
   const stats = useMemo(() => {
     return {
@@ -224,28 +203,13 @@ export default function MyCSDTab() {
         </div>
       </div>
 
-      {/* Filters & Search - Swapped Positions */}
+      {/* Filters & Search */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-          {/* Search Bar (Now First) */}
-          <div className="relative w-full md:w-64">
-            <button onClick={handleSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-600 transition-colors">
-              <Search className="w-4 h-4" />
-            </button>
-            <input
-              type="text"
-              placeholder="Search... (Press Enter)"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Status Tabs (Now Second) */}
+          {/* Status Tabs */}
           <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-            {(['pending', 'approved', 'rejected', 'all'] as const).map((status) => (
+            {(['all','pending', 'approved', 'rejected'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -257,6 +221,33 @@ export default function MyCSDTab() {
                 {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
+          </div>
+
+          {/* Search Bar with Sort Icon */}
+          <div className="relative w-full md:w-64 flex items-center gap-2">
+            <div className="relative flex-1">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="Enter Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none text-gray-900"
+              />
+            </div>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-purple-500 transition-colors"
+              title={sortOrder === 'newest' ? 'Sort: Latest ' : 'Sort: Oldest'}
+            >
+              {sortOrder === 'newest' ? (
+                <ArrowDown className="w-4 h-4 text-gray-600" />
+              ) : (
+                <ArrowUp className="w-4 h-4 text-gray-600" />
+              )}
+            </button>
           </div>
 
         </div>
