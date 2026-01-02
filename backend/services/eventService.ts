@@ -375,5 +375,43 @@ export async function getRecommendedEvents(userId?: string, limit: number = 8) {
     mappedEvents = [...recommended, ...others];
   }
 
+
   return mappedEvents.slice(0, limit);
 }
+
+export async function getUserCommitteeEvents(matricNumber: string) {
+  const { data, error } = await supabase
+    .from('events')
+    .select(`
+      *,
+      event_requests (
+        org_id,
+        status,
+        submitted_at, 
+        organizations (
+          org_name
+        )
+      ),
+      mycsd_requests (
+        status,
+        rejection_reason,
+        submitted_at,
+        event_mycsd (
+          mycsd_category,
+          event_level,
+          mycsd_records (
+            mycsd_score
+          )
+        )
+      )
+    `)
+    .contains('committee_members', JSON.stringify([{ matricNumber: matricNumber }]));
+
+  if (error) {
+    console.error('Error fetching committee events:', error);
+    return [];
+  }
+
+  return data.map(mapEvent);
+}
+

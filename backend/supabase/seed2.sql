@@ -33,11 +33,11 @@ INSERT INTO users (user_id, user_email, user_role, user_name, created_at) VALUES
 
 -- 3. Student Details
 INSERT INTO students (user_id, matric_num, faculty) VALUES
-('20000000-0000-0000-0000-000000000001', '100001', 'School of Computer Sciences'),
-('20000000-0000-0000-0000-000000000002', '100002', 'School of Management'),
-('20000000-0000-0000-0000-000000000003', '100003', 'School of Biological Sciences'),
-('20000000-0000-0000-0000-000000000004', '100004', 'School of Humanities'),
-('20000000-0000-0000-0000-000000000005', '100005', 'School of Physics');
+('20000000-0000-0000-0000-000000000001', '22303736', 'School of Computer Sciences'),
+('20000000-0000-0000-0000-000000000002', '22304736', 'School of Management'),
+('20000000-0000-0000-0000-000000000003', '22303768', 'School of Biological Sciences'),
+('20000000-0000-0000-0000-000000000004', '22303762', 'School of Humanities'),
+('20000000-0000-0000-0000-000000000005', '22303324', 'School of Physics');
 
 -- 4. Admin Details
 INSERT INTO admins (user_id, admin_role) VALUES
@@ -50,10 +50,3 @@ INSERT INTO organization_admins (user_id, org_id, user_position) VALUES
 ('40000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'President'),
 ('40000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000004', 'President'),
 ('40000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000005', 'President');
-
--- 6. Sample Events (Optional but good to have some content)
-INSERT INTO event_requests (event_request_id, org_id, user_id, status, submitted_at) VALUES
-('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'published', NOW());
-
-INSERT INTO events (event_id, event_name, event_date, event_description, event_venue, start_time, end_time, capacity, category, registered_count, event_request_id, gallery) VALUES
-('60000000-0000-0000-0000-000000000001', 'CS Night 2025', '2026-05-20', 'Annual CS Dinner', 'Dewan Budaya', '19:00', '23:00', 200, 'social', 0, '50000000-0000-0000-0000-000000000001', '{}');

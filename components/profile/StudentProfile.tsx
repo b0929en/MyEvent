@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getUserRegistrations } from '@/backend/services/registrationService';
-import { getEventById } from '@/backend/services/eventService';
+import { getEventById, getUserCommitteeEvents } from '@/backend/services/eventService';
 import { getUserMyCSDRecords } from '@/backend/services/mycsdService';
 import { Event, Registration, MyCSDRecord, User } from '@/types';
 import Link from 'next/link';
@@ -34,7 +34,36 @@ export default function StudentProfile({ user }: StudentProfileProps) {
 
         // Filter out registrations where event could not be found
         const validRegs = regsWithEvents.filter(item => item.event !== null) as (Registration & { event: Event })[];
-        setRegistrations(validRegs);
+
+        // Fetch Committee Events
+        let committeeRegs: (Registration & { event: Event })[] = [];
+        if (user.matricNumber) {
+          const committeeEvents = await getUserCommitteeEvents(user.matricNumber);
+          committeeRegs = committeeEvents.map(event => ({
+            id: `committee-${event.id}`,
+            eventId: event.id,
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            matricNumber: user.matricNumber,
+            status: 'confirmed',
+            registeredAt: event.createdAt,
+            updatedAt: event.updatedAt,
+            event: event,
+          })) as (Registration & { event: Event })[];
+        }
+
+        // Merge registrations (avoid duplicates, prioritize existing registration if any, or just combine)
+        // If a user is both registered and committee, we probably want to show just one entry.
+        // Let's rely on event ID uniqueness.
+        const allRegs = [...validRegs];
+        committeeRegs.forEach(cReg => {
+          if (!allRegs.find(r => r.eventId === cReg.eventId)) {
+            allRegs.push(cReg);
+          }
+        });
+
+        setRegistrations(allRegs);
 
         // Fetch MyCSD Records
         const records = await getUserMyCSDRecords(user.id);
@@ -167,6 +196,7 @@ export default function StudentProfile({ user }: StudentProfileProps) {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organizer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 </tr>
@@ -186,6 +216,19 @@ export default function StudentProfile({ user }: StudentProfileProps) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {format(new Date(reg.event.startDate), 'MMM dd, yyyy')}
                       </td>
+                      <td className="px-6 py-4 text-center text-sm text-gray-500">
+                        {/* Determine Position */}
+                        {(() => {
+                          const record = mycsdRecords.find(r => r.eventId === reg.eventId);
+                          if (record?.position) return record.position;
+
+                          // Check committee members
+                          const committeeMember = reg.event.committeeMembers?.find(cm => cm.matricNumber === user.matricNumber);
+                          if (committeeMember) return committeeMember.position;
+
+                          return 'Peserta';
+                        })()}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {reg.event.venue}
                       </td>
@@ -198,7 +241,7 @@ export default function StudentProfile({ user }: StudentProfileProps) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                       No registered upcoming events found.
                       <Link href="/events" className="ml-2 text-purple-600 hover:underline">
                         Browse events
@@ -249,10 +292,16 @@ export default function StudentProfile({ user }: StudentProfileProps) {
                           {format(new Date(reg.event.startDate), 'MMM dd, yyyy')}
                         </td>
                         <td className="px-6 py-4 text-center text-sm text-gray-500">
-                          {/* Find MyCSD record to get position */}
+                          {/* Find MyCSD record to get position, or fallback to committee list */}
                           {(() => {
                             const record = mycsdRecords.find(r => r.eventId === reg.eventId);
-                            return record?.position || 'Peserta';
+                            if (record?.position) return record.position;
+
+                            // Check committee members
+                            const committeeMember = reg.event.committeeMembers?.find(cm => cm.matricNumber === user.matricNumber);
+                            if (committeeMember) return committeeMember.position;
+
+                            return 'Peserta';
                           })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
