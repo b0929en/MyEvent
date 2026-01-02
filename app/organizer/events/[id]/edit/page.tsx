@@ -287,7 +287,7 @@ export default function EditEventPage() {
 
       toast.success('Event updated successfully');
       if (user?.role === 'admin') {
-        router.push('/admin/events');
+        router.push('/admin/dashboard?tab=events');
       } else {
         router.push('/organizer/dashboard');
       }
