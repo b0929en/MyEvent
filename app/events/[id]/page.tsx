@@ -62,9 +62,9 @@ export default function EventDetailsPage() {
                 status: 'published'
               });
 
-              // Filter out current event, sort by date (newest first)
+              // Filter out current event and ensure only published events (exclude completed/cancelled)
               suggestions = sameCategoryEvents
-                .filter(e => e.id !== fetchedEvent.id)
+                .filter(e => e.id !== fetchedEvent.id && e.status === 'published')
                 .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
             }
 
@@ -73,9 +73,9 @@ export default function EventDetailsPage() {
               const allEvents = await getEvents({ status: 'published' });
               const usedIds = new Set([fetchedEvent.id, ...suggestions.map(e => e.id)]);
 
-              // Get other events (excluding current and already selected ones)
+              // Get other events (excluding current and already selected ones, and ensuring published status)
               const otherEvents = allEvents
-                .filter(e => !usedIds.has(e.id))
+                .filter(e => !usedIds.has(e.id) && e.status === 'published')
                 .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 
               // Add enough events to reach 3 total
@@ -457,14 +457,7 @@ export default function EventDetailsPage() {
 
             {/* Gallery */}
             <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Event Gallery</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((item) => (
-                  <div key={item} className="aspect-square bg-gray-200 rounded-2xl hover:scale-101 transition-transform duration-300 cursor-pointer overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                  </div>
-                ))}
-              </div>
+              <EventGallery images={event.gallery || []} title={event.title} />
             </section>
 
             {/* Links */}

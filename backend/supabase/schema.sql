@@ -185,21 +185,11 @@ CREATE TABLE mycsd_logs (
     PRIMARY KEY (matric_no, record_id)
 );
 
--- 15. NOTIFICATIONS
-CREATE TABLE notifications (
-    notification_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    message TEXT NOT NULL,
-    type TEXT NOT NULL,
-    link TEXT,
-    is_read BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+
 
 -- RLS Policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organization_admins ENABLE ROW LEVEL SECURITY;
@@ -253,9 +243,6 @@ CREATE POLICY "Public insert access" ON event_mycsd FOR INSERT WITH CHECK (true)
 CREATE POLICY "Public read access" ON mycsd_logs FOR SELECT USING (true);
 CREATE POLICY "Public insert access" ON mycsd_logs FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Public read access" ON notifications FOR SELECT USING (true);
-CREATE POLICY "Public insert access" ON notifications FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public update access" ON notifications FOR UPDATE USING (true);
 
 -- Storage Bucket Setup
 INSERT INTO storage.buckets (id, name, public) 
