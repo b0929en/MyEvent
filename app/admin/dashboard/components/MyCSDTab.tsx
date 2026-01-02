@@ -5,6 +5,7 @@ import { getAllMyCSDRequests, approveMyCSDRequest, rejectMyCSDRequest } from '@/
 import { TrendingUp, CheckCircle, XCircle, AlertCircle, Eye, Users, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import type { MyCSDStatus } from '@/types';
 
 // Copied interface due to it being local in the original file, ideally should be in types.ts
@@ -184,7 +185,7 @@ export default function MyCSDTab() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <p className="text-sm text-gray-600 mb-1">Pending Review</p>
           <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
@@ -197,10 +198,6 @@ export default function MyCSDTab() {
           <p className="text-sm text-gray-600 mb-1">Rejected</p>
           <p className="text-3xl font-bold text-red-600">{stats.rejected}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <p className="text-sm text-gray-600 mb-1">Total Points</p>
-          <p className="text-3xl font-bold text-purple-600">{stats.totalPoints}</p>
-        </div>
       </div>
 
       {/* Filters & Search */}
@@ -209,7 +206,7 @@ export default function MyCSDTab() {
 
           {/* Status Tabs */}
           <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-            {(['all','pending', 'approved', 'rejected'] as const).map((status) => (
+            {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -237,19 +234,7 @@ export default function MyCSDTab() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none text-gray-900"
               />
             </div>
-            <button
-              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-purple-500 transition-colors"
-              title={sortOrder === 'newest' ? 'Sort: Latest ' : 'Sort: Oldest'}
-            >
-              {sortOrder === 'newest' ? (
-                <ArrowDown className="w-4 h-4 text-gray-600" />
-              ) : (
-                <ArrowUp className="w-4 h-4 text-gray-600" />
-              )}
-            </button>
           </div>
-
         </div>
       </div>
 
@@ -272,22 +257,36 @@ export default function MyCSDTab() {
                         Event
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Category & Level
-                      </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Participants
-                      </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Committee
-                      </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Points
+                        Category
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Level
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors group"
+                        onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Date
+                          {sortOrder === 'newest' ? (
+                            <ArrowDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                          ) : (
+                            <ArrowUp className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        No. of Participants
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        No. of Committee
+                      </th>
+
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Reference
                       </th>
                     </tr>
                   </thead>
@@ -296,32 +295,35 @@ export default function MyCSDTab() {
                       <tr key={submission.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{submission.eventName}</div>
-                          <div className="text-xs text-gray-500">
-                            Org: {submission.organizerName}
-                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900 capitalize">{submission.category}</div>
-                          <div className="text-xs text-gray-500">{submission.level}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 capitalize">{submission.level.replace('_', ' ')}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">
+                            {format(new Date(submission.submittedAt), 'MMM dd, yyyy')}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="text-sm text-gray-900">
                             {submission.participantCount}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="text-sm text-gray-900">
                             {submission.committeeCount}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-lg font-bold text-purple-600">{submission.points}</span>
-                        </td>
+
                         <td className="px-6 py-4">
                           {getStatusBadge(submission.status)}
                         </td>
+
                         <td className="px-6 py-4">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 justify-center">
                             <a
                               href={submission.proofDocument}
                               target="_blank"
@@ -329,7 +331,6 @@ export default function MyCSDTab() {
                               className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                             >
                               <Eye className="w-4 h-4" />
-                              Proof
                             </a>
                             {submission.status === 'pending' && (
                               <>
@@ -512,6 +513,6 @@ export default function MyCSDTab() {
           </div>
         )}
       </Modal>
-    </div>
+    </div >
   );
 }

@@ -73,6 +73,7 @@ export async function getEvents(filters?: {
   mycsdCategory?: MyCSDCategory[];
   mycsdLevel?: MyCSDLevel[];
   organizerId?: string;
+  status?: string;
 }) {
   // Attempt to mark completed events (fire and forget or await, depending on importance)
   // We await it to ensure the data we fetch right after is up to date.
@@ -87,7 +88,7 @@ export async function getEvents(filters?: {
     .from('events')
     .select(`
       *,
-      event_requests (
+      ${filters?.status ? 'event_requests!inner' : 'event_requests'} (
         org_id,
         status,
         submitted_at, 
@@ -115,6 +116,10 @@ export async function getEvents(filters?: {
 
   if (filters?.category && filters.category.length > 0) {
     query = query.in('category', filters.category);
+  }
+
+  if (filters?.status) {
+    query = query.eq('event_requests.status', filters.status);
   }
 
   const { data, error } = await query;

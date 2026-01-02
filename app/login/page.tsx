@@ -102,7 +102,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Purple Background with Welcome Message */}
-      <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-purple-700 via-purple-800 to-purple-900 flex-col justify-between p-12">
+      <div
+        className="hidden lg:flex lg:w-2/3 flex-col justify-between p-12 bg-cover bg-center"
+        style={{
+          backgroundImage: `linear-gradient(to bottom right, rgba(31, 1, 38, 0.7), rgba(0, 0, 0, 0.8)), url('/usm-bg.jpeg')`
+        }}
+      >
         {/* Logo */}
         <div>
           <h1 className="text-3xl font-bold">
@@ -114,7 +119,7 @@ export default function LoginPage() {
         {/* Welcome Text */}
         <div>
           <h2 className="text-6xl font-bold text-white leading-tight">
-            Welcome<br />Back!
+            Welcome Back!
           </h2>
         </div>
 
@@ -123,7 +128,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right Panel - White Background with Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+      <div className="w-full lg:w-1/3 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8 text-center">
@@ -216,7 +221,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gray-900 text-white py-4 rounded-full font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full cursor-pointer bg-purple-900 text-white py-4 rounded-full font-medium hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {isLoading ? (
                 <>
