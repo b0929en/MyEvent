@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
                         Reset Password
                     </h2>
                     <p className="mt-2 text-center text-sm text-gray-600">
-                        Enter your email and the verification code to reset your password.
+                        Enter your email and get the verification code <br/> to reset your password.
                     </p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -99,7 +99,7 @@ export default function ForgotPasswordPage() {
                                 value={code}
                                 onChange={(e) => setCode(e.target.value)}
                                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
-                                placeholder="Verification Code (Hint: CAT304)"
+                                placeholder="Verification Code"
                             />
                         </div>
                         <div className="relative">

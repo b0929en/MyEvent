@@ -236,15 +236,10 @@ export default function LoginPage() {
 
           {/* Forgot Links */}
           <div className="mt-8 text-center space-y-2">
-            <p className="text-sm text-gray-600 hover:text-purple-600 cursor-pointer">
-              Forgot Account ID?
-            </p>
             <Link href="/forgot-password" className="text-sm text-gray-600 hover:text-purple-600 cursor-pointer">
               Forgot Password?
             </Link>
           </div>
-
-
         </div>
       </div>
     </div>
