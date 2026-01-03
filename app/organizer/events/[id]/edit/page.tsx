@@ -50,7 +50,8 @@ export default function EditEventPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [eventTitle, setEventTitle] = useState(''); // Read-only for organizers
-  const [isPublished, setIsPublished] = useState(false);
+  const [isFeeLocked, setIsFeeLocked] = useState(false);
+  const [isSettingsLocked, setIsSettingsLocked] = useState(false);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
@@ -105,8 +106,11 @@ export default function EditEventPage() {
           return;
         }
 
+        if (!['draft', 'revision_needed'].includes(event.status)) {
+          setIsFeeLocked(true);
+        }
         if (['published', 'completed', 'cancelled'].includes(event.status)) {
-          setIsPublished(true);
+          setIsSettingsLocked(true);
         }
 
         // Populate Form
@@ -417,10 +421,10 @@ export default function EditEventPage() {
                 <input
                   type="checkbox"
                   {...register('hasMyCSD')}
-                  disabled={!isAdmin && isPublished}
-                  className={`w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer ${!isAdmin && isPublished ? 'cursor-not-allowed opacity-60' : ''}`}
+                  disabled={!isAdmin && isSettingsLocked}
+                  className={`w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer ${!isAdmin && isSettingsLocked ? 'cursor-not-allowed opacity-60' : ''}`}
                 />
-                <label className={`ml-2 font-semibold text-gray-800 ${!isAdmin && isPublished ? 'text-gray-500' : ''}`}>Enable MyCSD</label>
+                <label className={`ml-2 font-semibold text-gray-800 ${!isAdmin && isSettingsLocked ? 'text-gray-500' : ''}`}>Enable MyCSD</label>
               </div>
 
               {hasMyCSD && (
@@ -430,8 +434,8 @@ export default function EditEventPage() {
                   <div className="flex flex-col md:flex-row gap-3">
                     <select
                       {...register('mycsdCategory')}
-                      disabled={!isAdmin && isPublished}
-                      className={!isAdmin && isPublished ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
+                      disabled={!isAdmin && isSettingsLocked}
+                      className={!isAdmin && isSettingsLocked ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
                     >
                       <option value="">Select Category</option>
                       <option value="Debat dan Pidato">Debat dan Pidato</option>
@@ -445,8 +449,8 @@ export default function EditEventPage() {
 
                     <select
                       {...register('mycsdLevel')}
-                      disabled={!isAdmin && isPublished}
-                      className={!isAdmin && isPublished ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
+                      disabled={!isAdmin && isSettingsLocked}
+                      className={!isAdmin && isSettingsLocked ? disabledInputClass : "px-4 py-2 text-sm font-medium rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm text-gray-900"}
                     >
                       <option value="">Select Level</option>
                       <option value="P.Pengajian / Desasiswa / Persatuan / Kelab">P.Pengajian / Desasiswa / Persatuan / Kelab</option>
@@ -458,9 +462,10 @@ export default function EditEventPage() {
                 </>
               )}
             </div>
-            {!isAdmin && isPublished && (
-              <p className="text-xs text-orange-600 mt-2 font-medium">
-                Event is published. MyCSD settings and participation fees are locked for organizers.
+
+            {!isAdmin && isSettingsLocked && (
+              <p className="text-xs text-orange-600 mt-1 font-medium">
+                MyCSD and payment settings are locked for published events.
               </p>
             )}
           </div>
@@ -491,16 +496,7 @@ export default function EditEventPage() {
               </div>
 
               {/* Fee */}
-              <div className="space-y-1.5">
-                <label className="text-sm font-bold text-gray-700">Participation Fee (RM)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  disabled={!isAdmin && isPublished}
-                  {...register('participationFee', { valueAsNumber: true })}
-                  className={!isAdmin && isPublished ? disabledInputClass : inputClass}
-                />
-              </div>
+
 
               {/* Start Date */}
               <div className="space-y-1.5">
@@ -596,12 +592,10 @@ export default function EditEventPage() {
                   type="number"
                   step="0.01"
                   {...register('participationFee', { valueAsNumber: true })}
-                  disabled={!isAdmin && isPublished}
-                  className={!isAdmin && isPublished ? disabledInputClass : inputClass}
+                  disabled={!isAdmin && isFeeLocked}
+                  className={!isAdmin && isFeeLocked ? disabledInputClass : inputClass}
                 />
-                {!isAdmin && (
-                  <p className="text-xs text-gray-500 mt-1">Set to 0 for free events. Contact BHEPA to change.</p>
-                )}
+
               </div>
               {/* Payment Details Section - Only show if fee > 0 */}
               {participationFee > 0 && (
@@ -614,9 +608,9 @@ export default function EditEventPage() {
                       <textarea
                         {...register('bankAccountInfo')}
                         rows={3}
-                        disabled={!isAdmin && isPublished}
+                        disabled={!isAdmin && isSettingsLocked}
                         placeholder="Bank Name, Account Number, Account Holder Name"
-                        className={!isAdmin && isPublished ? disabledInputClass : inputClass}
+                        className={!isAdmin && isSettingsLocked ? disabledInputClass : inputClass}
                       />
                     </div>
 
@@ -626,9 +620,9 @@ export default function EditEventPage() {
                         <div
                           className={`
                             relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden flex items-center justify-center bg-gray-50
-                            ${isAdmin || !isPublished ? 'cursor-pointer hover:border-purple-500 hover:bg-purple-50' : ''}
+                            ${isAdmin || !isSettingsLocked ? 'cursor-pointer hover:border-purple-500 hover:bg-purple-50' : ''}
                           `}
-                          onClick={() => (isAdmin || !isPublished) && document.getElementById('qr-upload')?.click()}
+                          onClick={() => (isAdmin || !isSettingsLocked) && document.getElementById('qr-upload')?.click()}
                         >
                           {qrCodePreview ? (
                             <Image
@@ -643,7 +637,7 @@ export default function EditEventPage() {
                               <span className="text-xs text-gray-500">Upload QR</span>
                             </div>
                           )}
-                          {(isAdmin || !isPublished) && (
+                          {(isAdmin || !isSettingsLocked) && (
                             <input
                               id="qr-upload"
                               type="file"

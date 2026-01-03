@@ -131,7 +131,7 @@ export default function MyCSDPage() {
     ),
 
     peringkat: (record.level || '').toLowerCase().includes('antarabangsa') ? 'Antarabangsa' :
-      (record.level || '').toLowerCase().includes('negeri') || (record.level || '').toLowerCase().includes('universiti') ? 'Universiti' :
+      (record.level || '').toLowerCase().includes('negeri') || (record.level || '').toLowerCase().includes('universiti') ? 'Negeri / Universiti' :
         'P.Pengajian / Desasiswa / Persatuan / Kelab',
     mata: record.points,
     mycsd: record.status, // Pass the full status
