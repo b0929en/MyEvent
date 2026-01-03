@@ -319,17 +319,25 @@ export default function EventDetailsPage() {
                     <div className="flex gap-5">
                       <button
                         onClick={handleRSVP}
-                        disabled={isPastDeadline || isFull || isRegistered}
-                        className={`grow font-bold py-3.5 px-6 border border-gray-200 rounded-xl cursor-not-allowed transition-all duration-300 ${isRegistered
-                          ? 'bg-gray-100 text-gray-400'
-                          : isPastDeadline
-                            ? 'bg-gray-200 text-gray-500'
-                            : isFull
-                              ? 'bg-red-50 text-red-500 border border-red-100'
-                              : 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
+                        disabled={isPastDeadline || (isFull && !isRegistered) || (isRegistered && registrationStatus !== 'cancelled')}
+                        className={`grow font-bold py-3.5 px-6 border border-gray-200 rounded-xl transition-all duration-300 ${(isRegistered && registrationStatus !== 'cancelled')
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : isPastDeadline
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : (isFull && !isRegistered)
+                                ? 'bg-red-50 text-red-500 border border-red-100 cursor-not-allowed'
+                                : 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
                           }`}
                       >
-                        {isRegistered ? 'Registered' : isPastDeadline ? 'Registration Closed' : isFull ? 'Fully Booked' : 'RSVP Now'}
+                        {isRegistered && registrationStatus !== 'cancelled'
+                          ? 'Registered'
+                          : isRegistered && registrationStatus === 'cancelled'
+                            ? 'Register Again'
+                            : isPastDeadline
+                              ? 'Registration Closed'
+                              : isFull
+                                ? 'Fully Booked'
+                                : 'RSVP Now'}
                       </button>
 
                       <button
