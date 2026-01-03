@@ -149,6 +149,36 @@ export async function getUserNotifications(userId: string): Promise<Notification
       });
     }
 
+    // 4. Fetch Rejected Registrations (For Students)
+    const { data: rejectedRegs } = await supabase
+      .from('registrations')
+      .select(`
+        event_id,
+        event_status,
+        registration_date,
+        events ( event_id, event_name )
+      `)
+      .eq('user_id', userId)
+      .eq('event_status', 'rejected');
+
+    if (rejectedRegs) {
+      rejectedRegs.forEach((reg: any) => {
+        const eventName = reg.events?.event_name || 'Unknown Event';
+        const eventId = reg.events?.event_id;
+
+        notifications.push({
+          id: `reg-rej-${eventId}`,
+          userId,
+          type: 'registration',
+          title: 'Registration Rejected',
+          message: `Your payment for "${eventName}" was rejected. Please upload a valid receipt and register again.`,
+          link: `/events/${eventId}`,
+          isRead: false,
+          createdAt: reg.registration_date
+        });
+      });
+    }
+
   } catch (error) {
     console.error('Error deriving notifications:', error);
   }
