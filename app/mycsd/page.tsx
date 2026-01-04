@@ -858,7 +858,7 @@ export default function MyCSDPage() {
                           {paginatedPositions.length === 0 && (
                             <tr>
                               <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
-                                No position records found matching your search.
+                                No position records found.
                               </td>
                             </tr>
                           )}
