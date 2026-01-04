@@ -358,11 +358,7 @@ export default function AttendeesPage() {
   };
 
   const getPositionBadgeColor = (position: string) => {
-    const lower = position.toLowerCase();
-    if (lower.includes('pengarah') || lower.includes('director')) return 'bg-purple-100 text-purple-800';
-    if (lower.includes('ajk tertinggi') || lower.includes('top committee')) return 'bg-blue-100 text-blue-800';
-    if (lower.includes('ajk') || lower.includes('committee')) return 'bg-cyan-100 text-cyan-800';
-    return 'bg-gray-100 text-gray-800';
+    return 'bg-purple-100 text-purple-800';
   };
 
   if (authLoading) {
