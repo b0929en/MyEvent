@@ -54,6 +54,7 @@ export default function AttendeesPage() {
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [rejectConfirmationId, setRejectConfirmationId] = useState<string | null>(null);
+  const [approveConfirmationId, setApproveConfirmationId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -191,11 +192,15 @@ export default function AttendeesPage() {
     }
   };
 
-  const handleApprovePayment = async (userId: string) => {
-    if (!confirm('Are you sure you want to approve this payment?')) return;
+  const handleApprovePayment = (userId: string) => {
+    setApproveConfirmationId(userId);
+  };
+
+  const executeApprovePayment = async () => {
+    if (!approveConfirmationId) return;
     setIsProcessing(true);
     try {
-      await approveRegistration(eventId, userId);
+      await approveRegistration(eventId, approveConfirmationId);
       toast.success('Payment approved successfully');
       // Refresh data
       const regs = await getEventRegistrations(eventId);
@@ -205,6 +210,7 @@ export default function AttendeesPage() {
       toast.error('Failed to approve payment');
     } finally {
       setIsProcessing(false);
+      setApproveConfirmationId(null);
     }
   };
 
@@ -919,6 +925,50 @@ export default function AttendeesPage() {
                 </>
               ) : (
                 'Yes, Reject Payment'
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Approve Confirmation Modal */}
+      <Modal
+        isOpen={!!approveConfirmationId}
+        onClose={() => setApproveConfirmationId(null)}
+        title="Approve Payment"
+        size="md"
+      >
+        <div className="p-4">
+          <div className="flex flex-col items-center justify-center text-center mb-6">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Confirm Payment Approval</h3>
+            <p className="text-gray-600">
+              Are you sure you want to approve this payment? This will confirm the student's registration for the event.
+            </p>
+          </div>
+
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setApproveConfirmationId(null)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              disabled={isProcessing}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={executeApprovePayment}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Approving...
+                </>
+              ) : (
+                'Yes, Approve Payment'
               )}
             </button>
           </div>
