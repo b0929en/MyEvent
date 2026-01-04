@@ -17,6 +17,8 @@ export default function RecommendedEvents() {
             try {
                 const recommended = await getRecommendedEvents(user?.id, 8);
 
+                console.log('Recommended Events:', recommended);
+
                 // Map to the shape expected by EventCarouselSection
                 const mappedEvents = recommended.map(event => {
                     const eventDateTime = new Date(`${event.startDate}T${event.startTime}`);
@@ -25,7 +27,8 @@ export default function RecommendedEvents() {
                         title: event.title,
                         date: `${format(eventDateTime, 'EEEE')} • ${format(eventDateTime, 'h:mma')}`,
                         venue: event.venue,
-                        price: event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`
+                        price: event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`,
+                        image: event.bannerImage || '/usm-card-background.webp'
                     };
                 });
 

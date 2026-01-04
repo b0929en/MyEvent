@@ -17,7 +17,8 @@ export default async function Home() {
       title: event.title,
       date: `${format(eventDateTime, 'EEEE')} • ${format(eventDateTime, 'h:mma')}`,
       venue: event.venue,
-      price: event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`
+      price: event.participationFee === 0 ? 'Free' : `RM ${event.participationFee}`,
+      image: event.bannerImage
     };
   });
 
