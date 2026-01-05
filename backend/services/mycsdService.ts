@@ -6,7 +6,7 @@ export function calculateMyCSDPoints(level: string, role: string): number {
   const l = level.toLowerCase().trim();
   const r = role.toLowerCase().trim();
 
-  // 1. ANTABANGSA
+  // Antarabangsa
   if (l === 'antarabangsa') {
     if (r === 'pengarah') return 24;
     // ... roles
@@ -18,7 +18,7 @@ export function calculateMyCSDPoints(level: string, role: string): number {
     return 8;
   }
 
-  // 2. KEBANGSAAN / ANTARA UNIVERSITY
+  // Kebangsaan / Antara Universiti
   if (l === 'kebangsaan / antara university') {
     if (r === 'pengarah') return 18;
     if (r === 'ajk_tertinggi') return 18;
@@ -30,11 +30,10 @@ export function calculateMyCSDPoints(level: string, role: string): number {
     return 6;
   }
 
-  // 3. NEGERI / UNIVERSITI
+  // Negeri / Universiti
   if (l === 'negeri / universiti') {
     if (r === 'pengarah') return 12;
     if (r === 'ajk_tertinggi') return 12;
-    // ...
     if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 12;
     if (r === 'ajk_kecil' || r.includes('ajk')) return 8;
     if (r === 'peserta') return 4;
@@ -42,16 +41,16 @@ export function calculateMyCSDPoints(level: string, role: string): number {
     return 4;
   }
 
-  // 4. P.Pengajian / Desasiswa / Persatuan / Kelab
-  // This is default implicit if logic falls through, or explicitly check:
+  // P.Pengajian / Desasiswa / Persatuan / Kelab
   if (l === 'p.pengajian / desasiswa / persatuan / kelab') {
-    // fall through logic
+    if (r === 'pengarah') return 6;
+    if (r === 'ajk_tertinggi') return 6;
+    if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 6;
+    if (r === 'ajk_kecil' || r.includes('ajk')) return 4;
+    if (r === 'peserta') return 2;
+    return 1;
   }
-  if (r === 'pengarah') return 6;
-  if (r === 'ajk_tertinggi') return 6;
-  if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 6;
-  if (r === 'ajk_kecil' || r.includes('ajk')) return 4;
-  if (r === 'peserta') return 2;
+
   return 1;
 }
 
