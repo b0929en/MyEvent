@@ -220,6 +220,9 @@ export default function OrganizerDashboard() {
       case 'completed': return <CheckCircle className="w-3 h-3" />;
       case 'pending_approval': return <Clock className="w-3 h-3" />;
       case 'draft': return <FileText className="w-3 h-3" />;
+      case 'approved': return <CheckCircle className="w-3 h-3" />;
+      case 'rejected': return <XCircle className="w-3 h-3" />;
+      case 'revision_needed': return <AlertCircle className="w-3 h-3" />;
       case 'cancelled': return <Ban className="w-3 h-3" />;
       case 'mycsd_claimed': return <Award className="w-3 h-3" />;
       case 'mycsd_failed_to_claim': return <AlertCircle className="w-3 h-3" />;
@@ -233,6 +236,9 @@ export default function OrganizerDashboard() {
       case 'completed': return 'bg-blue-100 text-blue-800 border border-blue-200';
       case 'pending_approval': return 'bg-amber-100 text-amber-800 border border-amber-200';
       case 'draft': return 'bg-gray-100 text-gray-800 border border-gray-200';
+      case 'approved': return 'bg-green-100 text-green-800 border border-green-200';
+      case 'rejected': return 'bg-red-100 text-red-800 border border-red-200';
+      case 'revision_needed': return 'bg-orange-100 text-orange-800 border border-orange-200';
       case 'cancelled': return 'bg-red-100 text-red-800 border border-red-200';
       case 'mycsd_claimed': return 'bg-purple-100 text-purple-800 border border-purple-200';
       case 'mycsd_failed_to_claim': return 'bg-red-50 text-red-600 border border-red-200';
@@ -366,10 +372,31 @@ export default function OrganizerDashboard() {
                       <code className="text-sm font-mono font-bold text-purple-600 select-all">{proposal.id}</code>
                       <button
                         onClick={() => {
-                          if (navigator.clipboard) {
-                            navigator.clipboard.writeText(proposal.id)
+                          const text = proposal.id;
+                          if (navigator.clipboard && window.isSecureContext) {
+                            navigator.clipboard.writeText(text)
                               .then(() => toast.success('Secret Key copied to clipboard'))
-                              .catch(() => toast.error('Failed to copy key'));
+                              .catch(() => {
+                                toast.error('Failed to copy key');
+                                console.error('Clipboard API failed');
+                              });
+                          } else {
+                            // Fallback
+                            const textArea = document.createElement("textarea");
+                            textArea.value = text;
+                            textArea.style.position = "fixed";
+                            textArea.style.left = "-9999px";
+                            document.body.appendChild(textArea);
+                            textArea.focus();
+                            textArea.select();
+                            try {
+                              document.execCommand('copy');
+                              toast.success('Secret Key copied to clipboard');
+                            } catch (err) {
+                              console.error('Fallback copy failed', err);
+                              toast.error('Failed to copy key manually');
+                            }
+                            document.body.removeChild(textArea);
                           }
                         }}
                         className="text-gray-400 hover:text-purple-600 transition-colors"
@@ -469,7 +496,7 @@ export default function OrganizerDashboard() {
                   <option value="published">Published</option>
                   <option value="completed">Completed</option>
                   <option value="pending_approval">Pending Approval</option>
-                  <option value="draft">Draft</option>
+                  <option value="revision_needed">Revision Needed</option>
                   <option value="mycsd_claimed">MyCSD Claimed</option>
                   <option value="mycsd_failed_to_claim">MyCSD Failed</option>
                 </select>

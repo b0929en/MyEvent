@@ -414,6 +414,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
         mycsd_level,
         mycsd_category,
         mycsd_points,
+        has_mycsd,
         event_requests (
           status,
           organizations (
@@ -465,6 +466,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       mycsd_level,
       mycsd_category,
       mycsd_points,
+      has_mycsd,
       committee_members,
       event_requests (
         status,
@@ -526,12 +528,16 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
     const organization = event?.event_requests?.organizations;
 
     // Determine Status
-    let status: 'waiting_for_report' | 'pending_approval' | 'approved' | 'rejected' | 'cancelled' = 'waiting_for_report';
+    let status: 'waiting_for_report' | 'pending_approval' | 'approved' | 'rejected' | 'cancelled' | 'not_applicable' = 'waiting_for_report';
     let rejectionReason = '';
 
     // Check for registration cancellation first
     const eventStatus = event.event_requests?.status;
-    if (reg.event_status === 'rejected' || reg.event_status === 'cancelled' || eventStatus === 'cancelled') {
+
+    // STRICT DATABASE CHECK as requested
+    if (event.has_mycsd === false) {
+      status = 'not_applicable' as any;
+    } else if (reg.event_status === 'rejected' || reg.event_status === 'cancelled' || eventStatus === 'cancelled') {
       status = 'cancelled';
     } else if (mycsdRequest) {
       if (mycsdRequest.status === 'approved') {
@@ -545,8 +551,10 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
     }
 
     // Determine Points
-    let points = 0;
-    if (status === 'approved') {
+    let points: number | string = 0;
+    if (status === 'not_applicable') {
+      points = '-';
+    } else if (status === 'approved') {
       // Only show points if approved
       const record = eventMycsd?.mycsd_records;
       points = record?.mycsd_score || event.mycsd_points || 0;
@@ -576,7 +584,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
         else position = posCode.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
 
         // Recalculate estimated points based on role if not approved yet
-        if (status !== 'approved') {
+        if (status !== 'approved' && status !== 'not_applicable') {
           const displayLevel = eventMycsd?.event_level || event.mycsd_level || 'kampus';
           points = calculateMyCSDPoints(displayLevel, posCode);
         }
@@ -608,7 +616,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
 
     // We just need to make sure status is 'cancelled' so frontend can render "-" as status text if needed
     // The previous logic was:
-    if (status !== 'approved') {
+    if (status !== 'approved' && status !== 'not_applicable') {
       points = '-' as any;
       // We keep position visible for pending, but maybe hide for cancelled?
       if (status === 'cancelled') position = '-';
@@ -640,7 +648,7 @@ export async function getUserClubPositions(userId: string): Promise<ClubPosition
 export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], positions: ClubPosition[]) {
   const totalPoints = records
     .filter(r => r.status === 'approved')
-    .reduce((sum, r) => sum + r.points, 0) +
+    .reduce((sum, r) => sum + (typeof r.points === 'number' ? r.points : 0), 0) +
     positions.reduce((sum, p) => sum + p.points, 0);
 
   const totalEvents = records.length;
@@ -658,7 +666,8 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
 
   records.forEach(record => {
     if (record.status === 'approved' && record.category) {
-      pointsByCategory[record.category] = (pointsByCategory[record.category] || 0) + record.points;
+      const points = typeof record.points === 'number' ? record.points : 0;
+      pointsByCategory[record.category] = (pointsByCategory[record.category] || 0) + points;
     }
   });
 
@@ -671,7 +680,8 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
 
   records.forEach(record => {
     if (record.status === 'approved' && record.level) {
-      pointsByLevel[record.level] = (pointsByLevel[record.level] || 0) + record.points;
+      const points = typeof record.points === 'number' ? record.points : 0;
+      pointsByLevel[record.level] = (pointsByLevel[record.level] || 0) + points;
     }
   });
 
