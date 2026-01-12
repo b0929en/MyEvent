@@ -698,7 +698,7 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
     if (d.getMonth() === currentMonth &&
       d.getFullYear() === currentYear &&
       record.status === 'approved') {
-      return sum + record.points;
+      return sum + (typeof record.points === 'number' ? record.points : 0);
     }
     return sum;
   }, 0);
