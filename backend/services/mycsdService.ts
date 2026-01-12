@@ -1,13 +1,12 @@
 import { supabase } from '../supabase/supabase';
 import { MyCSDRecord, ClubPosition } from '@/types';
 
-// Helper to calculate points based on level string
 // Helper to calculate points based on level and role
 export function calculateMyCSDPoints(level: string, role: string): number {
   const l = level.toLowerCase().trim();
   const r = role.toLowerCase().trim();
 
-  // 1. ANTABANGSA
+  // Antarabangsa
   if (l === 'antarabangsa') {
     if (r === 'pengarah') return 24;
     // ... roles
@@ -19,7 +18,7 @@ export function calculateMyCSDPoints(level: string, role: string): number {
     return 8;
   }
 
-  // 2. KEBANGSAAN / ANTARA UNIVERSITY
+  // Kebangsaan / Antara Universiti
   if (l === 'kebangsaan / antara university') {
     if (r === 'pengarah') return 18;
     if (r === 'ajk_tertinggi') return 18;
@@ -31,11 +30,10 @@ export function calculateMyCSDPoints(level: string, role: string): number {
     return 6;
   }
 
-  // 3. NEGERI / UNIVERSITI
+  // Negeri / Universiti
   if (l === 'negeri / universiti') {
     if (r === 'pengarah') return 12;
     if (r === 'ajk_tertinggi') return 12;
-    // ...
     if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 12;
     if (r === 'ajk_kecil' || r.includes('ajk')) return 8;
     if (r === 'peserta') return 4;
@@ -43,16 +41,16 @@ export function calculateMyCSDPoints(level: string, role: string): number {
     return 4;
   }
 
-  // 4. P.Pengajian / Desasiswa / Persatuan / Kelab
-  // This is default implicit if logic falls through, or explicitly check:
+  // P.Pengajian / Desasiswa / Persatuan / Kelab
   if (l === 'p.pengajian / desasiswa / persatuan / kelab') {
-    // fall through logic
+    if (r === 'pengarah') return 6;
+    if (r === 'ajk_tertinggi') return 6;
+    if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 6;
+    if (r === 'ajk_kecil' || r.includes('ajk')) return 4;
+    if (r === 'peserta') return 2;
+    return 1;
   }
-  if (r === 'pengarah') return 6;
-  if (r === 'ajk_tertinggi') return 6;
-  if (r === 'pengarah_ajk_tertinggi' || r.includes('pengarah') || r.includes('tertinggi')) return 6;
-  if (r === 'ajk_kecil' || r.includes('ajk')) return 4;
-  if (r === 'peserta') return 2;
+
   return 1;
 }
 
@@ -61,7 +59,7 @@ export function getPointsForLevel(level?: string): number {
 }
 
 export async function submitMyCSDClaim(eventId: string, documentUrl: string, level: string, category: string) {
-  // 1. Get Event Details to find the organizer (user_id)
+  // Get Event Details to find the organizer
   const { data: event, error: eventError } = await supabase
     .from('events')
     .select(`
@@ -75,9 +73,7 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
 
   if (eventError || !event) throw new Error('Event not found');
 
-
-
-  // 2. Check if a request already exists
+  // Check if a request already exists
   const { data: existingRequest } = await supabase
     .from('mycsd_requests')
     .select('*')
@@ -85,8 +81,7 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
     .single();
 
   if (existingRequest) {
-    // STRICT RULE: No resubmission allows if rejected or pending.
-    // If it's already approved, no need to submit again anyway.
+    // No resubmission allows if rejected or pending.
     if (existingRequest.status === 'rejected') {
       throw new Error('This Laporan Kejayaan has been rejected. Resubmission is not allowed.');
     }
@@ -95,8 +90,7 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
     }
   }
 
-  // CRITICAL: Update the event with the organizer's proposed level/category
-  // Moved after validation to prevent unauthorized overwrites
+  // Update the event with the organizer's proposed level/category
   await supabase
     .from('events')
     .update({
@@ -127,7 +121,7 @@ export async function submitMyCSDClaim(eventId: string, documentUrl: string, lev
 }
 
 export async function approveMyCSDRequest(requestId: string, committeeRoles?: Record<string, string>) {
-  // 1. Get Request Details
+  // Get Request Details
   const { data: request, error: reqError } = await supabase
     .from('mycsd_requests')
     .select(`
@@ -145,8 +139,7 @@ export async function approveMyCSDRequest(requestId: string, committeeRoles?: Re
   if (reqError || !request) throw new Error('Request not found');
   const event = request.events;
 
-  // 2. Create/Get MyCSD Record & Event MyCSD
-  // Determine fixed points based on event level stored in the events table
+  // Create MyCSD Record & Event MyCSD
   const eventLevel = event.mycsd_level || 'kampus';
   const participantPoints = calculateMyCSDPoints(eventLevel, 'peserta');
 
@@ -173,7 +166,7 @@ export async function approveMyCSDRequest(requestId: string, committeeRoles?: Re
 
   if (linkError) throw linkError;
 
-  // 3. Get Present Participants
+  // Get Present Participants
   const { data: registrations, error: regError } = await supabase
     .from('registrations')
     .select(`
@@ -188,7 +181,7 @@ export async function approveMyCSDRequest(requestId: string, committeeRoles?: Re
 
   if (regError) throw regError;
 
-  // 4. Distribute Points (Insert into mycsd_logs)
+  // Distribute Points (Insert into mycsd_logs)
   // Identify committee members to exclude them from the 'Peserta' list (Committee role takes precedence)
   const committeeMatrics = new Set<string>();
   if (event.committee_members && Array.isArray(event.committee_members)) {
@@ -219,7 +212,7 @@ export async function approveMyCSDRequest(requestId: string, committeeRoles?: Re
       if (logError) throw logError;
     }
 
-    // 5. Send Notifications
+    // Send Notifications
     const notifications = registrations.map((reg: any) => ({
       user_id: reg.user_id,
       type: 'mycsd',
@@ -228,11 +221,10 @@ export async function approveMyCSDRequest(requestId: string, committeeRoles?: Re
       link: '/profile'
     }));
 
-    // Attempt to send notifications, non-blocking
     supabase.from('notifications').insert(notifications);
   }
 
-  // 5.5 Distribute Points to Committee Members
+  // Distribute Points to Committee Members
   if (event.committee_members && Array.isArray(event.committee_members)) {
     const committeeLogs = event.committee_members.map((member: any) => {
       const trimmedMatric = String(member.matricNumber).trim();
@@ -264,7 +256,7 @@ export async function approveMyCSDRequest(requestId: string, committeeRoles?: Re
     }
   }
 
-  // 6. Update Request Status & Event Claimed Status
+  // Update Request Status & Event Claimed Status
   await supabase
     .from('mycsd_requests')
     .update({ status: 'approved' })
@@ -411,6 +403,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       events (
         event_id,
         event_name,
+        event_date,
         mycsd_level,
         mycsd_category,
         mycsd_points,
@@ -627,6 +620,7 @@ export async function getUserMyCSDRecords(userId: string): Promise<MyCSDRecord[]
       userId: userId,
       eventId: event.event_id,
       eventName: event.event_name,
+      eventDate: event.event_date,
       organizationName: organization?.org_name || 'Unknown Organization',
       category: eventMycsd?.mycsd_category || event.mycsd_category || 'Reka Cipta dan Inovasi',
       level: eventMycsd?.event_level || event.mycsd_level || 'P.Pengajian / Desasiswa / Persatuan / Kelab',
@@ -685,12 +679,36 @@ export function calculateMyCSDSummary(userId: string, records: MyCSDRecord[], po
     }
   });
 
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const eventsThisMonth = records.filter(record => {
+    const d = new Date(record.eventDate);
+    // Count events that happened this month, excluding cancelled/rejected ones
+    return d.getMonth() === currentMonth &&
+      d.getFullYear() === currentYear &&
+      record.status !== 'cancelled' &&
+      record.status !== 'rejected';
+  }).length;
+
+  const pointsThisMonth = records.reduce((sum, record) => {
+    const d = new Date(record.eventDate);
+    // Only count points for events this month that are APPROVED
+    if (d.getMonth() === currentMonth &&
+      d.getFullYear() === currentYear &&
+      record.status === 'approved') {
+      return sum + record.points;
+    }
+    return sum;
+  }, 0);
+
   return {
     totalPoints,
     totalEvents,
     pointsByCategory,
     pointsByLevel,
-    eventsThisMonth: 0, // Mock
-    pointsThisMonth: 0, // Mock
+    eventsThisMonth,
+    pointsThisMonth,
   };
 }

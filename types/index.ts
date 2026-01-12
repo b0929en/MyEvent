@@ -396,6 +396,7 @@ export type MyCSDRecord = {
   level: MyCSDLevel;
   role: ParticipantRole;
   points: number | string;
+  eventDate: string;
   semester: string;
   status: 'approved' | 'pending_approval' | 'rejected' | 'waiting_for_report' | 'cancelled' | 'not_applicable';
   rejectionReason?: string;

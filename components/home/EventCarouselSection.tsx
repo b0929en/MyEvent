@@ -10,12 +10,13 @@ import EventCard from '@/components/event/EventCard';
 // clsx import removed
 
 
-type Event = {
+type CarouselEvent = {
   id: string;
   title: string;
   date: string;
   venue: string;
   price: string;
+  image?: string;
   [key: string]: any;
 };
 
@@ -25,7 +26,7 @@ interface EventCarouselSectionProps {
   titleColor?: string; // e.g., 'text-orange-500'
   subtitleColor?: string; // e.g., 'text-white'
   bgColorClass: string; // e.g., 'bg-purple-900'
-  events: Event[];
+  events: CarouselEvent[];
   buttonText?: string;
   buttonLink?: string;
   buttonColorClass?: string;

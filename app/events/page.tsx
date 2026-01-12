@@ -407,7 +407,7 @@ function EventsPage() {
                             date={format(new Date(event.startDate), 'EEEE • h:mma')}
                             venue={event.venue}
                             price={event.participationFee === 0 ? 'Free' : `RM${event.participationFee}`}
-                            image={event.bannerImage}
+                            image={event.bannerImage || '/usm-card-background.webp'}
                           />
                         ))}
                       </div>
@@ -468,7 +468,7 @@ function EventsPage() {
                               disabled:opacity-40 disabled:cursor-not-allowed
                               disabled:hover:scale-100 disabled:hover:shadow-sm
                             "
-                          > 
+                          >
                             Next →
                           </button>
                         </div>

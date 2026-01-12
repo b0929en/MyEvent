@@ -669,9 +669,11 @@ export default function OrganizerDashboard() {
                                     {event.mycsdStatus === 'rejected' && (
                                       <div className="relative group p-2">
                                         <AlertCircle className="w-5 h-5 text-red-500 cursor-pointer" />
-                                        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white text-gray-800 text-xs rounded-lg shadow-xl border border-red-200 p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                        <div className="absolute bottom-full right-0 mb-2 w-72 md:w-80 bg-white text-gray-800 text-xs rounded-lg shadow-xl border border-red-200 p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                                           <p className="font-bold text-red-600 mb-1">Claim Rejected</p>
-                                          <p className="text-gray-600 leading-snug">{event.mycsdRejectionReason || 'No reason provided.'}</p>
+                                          <p className="text-gray-600 leading-snug whitespace-normal break-words max-h-48 overflow-y-auto custom-scrollbar">
+                                            {event.mycsdRejectionReason || 'No reason provided.'}
+                                          </p>
                                         </div>
                                       </div>
                                     )}
