@@ -458,6 +458,11 @@ export default function MyCSDTab() {
                       <div className="flex-1">
                         <p className="font-medium text-gray-900">{member.name}</p>
                         <p className="text-xs text-gray-500">{member.matricNumber}</p>
+                        {member.position && (
+                          <p className="text-xs text-purple-600 font-medium mt-0.5">
+                            Position: {member.position.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                          </p>
+                        )}
                       </div>
                       <div className="w-1/2">
                         <select
